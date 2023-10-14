@@ -13,8 +13,8 @@ export const schema = gql`
   }
 
   type Query {
-    threads: [Thread]! 
-    thread(threadHash: String!): Thread 
+    threads: [Thread]! @skipAuth
+    thread(threadHash: String!): Thread @skipAuth
   }
 
   input CreateThreadInput {
@@ -24,6 +24,7 @@ export const schema = gql`
     replyTo: String
     signature: String!
     timestamp: DateTime!
+    files: [CreateFileInput]
   }
 
   input UpdateThreadInput {
@@ -36,7 +37,7 @@ export const schema = gql`
   }
 
   type Mutation {
-    createThread(input: CreateThreadInput!): Thread! @requireAuth
+    createThread(input: CreateThreadInput!): Thread! @skipAuth
     # updateThread(id: Int!, input: UpdateThreadInput!): Thread! @requireAuth
     # deleteThread(id: Int!): Thread! @requireAuth
   }

@@ -37,17 +37,19 @@ model File {
 }
 
 model PublicKey {
-  approved   Boolean     @default(false)
-  armoredKey String      @unique
-  comment    String
-  email      String
-  finger     String      @unique
-  keyId      String      @unique
-  master     Boolean
-  name       String
-  revoked    Boolean     @default(false)
-  sponsor    PublicKey   @relation("Sponsor", fields: [sponsorId], references: [keyId])
-  sponsorId  String
-  sponsoring PublicKey[] @relation("Sponsor")
-  threads    Thread[]
+  approved                Boolean     @default(false)
+  armoredKey              String
+  comment                 String
+  email                   String
+  finger                  String
+  id                      Int         @id
+  keyId                   String      @unique
+  master                  Boolean
+  name                    String
+  revoked                 Boolean     @default(false)
+  sponsor                 PublicKey   @relation("Sponsor", fields: [sponsorId], references: [keyId])
+  sponsorArmoredSignature String
+  sponsorId               String
+  sponsoring              PublicKey[] @relation("Sponsor")
+  threads                 Thread[]
 }

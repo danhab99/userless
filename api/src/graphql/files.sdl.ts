@@ -8,10 +8,10 @@ export const schema = gql`
     url: String!
   }
 
-  type Query {
+  # type Query {
     # files: [File!]! @requireAuth
     # file(id: Int!): File @requireAuth
-  }
+  # }
 
   input CreateFileInput {
     hash: String!
@@ -28,7 +28,7 @@ export const schema = gql`
   }
 
   type Mutation {
-    createFile(input: CreateFileInput!): File! @requireAuth
+    createFile(input: CreateFileInput!): File! @skipAuth
     # updateFile(id: Int!, input: UpdateFileInput!): File! @requireAuth
     # deleteFile(id: Int!): File! @requireAuth
   }
