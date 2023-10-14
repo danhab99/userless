@@ -16,11 +16,11 @@ import { db } from 'src/lib/db'
 //   })
 // }
 
-export const createFile: MutationResolvers['createFile'] = ({ input }) => {
-  return db.file.create({
-    data: input,
-  })
-}
+// export const createFile: MutationResolvers['createFile'] = ({ input }) => {
+//   return db.file.create({
+//     data: input,
+//   })
+// }
 
 // export const updateFile: MutationResolvers['updateFile'] = ({ id, input }) => {
 //   return db.file.update({
