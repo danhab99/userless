@@ -54,7 +54,9 @@ export const createPublicKey: MutationResolvers['createPublicKey'] = async ({
       message: await openpgp.createCleartextMessage({
         text: input.armoredKey,
       }),
-      signature: input.sponsorArmoredSignature,
+      signature: await openpgp.readSignature({
+        armoredSignature: input.sponsorArmoredSignature,
+      })
     })
 
     if (!verified) {

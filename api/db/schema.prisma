@@ -17,7 +17,7 @@ model Thread {
   body       String
   files      File[]
   hash       String    @unique
-  id         String    @id @map("_id")
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
   parent     Thread?   @relation(name: "ParentThread", fields: [replyTo], references: [hash], onDelete: NoAction, onUpdate: NoAction)
   replies    Thread[]  @relation(name: "ParentThread")
   replyTo    String?
@@ -29,7 +29,7 @@ model Thread {
 
 model File {
   hash     String
-  id       String @id @map("_id")
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
   mimeType String
   thread   Thread @relation(fields: [threadId], references: [hash])
   threadId String
@@ -42,9 +42,9 @@ model PublicKey {
   comment                 String
   email                   String
   finger                  String
-  id                      String      @id @map("_id")
+  id                      String      @id @default(auto()) @map("_id") @db.ObjectId
   keyId                   String      @unique
-  master                  Boolean
+  master                  Boolean     @default(false)
   name                    String
   revoked                 Boolean     @default(false)
   sponsor                 PublicKey?  @relation("Sponsor", fields: [sponsorId], references: [keyId], onDelete: NoAction, onUpdate: NoAction)
