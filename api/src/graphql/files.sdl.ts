@@ -27,9 +27,9 @@ export const schema = gql`
     url: String
   }
 
-  type Mutation {
-    createFile(input: CreateFileInput!): File! @skipAuth
+  # type Mutation {
+    # createFile(input: CreateFileInput!): File! @skipAuth
     # updateFile(id: Int!, input: UpdateFileInput!): File! @requireAuth
     # deleteFile(id: Int!): File! @requireAuth
-  }
+  # }
 `
