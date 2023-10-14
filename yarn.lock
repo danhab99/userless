@@ -8960,7 +8960,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"asn1.js@npm:^5.2.0":
+"asn1.js@npm:^5.0.0, asn1.js@npm:^5.2.0":
   version: 5.4.1
   resolution: "asn1.js@npm:5.4.1"
   dependencies:
@@ -18342,6 +18342,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"openpgp@npm:^5.10.2":
+  version: 5.10.2
+  resolution: "openpgp@npm:5.10.2"
+  dependencies:
+    asn1.js: ^5.0.0
+  checksum: 2978a8f3b39c74da92aea268def44a75e9e41665157f6a60bd753d5c0d44d2ea659ae17c6095be6d3d1485fd556d65a31403ef63cf24451fc113794e7f2e74a9
+  languageName: node
+  linkType: hard
+
 "optimism@npm:^0.17.5":
   version: 0.17.5
   resolution: "optimism@npm:0.17.5"
@@ -20723,6 +20732,7 @@ __metadata:
   dependencies:
     "@redwoodjs/cli-storybook": 6.3.2
     "@redwoodjs/core": 6.3.2
+    openpgp: ^5.10.2
   languageName: unknown
   linkType: soft
 
