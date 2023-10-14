@@ -1,5 +1,5 @@
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -15,4 +15,42 @@ model UserExample {
   id    Int     @id @default(autoincrement())
   email String  @unique
   name  String?
+}
+
+model Thread {
+  approved   Boolean   @default(true)
+  body       String
+  files      File[]    @relation()
+  hash       String    @unique
+  id         Int       @id @default(autoincrement())
+  parent     Thread?   @relation("ParentThread", fields: [replyTo], references: [hash])
+  replies    Thread[]  @relation("ParentThread")
+  replyTo    String
+  signature  String
+  signedBy   PublicKey @relation(fields: [signedById], references: [keyId])
+  signedById String
+  timestamp  DateTime
+}
+
+model File {
+  hash     String @unique
+  mimeType String
+  thread   Thread @relation(fields: [threadId], references: [id])
+  threadId Int
+  url      String
+}
+
+model PublicKey {
+  approved   Boolean     @default(false)
+  armoredKey String      @unique
+  comment    String
+  email      String
+  finger     String      @unique
+  keyId      String      @unique
+  name       String
+  revoked    Boolean     @default(false)
+  sponsor    PublicKey   @relation("Sponsor", fields: [sponsorId], references: [keyId])
+  sponsorId  String
+  sponsoring PublicKey[] @relation("Sponsor")
+  threads    Thread[]
 }
