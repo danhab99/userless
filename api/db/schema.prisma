@@ -29,7 +29,7 @@ model Thread {
 
 model File {
   hash     String @unique
-  id       Int    @id
+  id       Int    @id @default(autoincrement())
   mimeType String
   thread   Thread @relation(fields: [threadId], references: [id])
   threadId Int
@@ -42,7 +42,7 @@ model PublicKey {
   comment                 String
   email                   String
   finger                  String
-  id                      Int         @id
+  id                      Int         @id @default(autoincrement())
   keyId                   String      @unique
   master                  Boolean
   name                    String
