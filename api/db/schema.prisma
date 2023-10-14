@@ -47,6 +47,7 @@ model PublicKey {
   email      String
   finger     String      @unique
   keyId      String      @unique
+  master     Boolean
   name       String
   revoked    Boolean     @default(false)
   sponsor    PublicKey   @relation("Sponsor", fields: [sponsorId], references: [keyId])
