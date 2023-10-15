@@ -16,7 +16,7 @@ export const schema = gql`
   }
 
   type Query {
-    publicKeys: [PublicKey]! @skipAuth
+    publicKeys(keyIds: [String!]): [PublicKey]! @skipAuth
     publicKey(keyId: String!): PublicKey @skipAuth
   }
 

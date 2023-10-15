@@ -7,7 +7,12 @@ module.exports = {
         "card": "#cad470",
         "background": "#70c0d4",
         "username": "#a970d4",
-        "hash": "#222"
+        "hash": "#222",
+        "sig-working": "yellow",
+        "sig-error": "red",
+        "sig-nomatch": "orange",
+        "sig-revoked": "purple",
+        "sig-success": "green"
       }
     },
   },

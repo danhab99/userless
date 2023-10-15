@@ -7,8 +7,15 @@ import type {
 import { db } from 'src/lib/db'
 import * as openpgp from 'openpgp'
 
-export const publicKeys: QueryResolvers['publicKeys'] = () => {
-  return db.publicKey.findMany()
+export const publicKeys: QueryResolvers['publicKeys'] = ({ keyIds }) => {
+  if (keyIds) {
+    return db.publicKey.findMany()
+  } else
+    db.publicKey.findMany({
+      where: {
+        OR: keyIds.map((keyId) => ({ keyId })),
+      },
+    })
 }
 
 export const publicKey: QueryResolvers['publicKey'] = ({ keyId }) => {
@@ -56,7 +63,7 @@ export const createPublicKey: MutationResolvers['createPublicKey'] = async ({
       }),
       signature: await openpgp.readSignature({
         armoredSignature: input.sponsorArmoredSignature,
-      })
+      }),
     })
 
     if (!verified) {
@@ -83,15 +90,15 @@ export const updatePublicKey: MutationResolvers['updatePublicKey'] = async ({
   input,
 }) => {
   const key = await openpgp.readKey({
-    armoredKey: input.armoredKey
+    armoredKey: input.armoredKey,
   })
   return db.publicKey.update({
     data: {
       armoredKey: input.armoredKey,
       revoked: await key.isRevoked(),
     },
-    where: { 
-      keyId: key.getKeyID().toHex()
+    where: {
+      keyId: key.getKeyID().toHex(),
     },
   })
 }
