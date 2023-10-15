@@ -1,9 +1,10 @@
 import { Link } from '@redwoodjs/router'
 import type { Thread } from 'api/types/graphql'
 import FileDisplay from '../FileDisplay/FileDisplay'
+import SigVerify from '../SigVerify/SigVerify'
 
 type ThreadCardProps = {
-  thread: Pick<Thread, "body" | "files" | "hash" | "signedBy" | "timestamp">
+  thread: Pick<Thread, 'body' | 'files' | 'hash' | 'signedBy' | 'timestamp'>
 }
 
 const ThreadCard = ({ thread }: ThreadCardProps) => {
@@ -22,6 +23,7 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
           </span>
         </Link>{' '}
         <span className="text-hash">{thread.hash}</span>
+        <SigVerify thread={thread as Thread} />
       </p>
       <div className="flex flex-row justify-start">
         <div className="h-full p-4">
