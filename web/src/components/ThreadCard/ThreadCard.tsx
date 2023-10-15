@@ -3,7 +3,7 @@ import type { Thread } from 'api/types/graphql'
 import FileDisplay from '../FileDisplay/FileDisplay'
 
 type ThreadCardProps = {
-  thread: Thread
+  thread: Pick<Thread, "body" | "files" | "hash" | "signedBy" | "timestamp">
 }
 
 const ThreadCard = ({ thread }: ThreadCardProps) => {
