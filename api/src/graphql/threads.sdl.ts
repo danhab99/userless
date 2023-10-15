@@ -10,6 +10,7 @@ export const schema = gql`
     # replyTo: String!
     signature: String!
     timestamp: DateTime!
+    signedBy: PublicKey!
   }
 
   type Query {
