@@ -60,7 +60,7 @@ const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
   const deleteKey = useCallback(
     (index: number) => {
       setKeys((prev) => {
-        return prev.filter((_, i) => i != index)
+        return [...prev.filter((_, i) => i != index)]
       })
     },
     [setKeys]
@@ -87,7 +87,7 @@ function KeyItem(props: { pgKey: Key; onDelete: () => void }) {
   const pgKey = useAsyncMemo(props.pgKey.getPrimaryUser, [props.pgKey])
 
   return (
-    <div>
+    <div className="py-1">
       {pgKey?.user.userID.name} {'<'}
       {pgKey?.user.userID.email}
       {'>'} {props.pgKey.getFingerprint()}
