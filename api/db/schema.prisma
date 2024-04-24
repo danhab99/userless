@@ -15,7 +15,6 @@ generator client {
 model Thread {
   approved   Boolean   @default(true)
   body       String
-  files      File[]
   hash       String    @unique
   id         String    @id @default(auto()) @map("_id") @db.ObjectId
   parent     Thread?   @relation(name: "ParentThread", fields: [replyTo], references: [hash], onDelete: NoAction, onUpdate: NoAction)
@@ -25,15 +24,6 @@ model Thread {
   signedBy   PublicKey @relation(fields: [signedById], references: [keyId], onDelete: NoAction, onUpdate: NoAction)
   signedById String
   timestamp  DateTime
-}
-
-model File {
-  hash     String
-  id       String @id @default(auto()) @map("_id") @db.ObjectId
-  mimeType String
-  thread   Thread @relation(fields: [threadId], references: [hash])
-  threadId String
-  url      String
 }
 
 model PublicKey {
