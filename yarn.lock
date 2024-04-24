@@ -13460,6 +13460,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"fflate@npm:^0.8.2":
+  version: 0.8.2
+  resolution: "fflate@npm:0.8.2"
+  checksum: 03448d630c0a583abea594835a9fdb2aaf7d67787055a761515bf4ed862913cfd693b4c4ffd5c3f3b355a70cf1e19033e9ae5aedcca103188aaff91b8bd6e293
+  languageName: node
+  linkType: hard
+
 "figgy-pudding@npm:^3.5.1":
   version: 3.5.2
   resolution: "figgy-pudding@npm:3.5.2"
@@ -21019,6 +21026,7 @@ __metadata:
   dependencies:
     "@redwoodjs/cli-storybook": 6.3.2
     "@redwoodjs/core": 6.3.2
+    fflate: ^0.8.2
     openpgp: ^5.10.2
     prettier-plugin-tailwindcss: 0.4.1
   languageName: unknown
@@ -23899,6 +23907,7 @@ __metadata:
     "@types/react-dom": 18.2.6
     "@types/wicg-file-system-access": ^2023.10.1
     autoprefixer: ^10.4.16
+    fflate: ^0.8.2
     postcss: ^8.4.31
     postcss-loader: ^7.3.3
     prop-types: 15.8.1

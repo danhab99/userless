@@ -24,6 +24,7 @@
   },
   "packageManager": "yarn@3.6.3",
   "dependencies": {
+    "fflate": "^0.8.2",
     "openpgp": "^5.10.2"
   }
 }
