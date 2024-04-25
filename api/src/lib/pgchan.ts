@@ -116,9 +116,11 @@ export async function setPolicy(
 }
 
 export async function findAncestors(
-  startThread: Thread
+  startThread: Thread, limit?: number
 ): Promise<Array<Thread>> {
   const ancestors: Thread[] = [startThread]
+
+  var max = limit ?? Number.MAX_VALUE;
 
   do {
     const thread = await db.thread.findFirst({
@@ -130,7 +132,7 @@ export async function findAncestors(
       },
     })
     ancestors.push(thread as unknown as Thread)
-  } while (ancestors[ancestors.length - 1].parent)
+  } while (ancestors[ancestors.length - 1].parent && max-- > 0)
 
   return ancestors
 }

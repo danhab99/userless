@@ -14,7 +14,9 @@ export const publicKeys: QueryResolvers['publicKeys'] = ({ keyIds }) => {
   } else
     db.publicKey.findMany({
       where: {
-        OR: keyIds.map((keyId) => ({ keyId })),
+        keyId: {
+          in: keyIds
+        }
       },
     })
 }
@@ -47,14 +49,6 @@ export const updatePublicKey: MutationResolvers['updatePublicKey'] = async ({
     },
   })
 }
-
-// export const deletePublicKey: MutationResolvers['deletePublicKey'] = ({
-//   id,
-// }) => {
-//   return db.publicKey.delete({
-//     where: { id },
-//   })
-// }
 
 export const PublicKey: PublicKeyRelationResolvers = {
   threads: (_obj, { root }) => {

@@ -5,7 +5,6 @@ export const schema = gql`
     comment: String!
     email: String!
     finger: String!
-    # id: Int!
     keyId: String!
     master: Boolean!
     name: String!
@@ -19,27 +18,11 @@ export const schema = gql`
   }
 
   input CreatePublicKeyInput {
-    # approved: Boolean!
     armoredKey: String!
-    # comment: String!
-    # email: String!
-    # finger: String!
-    # keyId: String!
-    # master: Boolean
-    # name: String!
-    # revoked: Boolean
   }
 
   input UpdatePublicKeyInput {
-    # approved: Boolean
     armoredKey: String
-    # comment: String
-    # email: String
-    # finger: String
-    # keyId: String
-    # master: Boolean
-    # name: String
-    # revoked: Boolean
   }
 
   type Mutation {

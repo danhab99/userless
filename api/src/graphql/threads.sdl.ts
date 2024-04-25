@@ -3,10 +3,9 @@ export const schema = gql`
     approved: Boolean!
     body: String!
     hash: String!
-    # id: Int!
     parent: Thread
-    replies: [Thread]!
-    # replyTo: String!
+    parents(limit: Int): [Thread]!
+    replies(skip: Int, limit: Int): [Thread]!
     signature: String!
     timestamp: DateTime!
     signedBy: PublicKey!
@@ -19,22 +18,8 @@ export const schema = gql`
   }
 
   input CreateThreadInput {
-    # approved: Boolean!
-    body: String!
-    hash: String!
-    replyTo: String
-    signature: String!
-    timestamp: DateTime!
+    clearText: String!
   }
-
-  # input UpdateThreadInput {
-  #   # approved: Boolean
-  #   # body: String
-  #   # hash: String
-  #   # replyTo: String
-  #   # signature: String
-  #   # timestamp: DateTime
-  # }
 
   input UpdatePolicyInput {
     allowReplies: Boolean
@@ -46,7 +31,5 @@ export const schema = gql`
   type Mutation {
     createThread(input: CreateThreadInput!): Thread! @skipAuth
     updatePolicy(hashs: [String!]!, policy: String!): [Thread!]! @skipAuth
-    # updateThread(id: Int!, input: UpdateThreadInput!): Thread! @requireAuth
-    # deleteThread(id: Int!): Thread! @requireAuth
   }
 `
