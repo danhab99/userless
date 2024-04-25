@@ -24,22 +24,19 @@ model Thread {
   signedBy   PublicKey @relation(fields: [signedById], references: [keyId], onDelete: NoAction, onUpdate: NoAction)
   signedById String
   timestamp  DateTime
+  policy     String?
 }
 
 model PublicKey {
-  approved                Boolean     @default(false)
-  armoredKey              String
-  comment                 String
-  email                   String
-  finger                  String
-  id                      String      @id @default(auto()) @map("_id") @db.ObjectId
-  keyId                   String      @unique
-  master                  Boolean     @default(false)
-  name                    String
-  revoked                 Boolean     @default(false)
-  sponsor                 PublicKey?  @relation("Sponsor", fields: [sponsorId], references: [keyId], onDelete: NoAction, onUpdate: NoAction)
-  sponsorArmoredSignature String?
-  sponsorId               String?
-  sponsoring              PublicKey[] @relation("Sponsor")
-  threads                 Thread[]
+  approved   Boolean  @default(false)
+  armoredKey String   @unique
+  comment    String
+  email      String
+  finger     String   @unique
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  keyId      String   @unique
+  master     Boolean  @default(false)
+  name       String
+  revoked    Boolean  @default(false)
+  threads    Thread[]
 }

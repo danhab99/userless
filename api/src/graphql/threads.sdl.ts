@@ -2,7 +2,6 @@ export const schema = gql`
   type Thread {
     approved: Boolean!
     body: String!
-    files: [File]!
     hash: String!
     # id: Int!
     parent: Thread
@@ -11,6 +10,7 @@ export const schema = gql`
     signature: String!
     timestamp: DateTime!
     signedBy: PublicKey!
+    policy: String
   }
 
   type Query {
@@ -25,7 +25,6 @@ export const schema = gql`
     replyTo: String
     signature: String!
     timestamp: DateTime!
-    files: [CreateFileInput]
   }
 
   input UpdateThreadInput {
