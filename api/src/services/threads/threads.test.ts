@@ -32,18 +32,18 @@ describe('threads', () => {
     const result = await createThread({
       input: {
         body: 'String',
-        hash: 'String9591160',
-        replyTo: scenario.thread.two.replyTo,
+        hash: 'String3390603',
         signature: 'String',
-        timestamp: '2023-10-14T04:05:05.745Z',
+        signedById: scenario.thread.two.signedById,
+        timestamp: '2024-04-25T01:44:47.591Z',
       },
     })
 
     expect(result.body).toEqual('String')
-    expect(result.hash).toEqual('String9591160')
-    expect(result.replyTo).toEqual(scenario.thread.two.replyTo)
+    expect(result.hash).toEqual('String3390603')
     expect(result.signature).toEqual('String')
-    expect(result.timestamp).toEqual(new Date('2023-10-14T04:05:05.745Z'))
+    expect(result.signedById).toEqual(scenario.thread.two.signedById)
+    expect(result.timestamp).toEqual(new Date('2024-04-25T01:44:47.591Z'))
   })
 
   scenario('updates a thread', async (scenario: StandardScenario) => {

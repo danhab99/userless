@@ -61,7 +61,7 @@ export async function collectPolicies(thread: Thread) {
   var policy: Policy = {
     allowReplies: true,
     banned: false,
-    requireRecipients: []
+    requireRecipients: [],
   }
 
   for (const ancestor of ancestors) {
@@ -74,28 +74,33 @@ export async function collectPolicies(thread: Thread) {
 
     policy.allowReplies = !policy.allowReplies || p.allowReplies
     policy.banned = policy.banned || p.banned
-    policy.requireRecipients = policy.requireRecipients.concat(p.requireRecipients)
+    policy.requireRecipients = policy.requireRecipients.concat(
+      p.requireRecipients
+    )
   }
 
-  return policy;
+  return policy
 }
 
-export async function setPolicy(thread: Pick<Thread, "hash">, policyCleartext: string) {
+export async function setPolicy(
+  thread: Pick<Thread, 'hash'>,
+  policyCleartext: string
+) {
   const msg = await openpgp.readCleartextMessage({
     cleartextMessage: policyCleartext,
   })
 
   const owner = await getSigner(msg)
   if (!owner.master) {
-    throw new PGChanError("Not allowed to change policy")
+    throw new PGChanError('Not allowed to change policy')
   }
 
   const rawSig = spoofArmoredSignature(policyCleartext)
-  const sig = await openpgp.readSignature({armoredSignature: rawSig })
+  const sig = await openpgp.readSignature({ armoredSignature: rawSig })
 
-  await db.thread.upsert({
+  return db.thread.upsert({
     create: {
-      body: "",
+      body: '',
       signature: rawSig,
       timestamp: sig.packets[0].created,
       hash: thread.hash,
@@ -105,7 +110,7 @@ export async function setPolicy(thread: Pick<Thread, "hash">, policyCleartext: s
       policy: policyCleartext,
     },
     where: {
-      hash: thread.hash
+      hash: thread.hash,
     },
   })
 }
@@ -191,4 +196,22 @@ export async function readThreadFromClearText(
     timestamp,
     replyTo,
   }
+}
+
+export async function registerPublicKey(publicKeyArmored: string) {
+  const newKey = await openpgp.readKey({
+    armoredKey: publicKeyArmored,
+  })
+  const { user } = await newKey.getPrimaryUser()
+
+  return db.publicKey.create({
+    data: {
+      armoredKey: publicKeyArmored,
+      comment: user.userID.comment,
+      email: user.userID.email,
+      finger: newKey.getFingerprint(),
+      keyId: newKey.getKeyID().toHex(),
+      name: user.userID.name,
+    },
+  })
 }
