@@ -9,11 +9,6 @@ import ThreadCard from '../ThreadCard/ThreadCard'
 export const QUERY = gql`
   fragment ThreadFrag on Thread {
     body
-    files {
-      mimeType
-      hash
-      url
-    }
     hash
     timestamp
     signedBy {

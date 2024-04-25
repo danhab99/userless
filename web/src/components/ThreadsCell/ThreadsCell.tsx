@@ -6,11 +6,6 @@ export const QUERY = gql`
   query ThreadsQuery {
     threads {
       body
-      files {
-        mimeType
-        hash
-        url
-      }
       hash
       signature
       timestamp
