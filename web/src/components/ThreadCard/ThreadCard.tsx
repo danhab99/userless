@@ -1,10 +1,9 @@
-import { Link } from '@redwoodjs/router'
-import type { Thread } from 'api/types/graphql'
-import FileDisplay from '../FileDisplay/FileDisplay'
+import type { Thread } from 'types/graphql'
 import SigVerify from '../SigVerify/SigVerify'
+import mailto from 'mailto-link'
 
 type ThreadCardProps = {
-  thread: Pick<Thread, 'body' | 'files' | 'hash' | 'signedBy' | 'timestamp'>
+  thread: Pick<Thread, 'body' | 'hash' | 'signedBy' | 'timestamp'>
 }
 
 const ThreadCard = ({ thread }: ThreadCardProps) => {
@@ -14,21 +13,23 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
         <span className="text-green-700">
           {new Date(thread.timestamp).toUTCString()}
         </span>{' '}
-        <Link>
-          <span className="text-username">
-            {thread.signedBy.name}
+        <span className="text-username">
+          {thread.signedBy.name}
+          <a
+            href={mailto({
+              to: thread.signedBy.email,
+            })}
+          >
             {'<'}
             {thread.signedBy.email}
             {'>'}
-          </span>
-        </Link>{' '}
+          </a>
+        </span>{' '}
         <span className="text-hash">{thread.hash}</span>
         <SigVerify thread={thread as Thread} />
       </p>
       <div className="flex flex-row justify-start">
-        <div className="h-full p-4">
-          <FileDisplay files={thread.files} />
-        </div>
+        <div className="h-full p-4"></div>
         <div>
           <p>{thread.body}</p>
         </div>
