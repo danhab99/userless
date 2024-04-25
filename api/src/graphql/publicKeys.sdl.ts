@@ -11,8 +11,6 @@ export const schema = gql`
     name: String!
     revoked: Boolean!
     threads: [Thread]!
-    sponsor: PublicKey
-    sponsoring: [PublicKey]!
   }
 
   type Query {
@@ -30,7 +28,6 @@ export const schema = gql`
     # master: Boolean
     # name: String!
     # revoked: Boolean
-    sponsorArmoredSignature: String
   }
 
   input UpdatePublicKeyInput {
@@ -48,7 +45,7 @@ export const schema = gql`
   type Mutation {
     createPublicKey(input: CreatePublicKeyInput!): PublicKey! @skipAuth
     updatePublicKey(input: UpdatePublicKeyInput!): PublicKey!
-      @requireAuth
+      @skipAuth
     # deletePublicKey(keyId: String!): PublicKey! @requireAuth
   }
 `

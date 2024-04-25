@@ -14,7 +14,7 @@ export const schema = gql`
   }
 
   type Query {
-    threads: [Thread]! @skipAuth
+    threads(skip: Int, limit: Int): [Thread]! @skipAuth
     thread(threadHash: String!): Thread @skipAuth
   }
 
@@ -27,17 +27,25 @@ export const schema = gql`
     timestamp: DateTime!
   }
 
-  input UpdateThreadInput {
-    approved: Boolean
-    body: String
-    hash: String
-    replyTo: String
-    signature: String
-    timestamp: DateTime
+  # input UpdateThreadInput {
+  #   # approved: Boolean
+  #   # body: String
+  #   # hash: String
+  #   # replyTo: String
+  #   # signature: String
+  #   # timestamp: DateTime
+  # }
+
+  input UpdatePolicyInput {
+    allowReplies: Boolean
+    banned: Boolean
+    addRequiredRecipients: [String!]
+    removeRequiredRecipients: [String!]
   }
 
   type Mutation {
     createThread(input: CreateThreadInput!): Thread! @skipAuth
+    updatePolicy(hashs: [String!]!, policy: String!): [Thread!]! @skipAuth
     # updateThread(id: Int!, input: UpdateThreadInput!): Thread! @requireAuth
     # deleteThread(id: Int!): Thread! @requireAuth
   }
