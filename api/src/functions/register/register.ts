@@ -1,7 +1,8 @@
 import type { APIGatewayEvent, Context } from 'aws-lambda'
+import { parseEventBody } from "@redwoodjs/api"
 
 import { logger } from 'src/lib/logger'
-import {registerPublicKey} from 'src/lib/pgchan'
+import { registerPublicKey } from 'src/lib/pgchan'
 
 /**
  * The handler function is your code that processes http request events.
@@ -19,8 +20,17 @@ import {registerPublicKey} from 'src/lib/pgchan'
  * @param { Context } context - contains information about the invocation,
  * function, and execution environment.
  */
+
+
+export const config: Config = {
+  headers: {
+    'content-type': 'application/gpg',
+  },
+}
+
 export const handler = async (event: APIGatewayEvent, _context: Context) => {
-  registerPublicKey(event.body)
+  debugger
+  await registerPublicKey(event.body)
 
   return {
     statusCode: 201,

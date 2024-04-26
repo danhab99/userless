@@ -6,19 +6,20 @@ import type {
 
 import { db } from 'src/lib/db'
 import * as openpgp from 'openpgp'
-import {registerPublicKey} from 'src/lib/pgchan'
+import { registerPublicKey } from 'src/lib/pgchan'
 
 export const publicKeys: QueryResolvers['publicKeys'] = ({ keyIds }) => {
   if (keyIds) {
-    return db.publicKey.findMany()
-  } else
-    db.publicKey.findMany({
+    return db.publicKey.findMany({
       where: {
         keyId: {
-          in: keyIds
-        }
+          in: keyIds,
+        },
       },
     })
+  } else {
+    return db.publicKey.findMany()
+  }
 }
 
 export const publicKey: QueryResolvers['publicKey'] = ({ keyId }) => {
