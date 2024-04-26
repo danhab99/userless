@@ -1,5 +1,7 @@
 import { Link, routes } from '@redwoodjs/router'
 import { MetaTags } from '@redwoodjs/web'
+import PostThread from 'src/components/PostThread/PostThread'
+import ThreadsCell from 'src/components/ThreadsCell'
 
 const WelcomePage = () => {
   return (
@@ -13,6 +15,12 @@ const WelcomePage = () => {
           based access control.
         </p>
       </header>
+
+      <div className="flex flex-row justify-center">
+        <PostThread />
+      </div>
+
+      <ThreadsCell />
     </>
   )
 }
