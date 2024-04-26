@@ -9016,6 +9016,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"assert-ok@npm:~1.0.0":
+  version: 1.0.0
+  resolution: "assert-ok@npm:1.0.0"
+  checksum: 78bd12946a634c3960133cd0fc37f137a6a24ed3f980f4f70957aa49fb48adb88c497f097114ff7cc52b44702a4e868e8d4c53474f62a6e6d16c4cccfc63ff79
+  languageName: node
+  linkType: hard
+
 "assert@npm:^1.1.1":
   version: 1.5.1
   resolution: "assert@npm:1.5.1"
@@ -10119,6 +10126,15 @@ __metadata:
   version: 2.4.0
   resolution: "case-sensitive-paths-webpack-plugin@npm:2.4.0"
   checksum: 310dab619b661a7fa44ed773870be6d6d7373faff6953ad92720f9553e2579e46dda5b9a79eae6d25ff3733cc15aa466b96e5811af16213f23c115aa220b4ab4
+  languageName: node
+  linkType: hard
+
+"cast-array@npm:~1.0.1":
+  version: 1.0.1
+  resolution: "cast-array@npm:1.0.1"
+  dependencies:
+    isarray: 0.0.1
+  checksum: 74475dcf1e365abd87991be7fd7b97dfd71fc32931b8715b07b86e687e997365f1c5f648e151ed1187a6281fb62ab9204e8a6b7f0cf2e991e4e07956e23e9dba
   languageName: node
   linkType: hard
 
@@ -13549,6 +13565,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"filter-obj@npm:^1.1.0":
+  version: 1.1.0
+  resolution: "filter-obj@npm:1.1.0"
+  checksum: 071e0886b2b50238ca5026c5bbf58c26a7c1a1f720773b8c7813d16ba93d0200de977af14ac143c5ac18f666b2cfc83073f3a5fe6a4e996c49e0863d5500fccf
+  languageName: node
+  linkType: hard
+
 "finalhandler@npm:1.2.0":
   version: 1.2.0
   resolution: "finalhandler@npm:1.2.0"
@@ -15738,6 +15761,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"isarray@npm:0.0.1":
+  version: 0.0.1
+  resolution: "isarray@npm:0.0.1"
+  checksum: ed1e62da617f71fe348907c71743b5ed550448b455f8d269f89a7c7ddb8ae6e962de3dab6a74a237b06f5eb7f6ece7a45ada8ce96d87fe972926530f91ae3311
+  languageName: node
+  linkType: hard
+
 "isarray@npm:1.0.0, isarray@npm:^1.0.0, isarray@npm:~1.0.0":
   version: 1.0.0
   resolution: "isarray@npm:1.0.0"
@@ -17200,6 +17230,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"mailto-link@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "mailto-link@npm:2.0.0"
+  dependencies:
+    assert-ok: ~1.0.0
+    cast-array: ~1.0.1
+    object-filter: ~1.0.2
+    query-string: ~7.0.0
+  checksum: 50303d7efab7adc4d5d48d35e93cfceaf5b37c4c5b2ecce01744f00caf8478dcf6b21b4f684b78db0564ad8666d8bdc3155967194988e693b4da7390f6f026f2
+  languageName: node
+  linkType: hard
+
 "make-dir@npm:4.0.0, make-dir@npm:^4.0.0":
   version: 4.0.0
   resolution: "make-dir@npm:4.0.0"
@@ -18306,6 +18348,13 @@ __metadata:
     define-property: ^0.2.5
     kind-of: ^3.0.3
   checksum: 79314b05e9d626159a04f1d913f4c4aba9eae8848511cf5f4c8e3b04bb3cc313b65f60357f86462c959a14c2d58380fedf89b6b32ecec237c452a5ef3900a293
+  languageName: node
+  linkType: hard
+
+"object-filter@npm:~1.0.2":
+  version: 1.0.2
+  resolution: "object-filter@npm:1.0.2"
+  checksum: 15ce6852c1826db20b7c65ddc7519ce76f9cf06b1cf5140b49a2d06b265ab897692cfc90627c0a907f4d1e8fd0c1fe6d36e20931d4ced5e2e30c49451b7d4b70
   languageName: node
   linkType: hard
 
@@ -20011,6 +20060,18 @@ __metadata:
   dependencies:
     side-channel: ^1.0.4
   checksum: 4f95d4ff18ed480befcafa3390022817ffd3087fc65f146cceb40fc5edb9fa96cb31f648cae2fa96ca23818f0798bd63ad4ca369a0e22702fcd41379b3ab6571
+  languageName: node
+  linkType: hard
+
+"query-string@npm:~7.0.0":
+  version: 7.0.1
+  resolution: "query-string@npm:7.0.1"
+  dependencies:
+    decode-uri-component: ^0.2.0
+    filter-obj: ^1.1.0
+    split-on-first: ^1.0.0
+    strict-uri-encode: ^2.0.0
+  checksum: 6690863eacf4f9dd0f1907d842ead9470b1c2b90583a9936f185616bb97cfa48127e01a154e32bdaeb14b8488c30defcde7936c41a55fb56f98d09d98f19da91
   languageName: node
   linkType: hard
 
@@ -21878,6 +21939,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"split-on-first@npm:^1.0.0":
+  version: 1.1.0
+  resolution: "split-on-first@npm:1.1.0"
+  checksum: 56df8344f5a5de8521898a5c090023df1d8b8c75be6228f56c52491e0fc1617a5236f2ac3a066adb67a73231eac216ccea7b5b4a2423a543c277cb2f48d24c29
+  languageName: node
+  linkType: hard
+
 "split-string@npm:^3.0.1, split-string@npm:^3.0.2":
   version: 3.1.0
   resolution: "split-string@npm:3.1.0"
@@ -22066,6 +22134,13 @@ __metadata:
   version: 0.4.6
   resolution: "strict-event-emitter@npm:0.4.6"
   checksum: d0231ef081cb1937b1445da59a1ec202d1c097d825c504f398600532490a4104e200b0dce4137467a8eaac5f8f9718d01c99869687afad78cad3b14c4b2e6a39
+  languageName: node
+  linkType: hard
+
+"strict-uri-encode@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "strict-uri-encode@npm:2.0.0"
+  checksum: 010cbc78da0e2cf833b0f5dc769e21ae74cdc5d5f5bd555f14a4a4876c8ad2c85ab8b5bdf9a722dc71a11dcd3184085e1c3c0bd50ec6bb85fffc0f28cf82597d
   languageName: node
   linkType: hard
 
@@ -23908,6 +23983,7 @@ __metadata:
     "@types/wicg-file-system-access": ^2023.10.1
     autoprefixer: ^10.4.16
     fflate: ^0.8.2
+    mailto-link: ^2.0.0
     postcss: ^8.4.31
     postcss-loader: ^7.3.3
     prop-types: 15.8.1
