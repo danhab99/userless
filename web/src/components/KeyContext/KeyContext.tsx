@@ -5,29 +5,27 @@ import {
   useEffect,
   useCallback,
 } from 'react'
-import type { Key } from 'openpgp'
 import * as openpgp from 'openpgp'
-import { useAsyncMemo } from 'src/useAsyncMemo'
 
-const KeysContext = createContext<Key[]>([])
+const PrivateKeysContext = createContext<openpgp.PrivateKey[]>([])
 
 const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
-  const [keys, setKeys] = useState<Key[]>([])
-
-  useEffect(() => {
-    const keyring = keys.map((key) => key.armor()).join('\n')
-    localStorage.setItem('keyring', keyring)
-  }, [keys])
+  const [keys, setKeys] = useState<openpgp.PrivateKey[]>([])
 
   useEffect(() => {
     ;(async () => {
       const rawKeyRing = localStorage.getItem('keyring')
-      const keys = await openpgp.readKeys({
+      const keys = await openpgp.readPrivateKeys({
         armoredKeys: rawKeyRing,
       })
       setKeys(keys)
     })()
   }, [])
+
+  useEffect(() => {
+    const keyring = keys.map((key) => key.armor()).join('\n')
+    localStorage.setItem('keyring', keyring)
+  }, [keys])
 
   const addKey = useCallback(
     async (files: FileList) => {
@@ -36,7 +34,7 @@ const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
         const rawKeys = await file.text()
 
         try {
-          const newKeyRing = await openpgp.readKeys({
+          const newKeyRing = await openpgp.readPrivateKeys({
             armoredKeys: rawKeys,
           })
 
@@ -66,41 +64,58 @@ const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
     [setKeys]
   )
 
+  const [open, setOpen] = useState(false)
+
   return (
-    <KeysContext.Provider value={keys}>
+    <PrivateKeysContext.Provider value={keys}>
       <div className="absolute bottom-0 right-0 border border-solid border-black bg-white p-4">
-        <h4>Key mananger</h4>
-        {keys.map((k, i) => (
-          <KeyItem pgKey={k} onDelete={() => deleteKey(i)} key={i} />
-        ))}
-        <label>Add keys</label>
-        <input type="file" multiple onChange={(e) => addKey(e.target.files)} />
+        <h4 onClick={() => setOpen((x) => !x)}>
+          {open ? '⮟' : '⮝'} Key mananger
+        </h4>
+        {open ? (
+          <>
+            {keys.map((k, i) => (
+              <KeyItem pgKey={k} onDelete={() => deleteKey(i)} key={i} />
+            ))}
+            <div>
+              <label>Add keys</label>
+              <input
+                type="file"
+                multiple
+                onChange={(e) => addKey(e.target.files)}
+              />
+            </div>
+          </>
+        ) : null}
       </div>
       {props.children}
-    </KeysContext.Provider>
+    </PrivateKeysContext.Provider>
   )
 }
 
 export default KeyContextProvider
 
-function KeyItem(props: { pgKey: Key; onDelete: () => void }) {
-  const pgKey = useAsyncMemo(props.pgKey.getPrimaryUser, [props.pgKey])
-
-  return (
-    <div className="py-1">
-      {pgKey?.user.userID.name} {'<'}
-      {pgKey?.user.userID.email}
-      {'>'} {props.pgKey.getFingerprint()}
-      <span
-        className="mx-1 rounded-full bg-red-500 px-1 py-1 text-white"
-        onClick={props.onDelete}
-      >
-        X
-      </span>
-    </div>
-  )
+export function usePrivateKeys() {
+  return useContext(PrivateKeysContext)
 }
 
-export function usePrivateKeys() {
-  return useContext(KeysContext)
+export function KeyBody(pgKey: openpgp.Key): string {
+  const user = pgKey.users[0].userID
+  return `${user.name} <${user.email}> ${pgKey.getFingerprint()}`
+}
+
+const KeyItem = (props: { pgKey: openpgp.Key; onDelete?: () => void }) => {
+  return (
+    <div className="py-1 text-xs">
+      {KeyBody(props.pgKey)}
+      {props.onDelete ? (
+        <span
+          className="mx-1 rounded-full bg-red-500 px-1 py-1 text-white"
+          onClick={props.onDelete}
+        >
+          X
+        </span>
+      ) : null}
+    </div>
+  )
 }

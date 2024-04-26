@@ -3,8 +3,22 @@ import SigVerify from '../SigVerify/SigVerify'
 import mailto from 'mailto-link'
 
 type ThreadCardProps = {
-  thread: Pick<Thread, 'body' | 'hash' | 'signedBy' | 'timestamp'>
+  thread: Pick<Thread, 'body' | 'hash' | 'signedBy' | 'timestamp' | 'signature'>
 }
+
+export const ThreadQueryFrag = gql`
+  fragment ThreadCard on Thread {
+    body
+    hash
+    signature
+    timestamp
+    signedBy {
+      email
+      name
+      finger
+    }
+  }
+`
 
 const ThreadCard = ({ thread }: ThreadCardProps) => {
   return (
