@@ -7,7 +7,7 @@ import type {
 import {
   setPolicy,
   findAncestors,
-  readThreadFromClearText,
+  uploadThread,
 } from 'src/lib/pgchan'
 import * as openpgp from "openpgp";
 
@@ -29,10 +29,7 @@ export const thread: QueryResolvers['thread'] = ({ id }) => {
 export const createThread: MutationResolvers['createThread'] = async ({
   input,
 }) => {
-  const thread = await readThreadFromClearText(input.clearText)
-  return db.thread.create({
-    data: thread,
-  })
+  return uploadThread(input.clearText)
 }
 
 export const updateThread: MutationResolvers['updatePolicy'] = async (args) => {
@@ -44,7 +41,17 @@ export const Thread: ThreadRelationResolvers = {
     return findAncestors(root as ThreadType, args.limit)
   },
   policy: async (args, {root}) => {
+    if (!root.policy) {
+      return ""
+    }
     const msg = await openpgp.readCleartextMessage({cleartextMessage: root.policy})
     return JSON.parse(msg.getText())
+  },
+  signedBy: async (args, {root}) => {
+    return db.thread.findUnique({
+      where: {
+        hash: root.hash
+      }
+    }).signedBy()
   }
 }

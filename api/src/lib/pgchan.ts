@@ -12,18 +12,20 @@ class PGChanError extends Error {
 
 function spoofArmoredSignature(clearText: string) {
   const clearLine = clearText.split('\n')
-  var readingSignature = false
   var armoredSignature = ''
+  var seenStart = false
+  var seenEnd = false
 
   clearLine.forEach((line) => {
-    readingSignature =
-      (readingSignature || line === '-----BEGIN PGP SIGNATURE-----') &&
-      (!readingSignature || line === '-----END PGP SIGNATURE-----')
+    seenStart = seenStart || line === '-----BEGIN PGP SIGNATURE-----'
+    seenEnd = seenEnd || line === '-----END PGP SIGNATURE-----'
 
-    if (readingSignature) {
-      armoredSignature += line
+    if (seenStart && !seenEnd) {
+      armoredSignature += line + "\n"
     }
   })
+
+  armoredSignature += '-----END PGP SIGNATURE-----'
 
   return armoredSignature
 }
@@ -149,9 +151,9 @@ ${thread.signature}
 `
 }
 
-export async function readThreadFromClearText(
+export async function uploadThread(
   threadClearText: string
-): Promise<CreateThreadInput> {
+) {
   const msg = await openpgp.readCleartextMessage({
     cleartextMessage: threadClearText,
   })
@@ -172,7 +174,7 @@ export async function readThreadFromClearText(
     throw new PGChanError('unable to verify signature')
   }
 
-  var armoredSignature: string
+  var armoredSignature: string = spoofArmoredSignature(threadClearText)
 
   const signature = await openpgp.readSignature({ armoredSignature })
   var timestamp: Date = signature.packets[0].created
@@ -189,15 +191,18 @@ export async function readThreadFromClearText(
 
   const hasher = createHash('sha256')
   hasher.write(threadClearText)
-  const hash = hasher.digest().toString('utf-8')
+  const hash = hasher.digest().toString("hex")
 
-  return {
-    body: postContent,
-    signature: armoredSignature,
-    hash,
-    timestamp,
-    replyTo,
-  }
+  return db.thread.create({
+    data: {
+      body: postContent,
+      hash: hash,
+      signature: armoredSignature,
+      timestamp: timestamp,
+      replyTo: replyTo,
+      signedById: signature.getSigningKeyIDs()[0].toHex(),
+    }
+  })
 }
 
 export async function registerPublicKey(publicKeyArmored: string) {

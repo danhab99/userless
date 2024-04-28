@@ -1,7 +1,7 @@
 import type { APIGatewayEvent, Context } from 'aws-lambda'
 import * as openpgp from 'openpgp'
 import { db } from 'src/lib/db'
-import {readThreadFromClearText} from "src/lib/pgchan"
+import { uploadThread } from 'src/lib/pgchan'
 
 import { logger } from 'src/lib/logger'
 
@@ -26,7 +26,7 @@ import { logger } from 'src/lib/logger'
  */
 
 export const handler = async (event: APIGatewayEvent, _context: Context) => {
-  const thread = await readThreadFromClearText(event.body)
+  const thread = await uploadThread(event.body)
 
   await db.thread.create({
     data: thread,
