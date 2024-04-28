@@ -33,7 +33,7 @@ const PostThread = () => {
       ;(async () => {
         const msg = await openpgp.createCleartextMessage({
           text: `${v.replyTo ? `replyTo:${v.replyTo}\n` : ''}
-${v.body}
+${( v.body as string ).trim()}
 `,
         })
 
@@ -51,7 +51,6 @@ ${v.body}
               passphrase: password,
             })
           } catch (e) {
-            debugger
           }
         }
 

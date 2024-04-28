@@ -1,6 +1,7 @@
 import type { Thread } from 'types/graphql'
 import SigVerify from '../SigVerify/SigVerify'
 import mailto from 'mailto-link'
+import ThreadBody from '../ThreadBody/ThreadBody'
 
 type ThreadCardProps = {
   thread: Pick<Thread, 'body' | 'hash' | 'signedBy' | 'timestamp' | 'signature'>
@@ -10,7 +11,6 @@ export const ThreadQueryFrag = gql`
   fragment ThreadCard on Thread {
     body
     hash
-    signature
     timestamp
     signedBy {
       email
@@ -43,10 +43,7 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
         <SigVerify thread={thread as Thread} />
       </p>
       <div className="flex flex-row justify-start">
-        <div className="h-full p-4"></div>
-        <div>
-          <p>{thread.body}</p>
-        </div>
+        <ThreadBody thread={thread as Thread} />
       </div>
     </div>
   )

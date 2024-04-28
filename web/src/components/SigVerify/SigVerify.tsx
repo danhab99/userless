@@ -32,14 +32,14 @@ const SigVerify = (props: SigVerifyProps) => {
     if (props.thread) {
       setStatus(VerifiedStatus.Working)
       ;(async () => {
-        const sig = await openpgp.readSignature({
-          armoredSignature: props.thread.signature,
+        const msg = await openpgp.readCleartextMessage({
+          cleartextMessage: props.thread.body,
         })
 
         const pubKeys = await client.query<{ publicKeys: PublicKey[]}>({
           query: GET_PUBLICKEY,
           variables: {
-            keyId: sig.getSigningKeyIDs().map((x) => x.toHex()),
+            keyId: msg.getSigningKeyIDs().map((x) => x.toHex()),
           },
         })
 
@@ -53,18 +53,10 @@ const SigVerify = (props: SigVerifyProps) => {
         }
 
         try {
-          const verify = await openpgp.verify({
-            message: await openpgp.createCleartextMessage({
-              text: props.thread.hash,
-            }),
-            verificationKeys: keys,
-            signature: await openpgp.readSignature({
-              armoredSignature: props.thread.signature,
-            }),
-          })
+          const verify = await msg.verify(keys)
 
           const verifications = await Promise.all(
-            verify.signatures.map((x) => x.verified)
+            verify.map(x => x.verified)
           )
 
           if (verifications.every((x) => x)) {
@@ -73,6 +65,7 @@ const SigVerify = (props: SigVerifyProps) => {
             setStatus(VerifiedStatus.NoMatch)
           }
         } catch (e: any) {
+          console.error("Verify Error", e)
           setStatus(VerifiedStatus.Error)
         }
       })()
