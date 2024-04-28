@@ -20,7 +20,6 @@ model Thread {
   parent     Thread?   @relation(name: "ParentThread", fields: [replyTo], references: [hash], onDelete: NoAction, onUpdate: NoAction)
   replies    Thread[]  @relation(name: "ParentThread")
   replyTo    String?
-  signature  String
   signedBy   PublicKey @relation(fields: [signedById], references: [keyId], onDelete: NoAction, onUpdate: NoAction)
   signedById String
   timestamp  DateTime

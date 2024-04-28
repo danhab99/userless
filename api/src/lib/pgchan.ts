@@ -103,7 +103,6 @@ export async function setPolicy(
   return db.thread.upsert({
     create: {
       body: '',
-      signature: rawSig,
       timestamp: sig.packets[0].created,
       hash: thread.hash,
       policy: policyCleartext,
@@ -195,9 +194,8 @@ export async function uploadThread(
 
   return db.thread.create({
     data: {
-      body: postContent,
+      body: threadClearText,
       hash: hash,
-      signature: armoredSignature,
       timestamp: timestamp,
       replyTo: replyTo,
       signedById: signature.getSigningKeyIDs()[0].toHex(),

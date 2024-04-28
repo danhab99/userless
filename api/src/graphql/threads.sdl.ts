@@ -6,7 +6,6 @@ export const schema = gql`
     parent: Thread
     parents(limit: Int): [Thread]!
     replies(skip: Int, limit: Int): [Thread]!
-    signature: String!
     timestamp: DateTime!
     signedBy: PublicKey!
     policy: String
