@@ -3,12 +3,13 @@ import SigVerify from '../SigVerify/SigVerify'
 import mailto from 'mailto-link'
 import ThreadBody from '../ThreadBody/ThreadBody'
 import { Link, routes } from '@redwoodjs/router'
+import { registerFragment } from '@redwoodjs/web/apollo'
 
 type ThreadCardProps = {
   thread: Pick<Thread, 'body' | 'hash' | 'signedBy' | 'timestamp' | 'signature'>
 }
 
-export const ThreadQueryFrag = `
+registerFragment(gql`
   fragment ThreadCard on Thread {
     body
     hash
@@ -19,7 +20,7 @@ export const ThreadQueryFrag = `
       finger
     }
   }
-`
+`)
 
 const ThreadCard = ({ thread }: ThreadCardProps) => {
   return (

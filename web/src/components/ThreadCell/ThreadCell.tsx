@@ -4,22 +4,21 @@ import type {
   Thread,
 } from 'types/graphql'
 import type { CellSuccessProps, CellFailureProps } from '@redwoodjs/web'
-import ThreadCard, {ThreadQueryFrag} from '../ThreadCard/ThreadCard'
+import ThreadCard from '../ThreadCard/ThreadCard'
 
 export const QUERY = gql`
-  ${ThreadQueryFrag}
-
   query FindThreadQuery($threadHash: String!) {
     thread(threadHash: $threadHash) {
-      ...ThreadFrag
+      ...ThreadCard
       replies {
-        ...ThreadFrag
+        ...ThreadCard
       }
       parents {
-        ...ThreadFrag
+        ...ThreadCard
       }
     }
   }
+
 `
 
 export const Loading = () => <div>Loading...</div>

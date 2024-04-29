@@ -1,10 +1,8 @@
 import type { Thread, ThreadsQuery } from 'types/graphql'
 import type { CellSuccessProps, CellFailureProps } from '@redwoodjs/web'
-import ThreadCard, { ThreadQueryFrag } from '../ThreadCard/ThreadCard'
+import ThreadCard from '../ThreadCard/ThreadCard'
 
 export const QUERY = gql`
-  ${ThreadQueryFrag}
-
   query ThreadsQuery($skip: Int, $limit: Int) {
     threads(skip: $skip, limit: $limit) {
       ...ThreadCard
