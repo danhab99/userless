@@ -15,8 +15,7 @@ import NotFoundPage from './pages/NotFoundPage/NotFoundPage'
 const Routes = () => {
   return (
     <Router>
-      <Route path="/thread" page={ThreadPage} name="thread" />
-      <Route path="/t/{h}" page={ThreadPage} name="thread" />
+      <Route path="/t/{threadhash}" page={ThreadPage} name="thread" />
       <Route path="/" page={WelcomePage} name="welcome" />
       <Route notfound page={NotFoundPage} />
     </Router>
