@@ -18,7 +18,6 @@ export const QUERY = gql`
       }
     }
   }
-
 `
 
 export const Loading = () => <div>Loading...</div>
@@ -34,12 +33,12 @@ export const Failure = ({
 export const Success = ({
   thread,
 }: CellSuccessProps<FindThreadQuery, FindThreadQueryVariables>) => {
-  var parents: Thread[]
+  var parents: Thread[] = [];
   var current = thread as Thread
 
-  while (current !== undefined) {
+  while (current) {
     parents.push(current)
-    current = current.parent
+    current = current?.parent
   }
 
   return (

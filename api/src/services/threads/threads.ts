@@ -20,9 +20,11 @@ export const threads: QueryResolvers['threads'] = (args) => {
   })
 }
 
-export const thread: QueryResolvers['thread'] = ({ id }) => {
+export const thread: QueryResolvers['thread'] = ({ threadHash }) => {
   return db.thread.findUnique({
-    where: { id },
+    where: { 
+      hash: threadHash,
+    },
   })
 }
 
@@ -37,8 +39,15 @@ export const updatePolicy: MutationResolvers['updatePolicy'] = async (args) => {
 }
 
 export const Thread: ThreadRelationResolvers = {
-  parents: (args, { root }) => {
-    return findAncestors(root as ThreadType, args.limit)
+  parent: (args, { root }) => {
+    return db.thread.findUnique({
+      where: {
+        hash: root.hash
+      }
+    }).parent()
+  },
+  parents: async (args, {root}) => {
+    return findAncestors(root as ThreadType)
   },
   policy: async (args, {root}) => {
     if (!root.policy) {
@@ -53,5 +62,12 @@ export const Thread: ThreadRelationResolvers = {
         hash: root.hash
       }
     }).signedBy()
+  },
+  replies: async (args, {root}) => {
+    return db.thread.findUnique({
+      where: {
+        hash: root.hash
+      }
+    }).replies()
   }
 }

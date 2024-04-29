@@ -123,19 +123,24 @@ export async function findAncestors(
 
   var max = limit ?? Number.MAX_VALUE;
 
-  do {
+  while (max-- > 0) {
     const thread = await db.thread.findFirst({
       where: {
-        hash: ancestors[ancestors.length - 1].parent.hash,
+        hash: ancestors[ancestors.length - 1].hash,
       },
       include: {
         parent: true,
       },
-    })
-    ancestors.push(thread as unknown as Thread)
-  } while (ancestors[ancestors.length - 1].parent && max-- > 0)
+    }) 
 
-  return ancestors
+    if (thread.parent) {
+      ancestors.push(thread.parent as unknown as Thread)
+    } else {
+      break
+    }
+  } 
+
+  return ancestors.slice(1)
 }
 
 export function compileClearTextMessage(thread: Thread): string {
