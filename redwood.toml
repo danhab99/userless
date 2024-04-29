@@ -19,3 +19,6 @@
   open = true
 [notifications]
   versionUpdates = ["latest"]
+
+[graphql]
+  fragments = true
