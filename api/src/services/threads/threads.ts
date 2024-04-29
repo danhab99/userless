@@ -32,7 +32,7 @@ export const createThread: MutationResolvers['createThread'] = async ({
   return uploadThread(input.clearText)
 }
 
-export const updateThread: MutationResolvers['updatePolicy'] = async (args) => {
+export const updatePolicy: MutationResolvers['updatePolicy'] = async (args) => {
   return args.hashs.map((hash) => setPolicy({ hash }, args.policy))
 }
 
