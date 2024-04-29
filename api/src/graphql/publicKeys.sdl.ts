@@ -27,8 +27,6 @@ export const schema = gql`
 
   type Mutation {
     createPublicKey(input: CreatePublicKeyInput!): PublicKey! @skipAuth
-    updatePublicKey(input: UpdatePublicKeyInput!): PublicKey!
-      @skipAuth
-    # deletePublicKey(keyId: String!): PublicKey! @requireAuth
+    updatePublicKey(input: UpdatePublicKeyInput!): PublicKey! @skipAuth
   }
 `

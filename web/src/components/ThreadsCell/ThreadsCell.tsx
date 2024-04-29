@@ -25,7 +25,7 @@ export const Success = ({ threads }: CellSuccessProps<ThreadsQuery>) => {
     <ul>
       {threads.map((item) => {
         return (
-          <li key={item.hash}>
+          <li key={item.hash} className="p-2">
             <ThreadCard thread={item as Thread} />
           </li>
         )

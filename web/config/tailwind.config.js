@@ -20,7 +20,7 @@ module.exports = {
     },
     extend : {
       colors : {
-        "card" : "#cad470",
+        "card" : "#e2f252",
         "background" : "#70c0d4",
         "username" : "#a970d4",
         "hash" : "#222",

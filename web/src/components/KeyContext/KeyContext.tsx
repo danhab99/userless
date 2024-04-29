@@ -68,7 +68,7 @@ const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
 
   return (
     <PrivateKeysContext.Provider value={keys}>
-      <div className="absolute bottom-0 right-0 border border-solid border-black bg-white p-4">
+      <div className="fixed bottom-0 right-0 border border-solid border-black bg-white p-4">
         <h4 onClick={() => setOpen((x) => !x)}>
           {open ? '⮟' : '⮝'} Key mananger
         </h4>

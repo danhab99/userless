@@ -7022,21 +7022,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/debug@npm:^4.0.0":
+"@types/debug@npm:^4.0.0, @types/debug@npm:^4.1.7":
   version: 4.1.12
   resolution: "@types/debug@npm:4.1.12"
   dependencies:
     "@types/ms": "*"
   checksum: 5dcd465edbb5a7f226e9a5efd1f399c6172407ef5840686b73e3608ce135eeca54ae8037dcd9f16bdb2768ac74925b820a8b9ecc588a58ca09eca6acabe33e2f
-  languageName: node
-  linkType: hard
-
-"@types/debug@npm:^4.1.7":
-  version: 4.1.9
-  resolution: "@types/debug@npm:4.1.9"
-  dependencies:
-    "@types/ms": "npm:*"
-  checksum: 8b550c47c70cc1af9a58e5c572f2418f30bface5bf5d5afa0d938923978f40be4c55646f1ab260f6f1492ca6ab065d447de23cb3b30d7b38597c2cbf89f4cb21
   languageName: node
   linkType: hard
 

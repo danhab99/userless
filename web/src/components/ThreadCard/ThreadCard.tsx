@@ -2,12 +2,13 @@ import type { Thread } from 'types/graphql'
 import SigVerify from '../SigVerify/SigVerify'
 import mailto from 'mailto-link'
 import ThreadBody from '../ThreadBody/ThreadBody'
+import { Link, routes } from '@redwoodjs/router'
 
 type ThreadCardProps = {
   thread: Pick<Thread, 'body' | 'hash' | 'signedBy' | 'timestamp' | 'signature'>
 }
 
-export const ThreadQueryFrag = gql`
+export const ThreadQueryFrag = `
   fragment ThreadCard on Thread {
     body
     hash
@@ -22,7 +23,7 @@ export const ThreadQueryFrag = gql`
 
 const ThreadCard = ({ thread }: ThreadCardProps) => {
   return (
-    <div className="rounded bg-card p-4 font-mono ">
+    <div className="max-w-4xl bg-card p-4 font-mono ">
       <p className="text-xs">
         <span className="text-green-700">
           {new Date(thread.timestamp).toUTCString()}
@@ -38,9 +39,10 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
             {thread.signedBy.email}
             {'>'}
           </a>
-        </span>{' '}
-        <span className="text-hash">{thread.hash}</span>
-        <SigVerify thread={thread as Thread} />
+        </span>
+      </p>
+      <p className="text-xs">
+        <Link to={routes.thread({h: thread.hash})}>{thread.hash}</Link> <SigVerify thread={thread as Thread} />
       </p>
       <div className="flex flex-row justify-start">
         <ThreadBody thread={thread as Thread} />
