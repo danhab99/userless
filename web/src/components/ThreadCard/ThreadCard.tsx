@@ -6,7 +6,7 @@ import { Link, routes } from '@redwoodjs/router'
 import { registerFragment } from '@redwoodjs/web/apollo'
 
 type ThreadCardProps = {
-  thread: Pick<Thread, 'body' | 'hash' | 'signedBy' | 'timestamp' | 'signature'>
+  thread: Pick<Thread, 'body' | 'hash' | 'signedBy' | 'timestamp'>
 }
 
 registerFragment(gql`
