@@ -39,3 +39,31 @@ h5 {
 * {
   @apply font-mono;
 }
+
+.markdown hr {
+  @apply border border-slate-700 border-solid;
+}
+
+.markdown pre {
+  @apply bg-slate-400 p-2
+}
+
+.markdown blockquote {
+  @apply border-l-2 border-l-red-400 border-solid p-2 bg-red-100
+}
+
+.markdown ul {
+  @apply list-disc
+}
+
+.markdown ol {
+  @apply list-decimal
+}
+
+.markdown p {
+  @apply pt-4
+}
+
+.markdown sub {
+  font-size: 0.1em;
+}
