@@ -1,19 +1,15 @@
-import { Link, routes } from '@redwoodjs/router'
+import { Link, routes, useParams } from '@redwoodjs/router'
 import { Metadata } from '@redwoodjs/web'
+import ThreadCell from 'src/components/ThreadCell'
 
 const ThreadPage = () => {
+  const { threadhash } = useParams()
+
   return (
     <>
       <Metadata title="Thread" description="Thread page" />
 
-      <h1>ThreadPage</h1>
-      <p>
-        Find me in <code>./web/src/pages/ThreadPage/ThreadPage.tsx</code>
-      </p>
-      <p>
-        My default route is named <code>thread</code>, link to me with `
-        <Link to={routes.thread()}>Thread</Link>`
-      </p>
+      <ThreadCell threadHash={threadhash} />
     </>
   )
 }
