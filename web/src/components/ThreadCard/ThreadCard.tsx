@@ -27,6 +27,7 @@ registerFragment(gql`
 const ThreadCard = ({ thread }: ThreadCardProps) => {
   const [showReply, setShowReply] = useState(false)
   const [showSource, setShowSource] = useState(false)
+  const [showFull, setShowFull] = useState(false)
 
   const mailtoLink = mailto({
     to: thread.signedBy.email,
@@ -64,25 +65,37 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
         <SigVerify thread={thread as Thread} />
       </p>
 
-      <ThreadBody thread={thread as Thread} />
+      <div className={showFull ? 'h-full' : 'max-h-96 overflow-y-scroll'}>
+        <ThreadBody thread={thread as Thread} />
+      </div>
 
       <div>
         <a
-          onClick={() => setShowReply(x => !x)}
+          onClick={() => setShowReply((x) => !x)}
           className="text-xs text-green-800"
         >
           [Reply]
         </a>
         <a
-          onClick={() => setShowSource(x => !x)}
+          onClick={() => setShowSource((x) => !x)}
           className="text-xs text-green-800"
         >
           [Source]
         </a>
+        <a
+          onClick={() => setShowFull((x) => !x)}
+          className="text-xs text-green-800"
+        >
+          [{showFull ? 'Less' : 'More'}]
+        </a>
       </div>
 
       {showReply ? <PostThread replyTo={thread} /> : null}
-      {showSource ? <pre className="text-slate-100 bg-slate-900 overflow-scroll text-xs h-40">{thread.body}</pre> : null}
+      {showSource ? (
+        <pre className="h-40 overflow-scroll bg-slate-900 text-xs text-slate-100">
+          {thread.body}
+        </pre>
+      ) : null}
     </div>
   )
 }

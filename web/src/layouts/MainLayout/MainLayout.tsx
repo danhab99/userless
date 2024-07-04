@@ -1,3 +1,4 @@
+import { Link, routes } from '@redwoodjs/router'
 import PostThread from 'src/components/PostThread/PostThread'
 
 type MainLayoutProps = {
@@ -9,7 +10,9 @@ const MainLayout = ({ children }: MainLayoutProps) => {
     <>
       <div className="mb-16">
         <header className="bg-background p-8 text-center">
-          <h1>PGChan.gpg</h1>
+          <Link to={routes.welcome()}>
+            <h1>PGChan.gpg</h1>
+          </Link>
         </header>
         <div className="flex flex-row justify-center">
           <PostThread />
