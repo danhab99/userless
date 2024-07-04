@@ -42,18 +42,20 @@ export const Success = ({
 }: CellSuccessProps<FindKeyInfoQuery, FindKeyInfoQueryVariables>) => {
   return (
     <>
-      <div className="px-40">
+      <div className="px-4">
         <div className="flexflex-col items-center border border-black bg-yellow-100">
-          <h3 className="text-center">
-            {publicKey.name} {'<'}
-            {publicKey.email}
-            {'>'}
-          </h3>
-          <p className="py-2">
-            <div className="markdown">
-              <Markdown>{publicKey.comment}</Markdown>
-            </div>
-          </p>
+          <div className="p-2">
+            <h3 className="text-center">
+              {publicKey.name} {'<'}
+              {publicKey.email}
+              {'>'}
+            </h3>
+            <p className="py-2">
+              <div className="markdown">
+                <Markdown>{publicKey.comment}</Markdown>
+              </div>
+            </p>
+          </div>
           <pre className="h-40 w-full overflow-y-scroll bg-slate-300 p-1 text-xs">
             {publicKey.armoredKey}
           </pre>
@@ -61,7 +63,12 @@ export const Success = ({
       </div>
 
       {publicKey.threads.map((thread) => (
-        <ThreadCell showParentsDef={false} showRepliesDef={false} threadHash={thread.hash} parentsLimit={1} />
+        <ThreadCell
+          showParentsDef={false}
+          showRepliesDef={false}
+          threadHash={thread.hash}
+          parentsLimit={1}
+        />
       ))}
     </>
   )
