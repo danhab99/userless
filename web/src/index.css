@@ -67,3 +67,36 @@ h5 {
 .markdown sub {
   font-size: 0.1em;
 }
+
+.markdown a {
+  @apply text-sky-600 underline;
+}
+
+.markdown ul {
+  @apply ml-6;
+}
+
+.markdown ol {
+  @apply ml-12;
+}
+
+.markdown h1 {
+  @apply pt-6;
+}
+
+.markdown h2 {
+  @apply pt-6;
+}
+
+.markdown h3 {
+  @apply pt-6;
+}
+
+.markdown h4 {
+  @apply pt-6;
+}
+
+.markdown h5 {
+  @apply pt-6;
+}
+

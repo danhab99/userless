@@ -6,6 +6,7 @@ import { Link, routes } from '@redwoodjs/router'
 import { registerFragment } from '@redwoodjs/web/apollo'
 import { useState } from 'react'
 import PostThread from '../PostThread/PostThread'
+import { func } from 'prop-types'
 
 type ThreadCardProps = {
   thread: Pick<Thread, 'body' | 'hash' | 'signedBy' | 'timestamp'>
@@ -37,6 +38,31 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
     subject: `RE: https://${window.location.hostname}/t/${thread.hash}`,
   })
 
+  function Controls() {
+    return (
+      <div>
+        <a
+          onClick={() => setShowReply((x) => !x)}
+          className="text-xs text-green-800"
+        >
+          [Reply]
+        </a>
+        <a
+          onClick={() => setShowSource((x) => !x)}
+          className="text-xs text-green-800"
+        >
+          [Source]
+        </a>
+        <a
+          onClick={() => setShowFull((x) => !x)}
+          className="text-xs text-green-800"
+        >
+          [{showFull ? 'Less' : 'More'}]
+        </a>
+      </div>
+    )
+  }
+
   return (
     <div className="my-2 max-w-4xl border border-solid border-black bg-card p-4 font-mono">
       <p className="text-xs">
@@ -65,30 +91,13 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
         <SigVerify thread={thread as Thread} />
       </p>
 
+      <Controls />
+
       <div className={showFull ? 'h-full' : 'max-h-96 overflow-y-scroll'}>
         <ThreadBody thread={thread as Thread} />
       </div>
 
-      <div>
-        <a
-          onClick={() => setShowReply((x) => !x)}
-          className="text-xs text-green-800"
-        >
-          [Reply]
-        </a>
-        <a
-          onClick={() => setShowSource((x) => !x)}
-          className="text-xs text-green-800"
-        >
-          [Source]
-        </a>
-        <a
-          onClick={() => setShowFull((x) => !x)}
-          className="text-xs text-green-800"
-        >
-          [{showFull ? 'Less' : 'More'}]
-        </a>
-      </div>
+      <Controls />
 
       {showReply ? <PostThread replyTo={thread} /> : null}
       {showSource ? (
