@@ -21,7 +21,11 @@ const ADD_THREAD = gql`
   }
 `
 
-const PostThread = () => {
+export type PostThreadProps = {
+  replyTo: Pick<Thread, 'hash'>
+}
+
+const PostThread = (props: PostThreadProps) => {
   const privateKeys = usePrivateKeys()
   const [addThread] = useMutation<
     { createThread: { hash: string } },
@@ -32,9 +36,13 @@ const PostThread = () => {
     (v: FieldValues) => {
       ;(async () => {
         const msg = await openpgp.createCleartextMessage({
-          text: `${v.replyTo ? `replyTo:${v.replyTo}\n` : ''}
-${( v.body as string ).trim()}
-`,
+          text: [
+            props.replyTo.hash ? `replyTo:${props.replyTo.hash}\n` : '',
+            '\n',
+            v.body,
+          ]
+            .join('\n')
+            .trim(),
         })
 
         var pk = privateKeys.find((x) => x.getKeyID().toHex() === v['sk'])
@@ -50,14 +58,13 @@ ${( v.body as string ).trim()}
               privateKey: pk,
               passphrase: password,
             })
-          } catch (e) {
-          }
+          } catch (e) {}
         }
 
         const signedMsg = await openpgp.sign({
           message: msg,
           signingKeys: [pk],
-          format: "armored"
+          format: 'armored',
         })
 
         const res = await addThread({
@@ -78,7 +85,7 @@ ${( v.body as string ).trim()}
     <div className="w-5/6 border border-solid border-black bg-white">
       <Form onSubmit={handleSubmit}>
         <Label name="body" className="px-2">
-          Body:
+          {props.replyTo ? `Reply to ${props.replyTo.hash}` : 'Body:'}
         </Label>
         <TextAreaField
           name="body"
@@ -86,7 +93,7 @@ ${( v.body as string ).trim()}
           rows={10}
           required
         />
-        <div className="flex md:flex-row flex-col">
+        <div className="flex flex-col md:flex-row">
           <SelectField required name="sk" className="w-8/10 w-full p-2">
             {privateKeys.map((key) => (
               <option value={key.getKeyID().toHex()}>{KeyBody(key)}</option>

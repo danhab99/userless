@@ -33,21 +33,13 @@ export const Failure = ({
 export const Success = ({
   thread,
 }: CellSuccessProps<FindThreadQuery, FindThreadQueryVariables>) => {
-  var parents: Thread[] = [];
-  var current = thread as Thread
-
-  while (current) {
-    parents.push(current)
-    current = current?.parent
-  }
-
   return (
     <div>
-      {parents.map((thread) => (
+      {thread.parents.map((thread: Thread) => (
         <ThreadCard key={thread.hash} thread={thread} />
       ))}
 
-      <hr />
+      {thread.parents?.length > 0 ? <hr /> : null}
 
       <ThreadCard thread={thread as Thread} />
 

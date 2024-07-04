@@ -13,11 +13,16 @@ const ThreadBody = (props: ThreadBodyProps) => {
       cleartextMessage: props.thread.body,
     })
 
-    return msg.getText()
+    var body = msg.getText()
+    if (body.startsWith("replyTo:")) {
+      body = body.slice(body.indexOf("\n"));
+    }
+    
+    return body
   }, [props.thread])
 
   return (
-    <div className="markdown">
+    <div className="markdown py-4">
       <Markdown>{body}</Markdown>
     </div>
   )
