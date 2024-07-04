@@ -1,11 +1,12 @@
 import type { Thread, ThreadsQuery } from 'types/graphql'
 import type { CellSuccessProps, CellFailureProps } from '@redwoodjs/web'
 import ThreadCard from '../ThreadCard/ThreadCard'
+import ThreadCell from '../ThreadCell'
 
 export const QUERY = gql`
   query ThreadsQuery($skip: Int, $limit: Int) {
     threads(skip: $skip, limit: $limit) {
-      ...ThreadCard
+      hash
     }
   }
 `
@@ -21,10 +22,10 @@ export const Failure = ({ error }: CellFailureProps) => (
 export const Success = ({ threads }: CellSuccessProps<ThreadsQuery>) => {
   return (
     <ul>
-      {threads.map((item) => {
+      {threads.map((item, i) => {
         return (
           <li key={item.hash} className="p-2">
-            <ThreadCard thread={item as Thread} />
+            <ThreadCell parentsLimit={0} threadHash={item.hash} key={i} />
           </li>
         )
       })}

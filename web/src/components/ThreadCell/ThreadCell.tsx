@@ -5,15 +5,21 @@ import type {
 } from 'types/graphql'
 import type { CellSuccessProps, CellFailureProps } from '@redwoodjs/web'
 import ThreadCard from '../ThreadCard/ThreadCard'
+import { MakeToggleButton } from '../ToggleButton/ToggleButton'
 
 export const QUERY = gql`
-  query FindThreadQuery($threadHash: String!) {
+  query FindThreadQuery(
+    $threadHash: String!
+    $parentsLimit: Int = 10
+    $skip: Int = 0
+    $limit: Int = 100
+  ) {
     thread(threadHash: $threadHash) {
       ...ThreadCard
-      replies {
+      replies(skip: $skip, limit: $limit) {
         ...ThreadCard
       }
-      parents {
+      parents(limit: $parentsLimit) {
         ...ThreadCard
       }
     }
@@ -32,22 +38,56 @@ export const Failure = ({
 
 export const Success = ({
   thread,
-}: CellSuccessProps<FindThreadQuery, FindThreadQueryVariables>) => {
+  showParentsDef,
+  showRepliesDef,
+}: CellSuccessProps<FindThreadQuery, FindThreadQueryVariables> & {
+  showParentsDef?: boolean
+  showRepliesDef?: boolean
+}) => {
+  const enableShowingParents = typeof showParentsDef === 'boolean'
+  const enableShowingReplies = typeof showParentsDef === 'boolean'
+
+  const [ParentTB, showParents] = MakeToggleButton(showParentsDef)
+  const [RepliesTB, showReplies] = MakeToggleButton(showRepliesDef)
+
+  debugger
+
   return (
     <div>
-      {thread.parents.map((thread: Thread) => (
-        <ThreadCard key={thread.hash} thread={thread} />
-      ))}
+      {showParents
+        ? thread.parents.map((thread: Thread) => (
+            <ThreadCard key={thread.hash} thread={thread} />
+          ))
+        : null}
 
-      {thread.parents?.length > 0 ? <hr /> : null}
+      {enableShowingParents && thread.parents.length > 0 ? (
+        <ParentTB
+          color="text-green-700"
+          trueLabel="Hide parents"
+          falseLabel="Show parents"
+        />
+      ) : null}
+
+      {thread.parents?.length > 0 && showParents ? (
+        <hr />
+      ) : null}
 
       <ThreadCard thread={thread as Thread} />
 
-      <ul className="pl-4">
-        {thread.replies.map((reply) => (
-          <ThreadCard key={reply.hash} thread={reply as Thread} />
-        ))}
-      </ul>
+      {enableShowingReplies && thread.replies.length > 0 ? (
+        <RepliesTB
+          color="text-green-700"
+          trueLabel="Hide replies"
+          falseLabel="Show replies"
+        />
+      ) : null}
+      {showReplies ? (
+        <ul className="pl-4">
+          {thread.replies.map((reply) => (
+            <ThreadCard key={reply.hash} thread={reply as Thread} />
+          ))}
+        </ul>
+      ) : null}
     </div>
   )
 }

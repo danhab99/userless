@@ -7,6 +7,7 @@ import { registerFragment } from '@redwoodjs/web/apollo'
 import { useState } from 'react'
 import PostThread from '../PostThread/PostThread'
 import { func } from 'prop-types'
+import { MakeToggleButton } from '../ToggleButton/ToggleButton'
 
 type ThreadCardProps = {
   thread: Pick<Thread, 'body' | 'hash' | 'signedBy' | 'timestamp'>
@@ -26,9 +27,9 @@ registerFragment(gql`
 `)
 
 const ThreadCard = ({ thread }: ThreadCardProps) => {
-  const [showReply, setShowReply] = useState(false)
-  const [showSource, setShowSource] = useState(false)
-  const [showFull, setShowFull] = useState(false)
+  const [ReplyTB, showReply] = MakeToggleButton(false)
+  const [SourceTB, showSource] = MakeToggleButton(false)
+  const [FullTB, showFull] = MakeToggleButton(false)
 
   const mailtoLink = mailto({
     to: thread.signedBy.email,
@@ -41,24 +42,9 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
   function Controls() {
     return (
       <div>
-        <a
-          onClick={() => setShowReply((x) => !x)}
-          className="text-xs text-green-800"
-        >
-          [Reply]
-        </a>
-        <a
-          onClick={() => setShowSource((x) => !x)}
-          className="text-xs text-green-800"
-        >
-          [Source]
-        </a>
-        <a
-          onClick={() => setShowFull((x) => !x)}
-          className="text-xs text-green-800"
-        >
-          [{showFull ? 'Less' : 'More'}]
-        </a>
+        <ReplyTB trueLabel="Hide reply" falseLabel="Reply" />
+        <SourceTB trueLabel="Hide source" falseLabel="Source" />
+        <FullTB falseLabel="Less" trueLabel="More" />
       </div>
     )
   }

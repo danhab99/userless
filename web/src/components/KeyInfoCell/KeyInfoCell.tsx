@@ -6,6 +6,7 @@ import type {
   TypedDocumentNode,
 } from '@redwoodjs/web'
 import Markdown from 'react-markdown'
+import ThreadCell from '../ThreadCell'
 
 export const QUERY: TypedDocumentNode<
   FindKeyInfoQuery,
@@ -19,6 +20,9 @@ export const QUERY: TypedDocumentNode<
       finger
       keyId
       name
+      threads {
+        hash
+      }
     }
   }
 `
@@ -37,22 +41,28 @@ export const Success = ({
   publicKey,
 }: CellSuccessProps<FindKeyInfoQuery, FindKeyInfoQueryVariables>) => {
   return (
-    <div className="px-40">
-      <div className="flexflex-col items-center bg-yellow-100 border border-black">
-        <h3 className='text-center'>
-          {publicKey.name} {'<'}
-          {publicKey.email}
-          {'>'}
-        </h3>
-        <p className="py-2">
-          <div className="markdown">
-            <Markdown>{publicKey.comment}</Markdown>
-          </div>
-        </p>
-        <pre className="h-40 w-full overflow-y-scroll bg-slate-300 p-1 text-xs">
-          {publicKey.armoredKey}
-        </pre>
+    <>
+      <div className="px-40">
+        <div className="flexflex-col items-center border border-black bg-yellow-100">
+          <h3 className="text-center">
+            {publicKey.name} {'<'}
+            {publicKey.email}
+            {'>'}
+          </h3>
+          <p className="py-2">
+            <div className="markdown">
+              <Markdown>{publicKey.comment}</Markdown>
+            </div>
+          </p>
+          <pre className="h-40 w-full overflow-y-scroll bg-slate-300 p-1 text-xs">
+            {publicKey.armoredKey}
+          </pre>
+        </div>
       </div>
-    </div>
+
+      {publicKey.threads.map((thread) => (
+        <ThreadCell showParentsDef={false} showRepliesDef={false} threadHash={thread.hash} parentsLimit={1} />
+      ))}
+    </>
   )
 }
