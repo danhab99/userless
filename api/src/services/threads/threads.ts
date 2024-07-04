@@ -17,6 +17,11 @@ export const threads: QueryResolvers['threads'] = (args) => {
   return db.thread.findMany({
     skip: args.skip,
     take: args.limit,
+    where: {
+      replyTo: {
+        isSet: false
+      }
+    }
   })
 }
 
