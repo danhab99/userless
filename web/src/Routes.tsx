@@ -17,6 +17,7 @@ const Routes = () => {
   return (
     <Router>
       <Set wrap={MainLayout}>
+        <Route path="/k/{keyid}" page={KeyPage} name="key" />
         <Route path="/t/{threadhash}" page={ThreadPage} name="thread" />
       </Set>
       <Route path="/" page={WelcomePage} name="welcome" />
