@@ -16,6 +16,7 @@ import MainLayout from './layouts/MainLayout/MainLayout'
 const Routes = () => {
   return (
     <Router>
+      <Route path="/generate-key" page={GenerateKeyPage} name="generateKey" />
       <Route path="/register" page={RegisterKeyPage} name="registerKey" />
       <Set wrap={MainLayout}>
         <Route path="/k/{keyid}" page={KeyPage} name="key" />
