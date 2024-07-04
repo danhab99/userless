@@ -56,7 +56,7 @@ export const Success = ({
               </div>
             </p>
           </div>
-          <pre className="h-40 w-full overflow-y-scroll bg-slate-300 p-1 text-xs">
+          <pre className="h-40 w-full overflow-y-auto bg-slate-300 p-1 text-xs">
             {publicKey.armoredKey}
           </pre>
         </div>

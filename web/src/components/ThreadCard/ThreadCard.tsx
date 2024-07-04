@@ -79,7 +79,7 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
 
       <Controls />
 
-      <div className={showFull ? 'h-full' : 'max-h-96 overflow-y-scroll'}>
+      <div className={showFull ? 'h-full' : 'max-h-96 overflow-y-auto'}>
         <ThreadBody thread={thread as Thread} />
       </div>
 
@@ -87,7 +87,7 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
 
       {showReply ? <PostThread replyTo={thread} /> : null}
       {showSource ? (
-        <pre className="h-40 overflow-scroll bg-slate-900 text-xs text-slate-100">
+        <pre className="h-40 overflow-auto bg-slate-900 text-xs text-slate-100">
           {thread.body}
         </pre>
       ) : null}
