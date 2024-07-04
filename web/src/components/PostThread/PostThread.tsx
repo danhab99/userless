@@ -22,7 +22,7 @@ const ADD_THREAD = gql`
 `
 
 export type PostThreadProps = {
-  replyTo: Pick<Thread, 'hash'>
+  replyTo?: Pick<Thread, 'hash'>
 }
 
 const PostThread = (props: PostThreadProps) => {
@@ -37,7 +37,7 @@ const PostThread = (props: PostThreadProps) => {
       ;(async () => {
         const msg = await openpgp.createCleartextMessage({
           text: [
-            props.replyTo.hash ? `replyTo:${props.replyTo.hash}\n` : '',
+            props.replyTo?.hash ? `replyTo:${props.replyTo.hash}\n` : '',
             '\n',
             v.body,
           ]
