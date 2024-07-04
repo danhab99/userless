@@ -9,7 +9,7 @@ const ThreadPage = () => {
     <>
       <Metadata title="Thread" description="Thread page" />
 
-      <ThreadCell threadHash={threadhash} />
+      <ThreadCell showParentsDef={true} showRepliesDef={true} threadHash={threadhash} />
     </>
   )
 }

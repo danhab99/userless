@@ -11,8 +11,6 @@ const KeyPage = () => {
       <Metadata title="Key" description="Key page" />
 
       <KeyInfoCell keyId={keyid} />
-
-      <ThreadsCell key={keyid} />
     </>
   )
 }

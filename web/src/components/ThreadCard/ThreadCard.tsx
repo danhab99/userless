@@ -44,7 +44,7 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
       <div>
         <ReplyTB trueLabel="Hide reply" falseLabel="Reply" />
         <SourceTB trueLabel="Hide source" falseLabel="Source" />
-        <FullTB falseLabel="Less" trueLabel="More" />
+        <FullTB trueLabel="Less" falseLabel="More" />
       </div>
     )
   }

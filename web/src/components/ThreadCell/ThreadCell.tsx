@@ -50,8 +50,6 @@ export const Success = ({
   const [ParentTB, showParents] = MakeToggleButton(showParentsDef)
   const [RepliesTB, showReplies] = MakeToggleButton(showRepliesDef)
 
-  debugger
-
   return (
     <div>
       {showParents
