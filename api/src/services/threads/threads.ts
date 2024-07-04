@@ -4,12 +4,8 @@ import type {
   ThreadRelationResolvers,
   Thread as ThreadType,
 } from 'types/graphql'
-import {
-  setPolicy,
-  findAncestors,
-  uploadThread,
-} from 'src/lib/pgchan'
-import * as openpgp from "openpgp";
+import { setPolicy, findAncestors, uploadThread } from 'src/lib/pgchan'
+import * as openpgp from 'openpgp'
 
 import { db } from 'src/lib/db'
 
@@ -19,15 +15,15 @@ export const threads: QueryResolvers['threads'] = (args) => {
     take: args.limit,
     where: {
       replyTo: {
-        isSet: false
-      }
-    }
+        isSet: false,
+      },
+    },
   })
 }
 
 export const thread: QueryResolvers['thread'] = ({ threadHash }) => {
   return db.thread.findUnique({
-    where: { 
+    where: {
       hash: threadHash,
     },
   })
@@ -45,34 +41,46 @@ export const updatePolicy: MutationResolvers['updatePolicy'] = async (args) => {
 
 export const Thread: ThreadRelationResolvers = {
   parent: (args, { root }) => {
-    return db.thread.findUnique({
-      where: {
-        hash: root.hash
-      }
-    }).parent()
+    return db.thread
+      .findUnique({
+        where: {
+          hash: root.hash,
+        },
+      })
+      .parent()
   },
-  parents: async (args, {root}) => {
-    return findAncestors(root as ThreadType)
-  },
-  policy: async (args, {root}) => {
-    if (!root.policy) {
-      return ""
+  parents: async (args, { root }) => {
+    var parents = await findAncestors(root as ThreadType)
+    if (args?.limit > 0) {
+      parents = parents.slice(0, args.limit)
     }
-    const msg = await openpgp.readCleartextMessage({cleartextMessage: root.policy})
+    return parents
+  },
+  policy: async (args, { root }) => {
+    if (!root.policy) {
+      return ''
+    }
+    const msg = await openpgp.readCleartextMessage({
+      cleartextMessage: root.policy,
+    })
     return JSON.parse(msg.getText())
   },
-  signedBy: async (args, {root}) => {
-    return db.thread.findUnique({
-      where: {
-        hash: root.hash
-      }
-    }).signedBy()
+  signedBy: async (args, { root }) => {
+    return db.thread
+      .findUnique({
+        where: {
+          hash: root.hash,
+        },
+      })
+      .signedBy()
   },
-  replies: async (args, {root}) => {
-    return db.thread.findUnique({
+  replies: async (args, { root }) => {
+    return db.thread.findMany({
       where: {
-        hash: root.hash
-      }
-    }).replies()
-  }
+        replyTo: root.hash,
+      },
+      skip: args.skip,
+      take: args.limit,
+    })
+  },
 }
