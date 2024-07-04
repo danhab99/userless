@@ -29,7 +29,6 @@ export const config: Config = {
 }
 
 export const handler = async (event: APIGatewayEvent, _context: Context) => {
-  debugger
   await registerPublicKey(event.body)
 
   return {
