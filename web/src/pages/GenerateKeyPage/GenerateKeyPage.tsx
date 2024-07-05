@@ -7,8 +7,38 @@ import {
   TextAreaField,
 } from '@redwoodjs/forms'
 import { Metadata } from '@redwoodjs/web'
+import { useCallback } from 'react'
+import * as openpgp from 'openpgp'
+import { useAddPrivateKey } from 'src/components/KeyContext'
 
 const GenerateKeyPage = () => {
+  type MyFieldVals = {
+    name: string
+    email: string
+    bio: string
+    password: string
+  }
+
+  const addKey = useAddPrivateKey()
+
+  const handleGenerate = useCallback(async (f: MyFieldVals) => {
+    const sk = await openpgp.generateKey({
+      userIDs: [
+        {
+          comment: f.bio,
+          email: f.email,
+          name: f.name,
+        },
+      ],
+      passphrase: f.password,
+    })
+
+    const skp = await openpgp.readPrivateKey({
+      armoredKey: sk.privateKey,
+    })
+
+    addKey(skp)
+  }, [])
 
   return (
     <>
@@ -16,7 +46,7 @@ const GenerateKeyPage = () => {
       <h1>Generate Keys</h1>
 
       <div className="flex flex-row justify-center pt-40">
-        <Form className="border border-black bg-card p-4 text-right">
+        <Form className="border border-black bg-card p-4 text-right" onSubmit={handleGenerate}>
           <div className="grid grid-cols-2 gap-2">
             <Label name="name">Name:</Label>
             <InputField name="name" type="text" required />
@@ -24,8 +54,11 @@ const GenerateKeyPage = () => {
             <Label name="email">Email:</Label>
             <InputField name="email" type="email" required />
 
+            <Label name="password">Password:</Label>
+            <InputField name="password" type="password" required />
+
             <Label name="email">Auto register:</Label>
-            <div className='text-left'>
+            <div className="text-left">
               <CheckboxField name="autoregister" />
             </div>
           </div>

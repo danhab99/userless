@@ -8,6 +8,11 @@ import {
 import * as openpgp from 'openpgp'
 
 const PrivateKeysContext = createContext<openpgp.PrivateKey[]>([])
+const ChangePrivateKeysContext = createContext<
+  React.Dispatch<React.SetStateAction<openpgp.PrivateKey[]>>
+>(() => {
+  throw 'no context'
+})
 
 const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
   const [keys, setKeys] = useState<openpgp.PrivateKey[]>([])
@@ -88,7 +93,9 @@ const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
           </>
         ) : null}
       </div>
-      {props.children}
+      <ChangePrivateKeysContext.Provider value={setKeys}>
+        {props.children}
+      </ChangePrivateKeysContext.Provider>
     </PrivateKeysContext.Provider>
   )
 }
@@ -99,9 +106,18 @@ export function usePrivateKeys() {
   return useContext(PrivateKeysContext)
 }
 
+export function useAddPrivateKey(): (sk: openpgp.PrivateKey) => void {
+  const set = useContext(ChangePrivateKeysContext)
+  return useCallback(
+    (sk: openpgp.PrivateKey) => set((prev) => prev.concat(sk))
+    ,
+    [set]
+  )
+}
+
 export function KeyBody(pgKey: openpgp.Key): string {
   const user = pgKey.users[0].userID
-  return `${user.name} <${user.email}> ${pgKey.getFingerprint()}`
+  return `${user.name} <${user.email}> ${pgKey.getKeyID().toHex()}`
 }
 
 const KeyItem = (props: { pgKey: openpgp.Key; onDelete?: () => void }) => {
