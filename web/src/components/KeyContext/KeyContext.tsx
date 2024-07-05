@@ -21,6 +21,13 @@ const ChangePrivateKeysContext = createContext<
   throw 'no context'
 })
 
+function uniqueKeys(keys: openpgp.PrivateKey[][]) {
+  const allKeys = keys.flat(1)
+  const set = new Set<openpgp.PrivateKey>();
+  [...allKeys].forEach(k => set.add(k))
+  return [...set]
+}
+
 const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
   const [keys, setKeys] = useState<openpgp.PrivateKey[]>([])
   const [decryptedKeys, setDecryptedKeys] = useState<openpgp.PrivateKey[]>([])
@@ -122,12 +129,7 @@ const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
     [setDecryptedKeys]
   )
 
-  var allKeys = [...keys, ...decryptedKeys]
-  allKeys = allKeys.filter(
-    (x, i) =>
-      allKeys.findIndex((y) => x.getKeyID().toHex() === x.getKeyID().toHex()) <
-      i
-  )
+  const allKeys = uniqueKeys([keys, decryptedKeys])
 
   const [open, setOpen] = useState(false)
 
@@ -177,10 +179,10 @@ const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
 export default KeyContextProvider
 
 export function usePrivateKeys() {
-  return [
-    ...useContext(DecryptedPrivateKeysContext),
-    ...useContext(PrivateKeysContext),
-  ]
+  return uniqueKeys([
+    useContext(PrivateKeysContext),
+    useContext(DecryptedPrivateKeysContext),
+  ])
 }
 
 export function useAddPrivateKey(): (sk: openpgp.PrivateKey) => void {
