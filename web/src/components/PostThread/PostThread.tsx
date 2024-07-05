@@ -96,7 +96,7 @@ const PostThread = (props: PostThreadProps) => {
         <div className="flex flex-col md:flex-row">
           <SelectField required name="sk" className="w-8/10 w-full p-2">
             {privateKeys.map((key) => (
-              <option value={key.getKeyID().toHex()}>{KeyBody(key)}</option>
+              <option value={key.getKeyID().toHex()}>{key.users[0].userID.name} {"<"}{key.getKeyID().toHex()}{">"}</option>
             ))}
           </SelectField>
           <Submit className="px-4">Post</Submit>
