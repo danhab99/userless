@@ -14,6 +14,7 @@ import { useQuery } from '@redwoodjs/web'
 import { set } from '@redwoodjs/forms'
 
 const PrivateKeysContext = createContext<openpgp.PrivateKey[]>([])
+const DecryptedPrivateKeysContext = createContext<openpgp.PrivateKey[]>([])
 const ChangePrivateKeysContext = createContext<
   React.Dispatch<React.SetStateAction<openpgp.PrivateKey[]>>
 >(() => {
@@ -22,18 +23,37 @@ const ChangePrivateKeysContext = createContext<
 
 const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
   const [keys, setKeys] = useState<openpgp.PrivateKey[]>([])
+  const [decryptedKeys, setDecryptedKeys] = useState<openpgp.PrivateKey[]>([])
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
     ;(async () => {
-      const rawKeyRing = localStorage.getItem('keyring')
-      const keys = await openpgp.readPrivateKeys({
-        armoredKeys: rawKeyRing,
+      const keys = openpgp.readPrivateKeys({
+        armoredKeys: localStorage.getItem('keyring'),
       })
-      setKeys(keys)
+
+      const decryptedKeys = openpgp.readPrivateKeys({
+        armoredKeys: sessionStorage.getItem('keyring'),
+      })
+
+      try {
+        setKeys(await keys)
+      } catch (e) {}
+
+      try {
+        setDecryptedKeys(await decryptedKeys)
+      } catch (e) {}
+
       setReady(true)
     })()
   }, [])
+
+  useEffect(() => {
+    if (ready) {
+      const keyring = decryptedKeys.map((key) => key.armor()).join('\n')
+      sessionStorage.setItem('keyring', keyring)
+    }
+  }, [decryptedKeys, ready])
 
   useEffect(() => {
     if (ready) {
@@ -72,75 +92,95 @@ const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
 
   const deleteKey = useCallback(
     (sk: openpgp.PrivateKey) => {
-      setKeys((prev) => {
-        return [
-          ...prev.filter((x) => x.getKeyID().toHex() != sk.getKeyID().toHex()),
-        ]
-      })
+      setKeys((prev) =>
+        prev.filter((x) => x.getKeyID().toHex() != sk.getKeyID().toHex())
+      )
     },
     [setKeys]
   )
 
-  const changeKey = useCallback(
-    (sk: openpgp.PrivateKey) => {
-      setKeys((prev) => {
-        return prev.map((prev_sk) => {
-          if (prev_sk.getKeyID().toHex() == sk.getKeyID().toHex()) {
-            return sk
-          } else {
-            return prev_sk
+  const unlock = useCallback(
+    async (sk: openpgp.PrivateKey, password: string) => {
+      const decryptedKey = await openpgp.decryptKey({
+        privateKey: sk,
+        passphrase: password,
+      })
+
+      setDecryptedKeys((prev) => {
+        const keys = prev.reduce((coll, sk) => {
+          return {
+            ...coll,
+            [sk.getKeyID().toHex()]: sk,
           }
-        })
+        }, {})
+
+        keys[sk.getKeyID().toHex()] = decryptedKey
+
+        return Object.values(keys)
       })
     },
-    [setKeys]
+    [setDecryptedKeys]
+  )
+
+  var allKeys = [...keys, ...decryptedKeys]
+  allKeys = allKeys.filter(
+    (x, i) =>
+      allKeys.findIndex((y) => x.getKeyID().toHex() === x.getKeyID().toHex()) <
+      i
   )
 
   const [open, setOpen] = useState(false)
 
   return (
-    <PrivateKeysContext.Provider value={keys}>
-      <div className="fixed bottom-0 right-0 border border-solid border-black bg-white p-4">
-        <h4 onClick={() => setOpen((x) => !x)}>
-          {open ? '⮟' : '⮝'} Key mananger{' '}
-          {open ? (
-            <Link to={routes.generateKey()}>
-              <ActionButton label="Generate Key" />
-            </Link>
-          ) : null}
-        </h4>
-        {open ? (
-          <>
-            {keys.map((sk, i) => (
-              <KeyRow
-                sk={sk}
-                key={i}
-                deleteKey={deleteKey}
-                changeKey={changeKey}
-              />
-            ))}
-            <div>
-              <label>Add keys</label>
-              <input
-                type="file"
-                multiple
-                onChange={(e) => addKey(e.target.files)}
-              />
-            </div>
-          </>
-        ) : null}
-      </div>
-      <ChangePrivateKeysContext.Provider value={setKeys}>
-        {props.children}
-      </ChangePrivateKeysContext.Provider>
-    </PrivateKeysContext.Provider>
+    <>
+      <PrivateKeysContext.Provider value={keys}>
+        <DecryptedPrivateKeysContext.Provider value={decryptedKeys}>
+          <div className="fixed bottom-0 right-0 border border-solid border-black bg-white p-4">
+            <h4 onClick={() => setOpen((x) => !x)}>
+              {open ? '⮟' : '⮝'} Key mananger{' '}
+              {open ? (
+                <Link to={routes.generateKey()}>
+                  <ActionButton label="Generate Key" />
+                </Link>
+              ) : null}
+            </h4>
+            {open ? (
+              <>
+                {allKeys.map((sk, i) => (
+                  <KeyRow
+                    sk={sk}
+                    key={i}
+                    deleteKey={deleteKey}
+                    unlock={unlock}
+                  />
+                ))}
+                <div>
+                  <label>Add keys</label>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={(e) => addKey(e.target.files)}
+                  />
+                </div>
+              </>
+            ) : null}
+          </div>
+          <ChangePrivateKeysContext.Provider value={setKeys}>
+            {props.children}
+          </ChangePrivateKeysContext.Provider>
+        </DecryptedPrivateKeysContext.Provider>
+      </PrivateKeysContext.Provider>
+    </>
   )
 }
 
 export default KeyContextProvider
 
 export function usePrivateKeys() {
-  return useContext(PrivateKeysContext)
+  return [
+    ...useContext(DecryptedPrivateKeysContext),
+    ...useContext(PrivateKeysContext),
+  ]
 }
 
 export function useAddPrivateKey(): (sk: openpgp.PrivateKey) => void {
@@ -151,7 +191,10 @@ export function useAddPrivateKey(): (sk: openpgp.PrivateKey) => void {
   )
 }
 
-function keyBodyString(primaryUser: openpgp.PrimaryUser, pgKey: openpgp.PrivateKey): string {
+function keyBodyString(
+  primaryUser: openpgp.PrimaryUser,
+  pgKey: openpgp.PrivateKey
+): string {
   const keyid = pgKey.getKeyID().toHex()
 
   return `${primaryUser?.user.userID.name}(${keyid})<${primaryUser?.user.userID.email}>`
@@ -159,7 +202,9 @@ function keyBodyString(primaryUser: openpgp.PrimaryUser, pgKey: openpgp.PrivateK
 
 export function KeyBody({ pgKey }: { pgKey: openpgp.PrivateKey }) {
   const primaryUser = useAsyncMemo(() => pgKey.getPrimaryUser(), [pgKey])
-  return <span className="text-username">{keyBodyString(primaryUser, pgKey,)}</span>
+  return (
+    <span className="text-username">{keyBodyString(primaryUser, pgKey)}</span>
+  )
 }
 
 const CHECK_REGISTERED = gql`
@@ -173,14 +218,14 @@ const CHECK_REGISTERED = gql`
 function KeyRow(props: {
   sk: openpgp.PrivateKey
   deleteKey: (sk: openpgp.PrivateKey) => void
-  changeKey: (sk: openpgp.PrivateKey) => void
+  unlock: (sk: openpgp.PrivateKey, password: string) => void
 }) {
   const { sk } = props
   const keyId = sk.getKeyID().toHex()
 
   const registerKey = useRegisterKey()
 
-  const { data } = useQuery<
+  const { data, refetch } = useQuery<
     { publicKey: { keyId: string } },
     { keyId: string }
   >(CHECK_REGISTERED, {
@@ -189,25 +234,22 @@ function KeyRow(props: {
     },
   })
 
+  const register = useCallback(async () => {
+    await registerKey(sk)
+    refetch()
+  }, [refetch, registerKey, sk])
+
   const primaryUser = useAsyncMemo(() => sk.getPrimaryUser(), [sk])
 
   const unlock = useCallback(() => {
     ;(async () => {
-      debugger
-      const password = prompt(`Password to decrypt ${keyBodyString(primaryUser, sk)}`)
+      const password = prompt(
+        `Password to decrypt ${keyBodyString(primaryUser, sk)}`
+      )
 
-      try {
-        const osk = await openpgp.decryptKey({
-          privateKey: sk,
-          passphrase: password,
-        })
-
-        props.changeKey(osk)
-      } catch (e) {
-        alert(`Unable to unlock: ${keyBodyString(primaryUser, sk)}`)
-      }
+      props.unlock(sk, password)
     })()
-  }, [sk, props.changeKey, primaryUser])
+  }, [sk, props.unlock, primaryUser])
 
   return (
     <div className="flex flex-row align-middle">
@@ -215,14 +257,14 @@ function KeyRow(props: {
       <ActionButton
         label="Delete"
         color="text-red-500"
-        onClick={() => props.deleteKey(props.sk.getKeyID().toHex())}
+        onClick={() => props.deleteKey(props.sk)}
       />
 
-      {data?.publicKey?.keyId === keyId ? (
+      {data?.publicKey?.keyId !== keyId ? (
         <ActionButton
           label="Register"
           color="text-purple-500"
-          onClick={() => registerKey(props.sk.toPublic())}
+          onClick={() => register()}
         />
       ) : null}
 

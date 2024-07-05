@@ -17,7 +17,6 @@ export function useRegisterKey(): (pk: openpgp.PublicKey) => Promise<unknown> {
   >(ADD_KEY)
 
   return async (pk) => {
-    debugger
     return addKey({
       variables: {
         armoredKey: pk.armor(),
