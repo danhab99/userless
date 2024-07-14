@@ -18,9 +18,17 @@
   @apply to-sky-500;
 }
 
+.card {
+  @apply rounded-xl shadow-xl
+}
+
+input, textarea {
+  @apply bg-slate-200 shadow-inner shadow-slate-300;
+}
+
 body {
   /* @apply bg-gradient-to-br from-sky-100 to-sky-200; */
-  @apply background px-3;
+  @apply background px-3 bg-cover min-h-screen;
 }
 
 h1 {
