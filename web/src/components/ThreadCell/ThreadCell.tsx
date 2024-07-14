@@ -36,29 +36,25 @@ export const Failure = ({
   <div style={{ color: 'red' }}>Error: {error?.message}</div>
 )
 
-export const Success = ({
-  thread,
-  showParentsDef,
-  showRepliesDef,
-}: CellSuccessProps<FindThreadQuery, FindThreadQueryVariables> & {
+export const Success = (props: CellSuccessProps<FindThreadQuery, FindThreadQueryVariables> & {
   showParentsDef?: boolean
   showRepliesDef?: boolean
+  enableShowingParents?: boolean
+  enableShowingReplies?: boolean
 }) => {
-  const enableShowingParents = typeof showParentsDef === 'boolean'
-  const enableShowingReplies = typeof showParentsDef === 'boolean'
 
-  const [ParentTB, showParents] = MakeToggleButton(showParentsDef)
-  const [RepliesTB, showReplies] = MakeToggleButton(showRepliesDef)
+  const [ParentTB, showParents] = MakeToggleButton(props.showParentsDef)
+  const [RepliesTB, showReplies] = MakeToggleButton(props.showRepliesDef)
 
   return (
     <div>
       {showParents
-        ? thread.parents.map((thread: Thread) => (
+        ? props.thread.parents.map((thread: Thread) => (
             <ThreadCard key={thread.hash} thread={thread} />
           ))
         : null}
 
-      {enableShowingParents && thread.parents.length > 0 ? (
+      {props.enableShowingParents && props.thread.parents.length > 0 ? (
         <ParentTB
           color="text-green-700"
           trueLabel="Hide parents"
@@ -66,13 +62,13 @@ export const Success = ({
         />
       ) : null}
 
-      {thread.parents?.length > 0 && showParents ? (
+      {props.thread.parents?.length > 0 && showParents ? (
         <hr />
       ) : null}
 
-      <ThreadCard thread={thread as Thread} />
+      <ThreadCard thread={props.thread as Thread} />
 
-      {enableShowingReplies && thread.replies.length > 0 ? (
+      {props.enableShowingReplies && props.thread.replies.length > 0 ? (
         <RepliesTB
           color="text-green-700"
           trueLabel="Hide replies"
@@ -81,7 +77,7 @@ export const Success = ({
       ) : null}
       {showReplies ? (
         <ul className="pl-4">
-          {thread.replies.map((reply) => (
+          {props.thread.replies.map((reply) => (
             <ThreadCard key={reply.hash} thread={reply as Thread} />
           ))}
         </ul>

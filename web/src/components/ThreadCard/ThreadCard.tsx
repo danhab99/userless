@@ -41,7 +41,7 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
 
   function Controls() {
     return (
-      <div>
+      <div className="text-xs">
         <ReplyTB trueLabel="Hide reply" falseLabel="Reply" />
         <SourceTB trueLabel="Hide source" falseLabel="Source" />
         <FullTB trueLabel="Less" falseLabel="More" />
@@ -51,7 +51,7 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
 
   return (
     <div className="my-2 max-w-4xl border border-solid border-black bg-card p-4 font-mono">
-      <p className="text-xs">
+      <p className="text-sm">
         <span className="text-green-700">
           {new Date(thread.timestamp).toLocaleString()}
         </span>{' '}
