@@ -15,7 +15,7 @@ const GenerateKeyPage = () => {
   type MyFieldVals = {
     name: string
     email: string
-    bio: string
+    comment: string
     password: string
   }
 
@@ -25,7 +25,7 @@ const GenerateKeyPage = () => {
     const sk = await openpgp.generateKey({
       userIDs: [
         {
-          comment: f.bio,
+          comment: f.comment,
           email: f.email,
           name: f.name,
         },
@@ -46,7 +46,10 @@ const GenerateKeyPage = () => {
       <h1>Generate Keys</h1>
 
       <div className="flex flex-row justify-center pt-40">
-        <Form className="border border-black bg-card p-4 text-right" onSubmit={handleGenerate}>
+        <Form
+          className="border border-black bg-card p-4 text-right"
+          onSubmit={handleGenerate}
+        >
           <div className="grid grid-cols-2 gap-2">
             <Label name="name">Name:</Label>
             <InputField name="name" type="text" required />
