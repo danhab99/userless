@@ -23,7 +23,12 @@ const ChangePrivateKeysContext = createContext<
 
 function uniqueKeys(keys: openpgp.PrivateKey[][]) {
   const allKeys = keys.flat(1)
-  return allKeys.filter((k, i) => allKeys.findIndex(o => o.getKeyID().toHex() === k.getKeyID().toHex()) === i);
+  return allKeys.filter(
+    (k, i) =>
+      allKeys.findIndex(
+        (o) => o.getKeyID().toHex() === k.getKeyID().toHex()
+      ) === i
+  )
 }
 
 const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
@@ -42,7 +47,9 @@ const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
           JSON.stringify(keys.map((key) => key.armor()))
         )
       } else {
-        const rawKeyRing: string[] = JSON.parse(localStorage.getItem('keyring'))
+        const rawKeyRing: string[] = JSON.parse(
+          localStorage.getItem('keyring') ?? '[]'
+        )
 
         const localKeys = Promise.all(
           rawKeyRing.map((rawKey) =>
@@ -53,7 +60,7 @@ const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
         )
 
         const decryptedRawKeyRing: string[] = JSON.parse(
-          sessionStorage.getItem('keyring')
+          sessionStorage.getItem('keyring') ?? '[]'
         )
         const localDecryptedKeys = Promise.all(
           decryptedRawKeyRing.map((rawKey) =>
@@ -64,11 +71,13 @@ const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
         )
 
         try {
-          setKeys(await localKeys)
+          const lk = await localKeys
+          setKeys(lk)
         } catch (e) {}
 
         try {
-          setDecryptedKeys(await localDecryptedKeys)
+          const dk = await localDecryptedKeys
+          setDecryptedKeys(dk)
         } catch (e) {}
       }
     })()
