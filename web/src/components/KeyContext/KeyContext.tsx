@@ -23,51 +23,58 @@ const ChangePrivateKeysContext = createContext<
 
 function uniqueKeys(keys: openpgp.PrivateKey[][]) {
   const allKeys = keys.flat(1)
-  const set = new Set<openpgp.PrivateKey>();
-  [...allKeys].forEach(k => set.add(k))
+  const set = new Set<openpgp.PrivateKey>()
+  ;[...allKeys].forEach((k) => set.add(k))
   return [...set]
 }
 
 const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
   const [keys, setKeys] = useState<openpgp.PrivateKey[]>([])
   const [decryptedKeys, setDecryptedKeys] = useState<openpgp.PrivateKey[]>([])
-  const [ready, setReady] = useState(false)
-
   useEffect(() => {
     ;(async () => {
-      const keys = openpgp.readPrivateKeys({
-        armoredKeys: localStorage.getItem('keyring'),
-      })
+      if (keys.length > 0) {
+        sessionStorage.setItem(
+          'keyring',
+          JSON.stringify(decryptedKeys.map((key) => key.armor()))
+        )
 
-      const decryptedKeys = openpgp.readPrivateKeys({
-        armoredKeys: sessionStorage.getItem('keyring'),
-      })
+        localStorage.setItem(
+          'keyring',
+          JSON.stringify(keys.map((key) => key.armor()))
+        )
+      } else {
+        const rawKeyRing: string[] = JSON.parse(localStorage.getItem('keyring'))
 
-      try {
-        setKeys(await keys)
-      } catch (e) {}
+        const localKeys = Promise.all(
+          rawKeyRing.map((rawKey) =>
+            openpgp.readPrivateKey({
+              armoredKey: rawKey,
+            })
+          )
+        )
 
-      try {
-        setDecryptedKeys(await decryptedKeys)
-      } catch (e) {}
+        const decryptedRawKeyRing: string[] = JSON.parse(
+          sessionStorage.getItem('keyring')
+        )
+        const localDecryptedKeys = Promise.all(
+          decryptedRawKeyRing.map((rawKey) =>
+            openpgp.readPrivateKey({
+              armoredKey: rawKey,
+            })
+          )
+        )
 
-      setReady(true)
+        try {
+          setKeys(await localKeys)
+        } catch (e) {}
+
+        try {
+          setDecryptedKeys(await localDecryptedKeys)
+        } catch (e) {}
+      }
     })()
-  }, [])
-
-  useEffect(() => {
-    if (ready) {
-      const keyring = decryptedKeys.map((key) => key.armor()).join('\n')
-      sessionStorage.setItem('keyring', keyring)
-    }
-  }, [decryptedKeys, ready])
-
-  useEffect(() => {
-    if (ready) {
-      const keyring = keys.map((key) => key.armor()).join('\n')
-      localStorage.setItem('keyring', keyring)
-    }
-  }, [keys, ready])
+  }, [keys, decryptedKeys])
 
   const addKey = useCallback(
     async (files: FileList) => {
@@ -129,7 +136,7 @@ const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
     [setDecryptedKeys]
   )
 
-  const allKeys = uniqueKeys([keys, decryptedKeys])
+  const allKeys = uniqueKeys([decryptedKeys, keys])
 
   const [open, setOpen] = useState(false)
 
@@ -180,8 +187,8 @@ export default KeyContextProvider
 
 export function usePrivateKeys() {
   return uniqueKeys([
-    useContext(PrivateKeysContext),
     useContext(DecryptedPrivateKeysContext),
+    useContext(PrivateKeysContext),
   ])
 }
 
