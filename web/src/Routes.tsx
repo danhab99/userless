@@ -11,7 +11,6 @@ import { Router, Route, Set } from '@redwoodjs/router'
 import WelcomePage from './pages/WelcomePage/WelcomePage'
 import ThreadPage from './pages/ThreadPage/ThreadPage'
 import NotFoundPage from './pages/NotFoundPage/NotFoundPage'
-import MainLayout from './layouts/MainLayout/MainLayout'
 import NavbarLayout from './layouts/NavbarLayout/NavbarLayout'
 import PostLayout from './layouts/PostLayout/PostLayout'
 
@@ -20,10 +19,9 @@ const Routes = () => {
     <Router>
       <Set wrap={NavbarLayout}>
         <Route path="/generate-key" page={GenerateKeyPage} name="generateKey" />
-        <Route path="/register" page={RegisterKeyPage} name="registerKey" />
         <Set wrap={PostLayout}>
-          <Route path="/k/{keyid}" page={KeyPage} name="key" />
-          <Route path="/t/{threadhash}" page={ThreadPage} name="thread" />
+          <Route path="/k/{keyid}" page={KeyPage} name="key" renderMode='html'/>
+          <Route path="/t/{threadhash}" page={ThreadPage} name="thread" renderMode='stream'/>
           <Route path="/" page={WelcomePage} name="welcome" />
           <Route notfound page={NotFoundPage} />
         </Set>

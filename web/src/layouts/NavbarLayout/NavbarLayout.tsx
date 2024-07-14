@@ -14,9 +14,6 @@ const NavbarLayout = ({ children }: NavbarLayoutProps) => {
       <Link to={routes.generateKey()}>
         <ActionButton label="Generate keys" />
       </Link>
-      <Link to={routes.registerKey()}>
-        <ActionButton label="Register" />
-      </Link>
       <ActionButton label="Directory" />
       {children}
     </>
