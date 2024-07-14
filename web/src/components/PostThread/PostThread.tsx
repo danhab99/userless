@@ -38,7 +38,7 @@ const PostThread = (props: PostThreadProps) => {
         const msg = await openpgp.createCleartextMessage({
           text: [
             props.replyTo?.hash ? `replyTo:${props.replyTo.hash}\n` : '',
-            '\n',
+            '',
             v.body,
           ]
             .join('\n')
@@ -58,7 +58,9 @@ const PostThread = (props: PostThreadProps) => {
               privateKey: pk,
               passphrase: password,
             })
-          } catch (e) {}
+          } catch (e) {
+            alert(e)
+          }
         }
 
         const signedMsg = await openpgp.sign({
