@@ -84,7 +84,7 @@ const PostThread = (props: PostThreadProps) => {
   )
 
   return (
-    <div className="w-5/6 border border-solid border-black bg-white">
+    <div className="bg-white shadow-xl w-full">
       <Form onSubmit={handleSubmit}>
         <Label name="body" className="px-2">
           {props.replyTo ? `Reply to ${props.replyTo.hash}` : 'Body:'}
@@ -96,7 +96,7 @@ const PostThread = (props: PostThreadProps) => {
           required
         />
         <div className="flex flex-col md:flex-row">
-          <SelectField required name="sk" className="w-8/10 w-full p-2">
+          <SelectField required name="sk" className="w-8/10 w-full p-2 overflow-hidden">
             {privateKeys.map((key) => (
               <option value={key.getKeyID().toHex()}>{key.users[0].userID.name} {"<"}{key.getKeyID().toHex()}{">"} {key.isDecrypted() ? "unlocked" : ""}</option>
             ))}

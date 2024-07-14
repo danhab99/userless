@@ -50,7 +50,7 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
   }
 
   return (
-    <div className="my-2 max-w-4xl border border-solid border-black bg-card p-4 font-mono">
+    <div className="my-2 max-w-4xl bg-card p-4 font-mono shadow-xl rounded-xl">
       <p className="text-sm">
         <span className="text-green-700">
           {new Date(thread.timestamp).toLocaleString()}
