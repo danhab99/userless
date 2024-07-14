@@ -13,29 +13,41 @@ generator client {
 // TODO: Please remove the following example:
 
 model Thread {
-  approved   Boolean   @default(true)
   body       String
-  hash       String    @unique
-  id         String    @id @default(auto()) @map("_id") @db.ObjectId
-  parent     Thread?   @relation(name: "ParentThread", fields: [replyTo], references: [hash], onDelete: NoAction, onUpdate: NoAction)
-  replies    Thread[]  @relation(name: "ParentThread")
+  hash       String       @unique
+  id         String       @id @default(auto()) @map("_id") @db.ObjectId
+  parent     Thread?      @relation(name: "ParentThread", fields: [replyTo], references: [hash], onDelete: NoAction, onUpdate: NoAction)
+  replies    Thread[]     @relation(name: "ParentThread")
   replyTo    String?
-  signedBy   PublicKey @relation(fields: [signedById], references: [keyId], onDelete: NoAction, onUpdate: NoAction)
+  signedBy   PublicKey    @relation(fields: [signedById], references: [keyId], onDelete: NoAction, onUpdate: NoAction)
   signedById String
   timestamp  DateTime
-  policy     String?
+  policy     ThreadPolicy
+}
+
+type ThreadPolicy {
+  visible          Boolean  @default(true)
+  acceptsReplies   Boolean  @default(true)
+  encryptFor       String[]
+  policyEditors    String[]
 }
 
 model PublicKey {
-  approved   Boolean  @default(false)
-  armoredKey String   @unique
+  armoredKey String          @unique
   comment    String
   email      String
-  finger     String   @unique
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  keyId      String   @unique
-  master     Boolean  @default(false)
+  finger     String          @unique
+  id         String          @id @default(auto()) @map("_id") @db.ObjectId
+  keyId      String          @unique
+  master     Boolean         @default(false)
   name       String
-  revoked    Boolean  @default(false)
+  revoked    Boolean         @default(false)
   threads    Thread[]
+  policy     PublicKeyPolicy
+}
+
+type PublicKeyPolicy {
+  allowedToPost   Boolean @default(true)
+  canStartThreads Boolean @default(true)
+  isMaster        Boolean @default(false)
 }
