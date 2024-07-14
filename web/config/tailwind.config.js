@@ -20,8 +20,8 @@ module.exports = {
     },
     extend : {
       colors : {
-        "card" : "#e2f252",
-        "background" : "#70c0d4",
+        "card" : "#fcff63",
+        "background" : "#e0f2fe",
         "username" : "#a970d4",
         "hash" : "#222",
         "sig-working" : "yellow",
