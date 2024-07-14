@@ -15,6 +15,7 @@
     "@redwoodjs/forms": "7.4.3",
     "@redwoodjs/router": "7.4.3",
     "@redwoodjs/web": "7.4.3",
+    "@uidotdev/usehooks": "^2.4.1",
     "fflate": "^0.8.2",
     "mailto-link": "^2.0.0",
     "prop-types": "15.8.1",

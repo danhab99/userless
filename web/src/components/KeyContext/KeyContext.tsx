@@ -23,9 +23,7 @@ const ChangePrivateKeysContext = createContext<
 
 function uniqueKeys(keys: openpgp.PrivateKey[][]) {
   const allKeys = keys.flat(1)
-  const set = new Set<openpgp.PrivateKey>()
-  ;[...allKeys].forEach((k) => set.add(k))
-  return [...set]
+  return allKeys.filter((k, i) => allKeys.findIndex(o => o.getKeyID().toHex() === k.getKeyID().toHex()) === i);
 }
 
 const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
@@ -211,8 +209,19 @@ function keyBodyString(
 
 export function KeyBody({ pgKey }: { pgKey: openpgp.PrivateKey }) {
   const primaryUser = useAsyncMemo(() => pgKey.getPrimaryUser(), [pgKey])
+
   return (
-    <span className="text-username">{keyBodyString(primaryUser, pgKey)}</span>
+    <span className="text-username">
+      {primaryUser?.user.userID.name}
+      <Link to={routes.key({ keyid: pgKey.getKeyID().toHex() })}>
+        {'('}
+        {pgKey.getKeyID().toHex()}
+        {')'}
+      </Link>
+      {'<'}
+      {primaryUser?.user.userID.email}
+      {'>'}
+    </span>
   )
 }
 
