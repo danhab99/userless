@@ -12,8 +12,15 @@
  * END --- SETUP TAILWINDCSS EDIT
  */
 
+.background {
+  @apply bg-gradient-to-br;
+  @apply from-sky-300;
+  @apply to-sky-500;
+}
+
 body {
-  @apply bg-background;
+  /* @apply bg-gradient-to-br from-sky-100 to-sky-200; */
+  @apply background px-3;
 }
 
 h1 {
