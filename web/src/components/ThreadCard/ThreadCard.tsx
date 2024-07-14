@@ -50,7 +50,7 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
   }
 
   return (
-    <div className="my-2 max-w-4xl bg-card p-4 font-mono shadow-xl rounded-xl">
+    <div className="card my-2 max-w-4xl bg-card p-4">
       <p className="text-sm">
         <span className="text-green-700">
           {new Date(thread.timestamp).toLocaleString()}
@@ -85,7 +85,11 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
 
       <Controls />
 
-      {showReply ? <PostThread replyTo={thread} /> : null}
+      {showReply ? (
+        <div className="pt-4">
+          <PostThread replyTo={thread} />
+        </div>
+      ) : null}
       {showSource ? (
         <pre className="h-40 overflow-auto bg-slate-900 text-xs text-slate-100">
           {thread.body}

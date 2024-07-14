@@ -91,7 +91,7 @@ const PostThread = (props: PostThreadProps) => {
         </Label>
         <TextAreaField
           name="body"
-          className="w-full bg-slate-200"
+          className="w-full"
           rows={10}
           required
         />
