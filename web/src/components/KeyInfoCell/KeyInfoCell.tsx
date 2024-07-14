@@ -7,6 +7,7 @@ import type {
 } from '@redwoodjs/web'
 import Markdown from 'react-markdown'
 import ThreadCell from '../ThreadCell'
+import Centered from '../Centered/Centered'
 
 export const QUERY: TypedDocumentNode<
   FindKeyInfoQuery,
@@ -42,25 +43,27 @@ export const Success = ({
 }: CellSuccessProps<FindKeyInfoQuery, FindKeyInfoQueryVariables>) => {
   return (
     <>
-      <div className="px-4">
-        <div className="flexflex-col items-center border border-black bg-yellow-100">
-          <div className="p-2">
-            <h3 className="text-center">
-              {publicKey.name} {'<'}
-              {publicKey.email}
-              {'>'}
-            </h3>
-            <p className="py-2">
-              <div className="markdown">
-                <Markdown>{publicKey.comment}</Markdown>
-              </div>
-            </p>
+      <Centered>
+        <div className="card bg-card p-4">
+          <div className="flexflex-col items-center">
+            <div className="p-2">
+              <h3 className="text-center">
+                {publicKey.name} {'<'}
+                {publicKey.email}
+                {'>'}
+              </h3>
+              <p className="py-2">
+                <div className="markdown">
+                  <Markdown>{publicKey.comment}</Markdown>
+                </div>
+              </p>
+            </div>
+            <pre className="h-40 overflow-y-scroll bg-slate-300 p-1 text-xs">
+              {publicKey.armoredKey}
+            </pre>
           </div>
-          <pre className="h-40 w-full overflow-y-scroll bg-slate-300 p-1 text-xs">
-            {publicKey.armoredKey}
-          </pre>
         </div>
-      </div>
+      </Centered>
 
       {publicKey.threads.map((thread) => (
         <ThreadCell
