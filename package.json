@@ -7,8 +7,8 @@
     ]
   },
   "devDependencies": {
-    "@redwoodjs/cli-storybook": "7.4.3",
-    "@redwoodjs/core": "7.4.3",
+    "@redwoodjs/cli-storybook": "7.7.3",
+    "@redwoodjs/core": "7.7.3",
     "prettier-plugin-tailwindcss": "0.4.1"
   },
   "eslintConfig": {
