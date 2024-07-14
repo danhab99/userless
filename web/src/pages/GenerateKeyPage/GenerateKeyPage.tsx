@@ -47,7 +47,7 @@ const GenerateKeyPage = () => {
 
       <div className="flex flex-row justify-center pt-40">
         <Form
-          className="border border-black bg-card p-4 text-right"
+          className="card p-4 text-right bg-white"
           onSubmit={handleGenerate}
         >
           <div className="grid grid-cols-2 gap-2">
