@@ -8,7 +8,7 @@ const WelcomePage = () => {
     <>
       <MetaTags title="Welcome" description="Welcome page" />
 
-      <header className="bg-background p-8 text-center">
+      <header className="p-8 text-center">
         <h1>PGChan.gpg</h1>
         <p>
           PGChan is an activity-pub compliant file board that uses GPG for role
@@ -16,9 +16,6 @@ const WelcomePage = () => {
         </p>
       </header>
 
-      <div className="flex flex-row justify-center">
-        <PostThread />
-      </div>
 
       <ThreadsCell />
     </>
