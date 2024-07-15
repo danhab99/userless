@@ -69,17 +69,15 @@ const PostThread = (props: PostThreadProps) => {
           format: 'armored',
         })
 
-        const resp = await fetch(`${RWJS_API_URL}/post`, {
-          method: "POST",
-          body: signedMsg,
+        const res = await addThread({
+          variables: {
+            input: {
+              clearText: signedMsg,
+            },
+          },
         })
 
-        if (!resp.url) {
-          alert("Post didn't work");
-          return
-        }
-
-        window.location.href = resp.url;
+        window.location.href = `/t/${res.data.createThread.hash}`
       })()
     },
     [privateKeys, addThread]
