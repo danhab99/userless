@@ -26,13 +26,13 @@ import { logger } from 'src/lib/logger'
  */
 
 export const handler = async (event: APIGatewayEvent, _context: Context) => {
+  console.log(event.body)
   const thread = await uploadThread(event.body)
 
-  await db.thread.create({
-    data: thread,
-  })
-
   return {
-    status: 301,
+    statusCode: 302,
+    headers: {
+      Location: `${event.headers["origin"]}/t/${thread.hash}`,
+    },
   }
 }
