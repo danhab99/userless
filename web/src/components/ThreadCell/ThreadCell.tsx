@@ -48,11 +48,13 @@ export const Success = (props: CellSuccessProps<FindThreadQuery, FindThreadQuery
 
   return (
     <div>
+      <div className="flex flex-col-reverse">
       {showParents
         ? props.thread.parents.map((thread: Thread) => (
-            <ThreadCard key={thread.hash} thread={thread} />
-          ))
-        : null}
+          <ThreadCard key={thread.hash} thread={thread} />
+        ))
+      : null}
+      </div>
 
       {props.enableShowingParents && props.thread.parents.length > 0 ? (
         <ParentTB

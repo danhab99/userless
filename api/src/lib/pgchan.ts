@@ -1,6 +1,6 @@
 import * as openpgp from 'openpgp'
 import { db } from 'src/lib/db'
-import type { CreateThreadInput, Thread, PublicKey } from 'api/types/graphql'
+import type { Thread, PublicKey } from 'api/types/graphql'
 import { createHash } from 'crypto'
 
 class PGChanError extends Error {
@@ -58,103 +58,106 @@ export type Policy = {
   requireRecipients: string[]
 }
 
-export async function collectPolicies(thread: Thread) {
-  const ancestors = await findAncestors(thread)
-  var policy: Policy = {
-    allowReplies: true,
-    banned: false,
-    requireRecipients: [],
-  }
+// export async function collectPolicies(thread: Thread) {
+//   const ancestors = await findAncestors(thread)
+//   var policy: Policy = {
+//     allowReplies: true,
+//     banned: false,
+//     requireRecipients: [],
+//   }
 
-  for (const ancestor of ancestors) {
-    const msg = await openpgp.readCleartextMessage({
-      cleartextMessage: ancestor.policy,
-    })
-    await getSigner(msg)
+//   for (const ancestor of ancestors) {
+//     const msg = await openpgp.readCleartextMessage({
+//       cleartextMessage: ancestor.policy,
+//     })
+//     await getSigner(msg)
 
-    const p: Policy = JSON.parse(msg.getText())
+//     const p: Policy = JSON.parse(msg.getText())
 
-    policy.allowReplies = !policy.allowReplies || p.allowReplies
-    policy.banned = policy.banned || p.banned
-    policy.requireRecipients = policy.requireRecipients.concat(
-      p.requireRecipients
-    )
-  }
+//     policy.allowReplies = !policy.allowReplies || p.allowReplies
+//     policy.banned = policy.banned || p.banned
+//     policy.requireRecipients = policy.requireRecipients.concat(
+//       p.requireRecipients
+//     )
+//   }
 
-  return policy
-}
+//   return policy
+// }
 
-export async function setPolicy(
-  thread: Pick<Thread, 'hash'>,
-  policyCleartext: string
-) {
-  const msg = await openpgp.readCleartextMessage({
-    cleartextMessage: policyCleartext,
-  })
+// export async function setPolicy(
+//   thread: Pick<Thread, 'hash'>,
+//   policyCleartext: string
+// ) {
+//   const msg = await openpgp.readCleartextMessage({
+//     cleartextMessage: policyCleartext,
+//   })
 
-  const owner = await getSigner(msg)
-  if (!owner.master) {
-    throw new PGChanError('Not allowed to change policy')
-  }
+//   const owner = await getSigner(msg)
+//   if (!owner.master) {
+//     throw new PGChanError('Not allowed to change policy')
+//   }
 
-  const rawSig = spoofArmoredSignature(policyCleartext)
-  const sig = await openpgp.readSignature({ armoredSignature: rawSig })
+//   const rawSig = spoofArmoredSignature(policyCleartext)
+//   const sig = await openpgp.readSignature({ armoredSignature: rawSig })
 
-  return db.thread.upsert({
-    create: {
-      body: '',
-      timestamp: sig.packets[0].created,
-      hash: thread.hash,
-      policy: policyCleartext,
-    },
-    update: {
-      policy: policyCleartext,
-    },
-    where: {
-      hash: thread.hash,
-    },
-  })
-}
+//   return db.thread.upsert({
+//     create: {
+//       body: '',
+//       timestamp: sig.packets[0].created,
+//       hash: thread.hash,
+//     },
+//     update: {
+//       policy: policyCleartext,
+//     },
+//     where: {
+//       hash: thread.hash,
+//     },
+//   })
+// }
 
 export async function findAncestors(
-  startThread: Thread,
+  start: Pick<Thread, 'hash'>,
   limit?: number
-): Promise<Array<Thread>> {
-  const ancestors: Thread[] = [startThread]
+) {
+  const startThread = await db.thread
+    .findUnique({
+      where: {
+        hash: start.hash,
+      },
+    })
+    .parent()
+
+  const ancestors = [startThread]
+  debugger
 
   var max = limit ?? Number.MAX_VALUE
 
-  while (max-- > 0) {
+  while (max-- > 0 && ancestors[ancestors.length - 1].replyTo) {
     const thread = await db.thread.findFirst({
       where: {
-        hash: ancestors[ancestors.length - 1].hash,
+        hash: ancestors[ancestors.length - 1].replyTo,
       },
       include: {
         parent: true,
       },
     })
-
-    if (thread.parent) {
-      ancestors.push(thread.parent as unknown as Thread)
-    } else {
-      break
-    }
+    ancestors.push(thread)
   }
 
-  return ancestors.slice(1)
+  return ancestors
 }
 
-export function compileClearTextMessage(thread: Thread): string {
-  return `-----BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA256${thread.parent ? `\nreplyTo:${thread.parent.hash}` : ''}
+// export function compileClearTextMessage(thread: Thread): string {
+//   return `-----BEGIN PGP SIGNED MESSAGE-----
+// Hash: SHA256${thread.parent ? `\nreplyTo:${thread.parent.hash}` : ''}
 
-${thread.body}
------BEGIN PGP SIGNATURE-----
+// ${thread.body}
+// -----BEGIN PGP SIGNATURE-----
 
-${thread.signature}
------END PGP SIGNATURE-----
-`
-}
+// ${thread.signature}
+// -----END PGP SIGNATURE-----
+// `
+// }
 
 export async function uploadThread(threadClearText: string) {
   const msg = await openpgp.readCleartextMessage({
