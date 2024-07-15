@@ -37,7 +37,7 @@ const PostThread = (props: PostThreadProps) => {
       ;(async () => {
         const msg = await openpgp.createCleartextMessage({
           text: [
-            props.replyTo?.hash ? `replyTo:${props.replyTo.hash}\n` : '',
+            props.replyTo?.hash ? `replyTo: ${props.replyTo.hash}` : '',
             '',
             v.body,
           ]
@@ -96,7 +96,7 @@ const PostThread = (props: PostThreadProps) => {
           required
         />
         <div className="flex flex-col md:flex-row">
-          <SelectField required name="sk" className="w-8/10 w-full p-2 overflow-hidden">
+          <SelectField defaultValue={privateKeys[0]?.getKeyID().toHex()} required name="sk" className="w-8/10 w-full p-2 overflow-hidden">
             {privateKeys.map((key) => (
               <option value={key.getKeyID().toHex()}>{key.users[0].userID.name} {"<"}{key.getKeyID().toHex()}{">"} {key.isDecrypted() ? "unlocked" : ""}</option>
             ))}
