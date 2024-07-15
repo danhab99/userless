@@ -84,6 +84,9 @@ export const Thread: ThreadRelationResolvers = {
       },
       skip: args.skip,
       take: args.limit,
+      orderBy: {
+        timestamp: "desc",
+      }
     })
   },
 }

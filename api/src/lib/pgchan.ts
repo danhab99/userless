@@ -127,12 +127,16 @@ export async function findAncestors(
     })
     .parent()
 
+  if (!startThread) {
+    return [];
+  }
+
   const ancestors = [startThread]
   debugger
 
   var max = limit ?? Number.MAX_VALUE
 
-  while (max-- > 0 && ancestors[ancestors.length - 1].replyTo) {
+  while (max-- > 0 && ancestors[ancestors.length - 1]?.replyTo) {
     const thread = await db.thread.findFirst({
       where: {
         hash: ancestors[ancestors.length - 1].replyTo,

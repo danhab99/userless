@@ -23,6 +23,9 @@ model Thread {
   signedById String
   timestamp  DateTime
   policy     ThreadPolicy
+
+  @@index([replyTo])
+  @@index([signedById])
 }
 
 type ThreadPolicy {
@@ -43,6 +46,9 @@ model PublicKey {
   revoked    Boolean         @default(false)
   threads    Thread[]
   policy     PublicKeyPolicy
+
+  @@index([email])
+  @@index([name])
 }
 
 type PublicKeyPolicy {
