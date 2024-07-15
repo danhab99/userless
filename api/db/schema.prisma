@@ -39,7 +39,6 @@ model PublicKey {
   finger     String          @unique
   id         String          @id @default(auto()) @map("_id") @db.ObjectId
   keyId      String          @unique
-  master     Boolean         @default(false)
   name       String
   revoked    Boolean         @default(false)
   threads    Thread[]

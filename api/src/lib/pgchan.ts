@@ -21,7 +21,7 @@ function spoofArmoredSignature(clearText: string) {
     seenEnd = seenEnd || line === '-----END PGP SIGNATURE-----'
 
     if (seenStart && !seenEnd) {
-      armoredSignature += line + "\n"
+      armoredSignature += line + '\n'
     }
   })
 
@@ -117,11 +117,12 @@ export async function setPolicy(
 }
 
 export async function findAncestors(
-  startThread: Thread, limit?: number
+  startThread: Thread,
+  limit?: number
 ): Promise<Array<Thread>> {
   const ancestors: Thread[] = [startThread]
 
-  var max = limit ?? Number.MAX_VALUE;
+  var max = limit ?? Number.MAX_VALUE
 
   while (max-- > 0) {
     const thread = await db.thread.findFirst({
@@ -131,14 +132,14 @@ export async function findAncestors(
       include: {
         parent: true,
       },
-    }) 
+    })
 
     if (thread.parent) {
       ancestors.push(thread.parent as unknown as Thread)
     } else {
       break
     }
-  } 
+  }
 
   return ancestors.slice(1)
 }
@@ -155,9 +156,7 @@ ${thread.signature}
 `
 }
 
-export async function uploadThread(
-  threadClearText: string
-) {
+export async function uploadThread(threadClearText: string) {
   const msg = await openpgp.readCleartextMessage({
     cleartextMessage: threadClearText,
   })
@@ -195,7 +194,7 @@ export async function uploadThread(
 
   const hasher = createHash('sha256')
   hasher.write(threadClearText)
-  const hash = hasher.digest().toString("hex")
+  const hash = hasher.digest().toString('hex')
 
   return db.thread.create({
     data: {
@@ -204,7 +203,13 @@ export async function uploadThread(
       timestamp: timestamp,
       replyTo: replyTo,
       signedById: signature.getSigningKeyIDs()[0].toHex(),
-    }
+      policy: {
+        acceptsReplies: true,
+        visible: true,
+        encryptFor: [],
+        policyEditors: [],
+      },
+    },
   })
 }
 
@@ -222,6 +227,11 @@ export async function registerPublicKey(publicKeyArmored: string) {
       finger: newKey.getFingerprint(),
       keyId: newKey.getKeyID().toHex(),
       name: user.userID.name,
+      policy: {
+        allowedToPost: true,
+        canStartThreads: true,
+        isMaster: true,
+      },
     },
   })
 }

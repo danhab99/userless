@@ -31,7 +31,8 @@ export const handler = async (event: APIGatewayEvent, _context: Context) => {
 
   const thread = await db.thread.findUnique({
     where: {
-      hash
+      hash,
+      approved: true,
     },
     select: {
       body: true
