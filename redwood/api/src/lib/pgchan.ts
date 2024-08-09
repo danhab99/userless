@@ -197,6 +197,19 @@ export async function uploadThread(threadClearText: string) {
   if (lines[0].startsWith('replyTo:')) {
     replyTo = lines[0].split(':')[1].trim()
     postContent = lines.slice(1).join('\n')
+
+    const {policy} = await  db.thread.findUnique({
+      where: {
+        hash: replyTo
+      },
+      select: {
+        policy: true,
+      }
+    })
+
+    if (!policy.acceptsReplies) {
+      throw "Not allowed to reply to";
+    }
   }
 
   const hasher = createHash('sha256')

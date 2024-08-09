@@ -17,6 +17,11 @@ export const threads: QueryResolvers['threads'] = (args) => {
       timestamp: "desc",
     },
     where: {
+      policy: {
+        is: {
+          visible: true,
+        }
+      },
       replyTo: {
         isSet: false,
       },
@@ -28,6 +33,11 @@ export const thread: QueryResolvers['thread'] = ({ threadHash }) => {
   return db.thread.findUnique({
     where: {
       hash: threadHash,
+      policy: {
+        is: {
+          visible: true,
+        }
+      },
     },
   })
 }
@@ -53,11 +63,7 @@ export const Thread: ThreadRelationResolvers = {
       .parent()
   },
   parents: async (args, { root }) => {
-    var parents = await findAncestors(root as ThreadType)
-    if (args?.limit > 0) {
-      parents = parents.slice(0, args.limit)
-    }
-    return parents
+    return findAncestors(root as ThreadType, args.limit);
   },
   policy: async (args, { root }) => {
     if (!root.policy) {
@@ -81,6 +87,9 @@ export const Thread: ThreadRelationResolvers = {
     return db.thread.findMany({
       where: {
         replyTo: root.hash,
+        policy: {
+          visible: true,
+        }
       },
       skip: args.skip,
       take: args.limit,
