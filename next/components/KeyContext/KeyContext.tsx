@@ -6,12 +6,8 @@ import {
   useCallback,
 } from 'react'
 import * as openpgp from 'openpgp'
-import { Link, routes } from '@redwoodjs/router'
 import ActionButton from '../ActionButton/ActionButton'
-import { useRegisterKey } from 'src/registerKey'
-import { useAsyncMemo } from 'src/useAsyncMemo'
-import { useQuery } from '@redwoodjs/web'
-import { set } from '@redwoodjs/forms'
+import Link from 'next/link'
 
 const PrivateKeysContext = createContext<openpgp.PrivateKey[]>([])
 const DecryptedPrivateKeysContext = createContext<openpgp.PrivateKey[]>([])
@@ -84,9 +80,15 @@ const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
   }, [keys, decryptedKeys])
 
   const addKey = useCallback(
-    async (files: FileList) => {
+    async (files: FileList | null) => {
+      if (!files) {
+        return
+      }
+
       for (let i = 0; i < files.length; i++) {
         const file = files.item(i)
+        if (!file) continue
+
         const rawKeys = await file.text()
 
         try {
@@ -155,7 +157,7 @@ const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
             <h4 onClick={() => setOpen((x) => !x)}>
               {open ? '⮟' : '⮝'} Key mananger{' '}
               {open ? (
-                <Link to={routes.generateKey()}>
+                <Link href="/generate-keys">
                   <ActionButton label="Generate Key" />
                 </Link>
               ) : null}

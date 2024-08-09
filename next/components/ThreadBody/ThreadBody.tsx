@@ -1,28 +1,28 @@
-import { useAsyncMemo } from 'src/useAsyncMemo'
-import { Thread } from 'types/graphql'
-import * as openpgp from 'openpgp'
-import Markdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import rehypeHighlight from 'rehype-highlight'
+import { useAsyncMemo } from "@/lib/useAsyncMemo";
+import * as openpgp from "openpgp";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
+import { Thread } from "@prisma/client";
 // import * as syntax_highlight from 'highlight.js/lib/languages/*';
 
 type ThreadBodyProps = {
-  thread: Thread
-}
+  thread: Thread;
+};
 
 const ThreadBody = (props: ThreadBodyProps) => {
   const body = useAsyncMemo(async () => {
     const msg = await openpgp.readCleartextMessage({
       cleartextMessage: props.thread.body,
-    })
+    });
 
-    var body = msg.getText()
-    if (body.startsWith('replyTo:')) {
-      body = body.slice(body.indexOf('\n'))
+    var body = msg.getText();
+    if (body.startsWith("replyTo:")) {
+      body = body.slice(body.indexOf("\n"));
     }
 
-    return body
-  }, [props.thread])
+    return body;
+  }, [props.thread]);
 
   return (
     <div className="markdown py-4">
@@ -33,7 +33,7 @@ const ThreadBody = (props: ThreadBodyProps) => {
         {body}
       </Markdown>
     </div>
-  )
-}
+  );
+};
 
-export default ThreadBody
+export default ThreadBody;

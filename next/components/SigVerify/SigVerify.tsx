@@ -1,15 +1,6 @@
+import {Thread} from '@prisma/client'
 import * as openpgp from 'openpgp'
 import { useEffect, useState } from 'react'
-import { PublicKey, Thread } from 'types/graphql'
-import { useApolloClient } from '@apollo/client'
-
-const GET_PUBLICKEY = gql`
-  query GetPublicArmoredKey($keyId: [String!]) {
-    publicKeys(keyIds: $keyId) {
-      armoredKey
-    }
-  }
-`
 
 type SigVerifyProps = {
   thread: Thread
@@ -26,8 +17,6 @@ enum VerifiedStatus {
 const SigVerify = (props: SigVerifyProps) => {
   const [status, setStatus] = useState<VerifiedStatus>(VerifiedStatus.Working)
 
-  const client = useApolloClient()
-
   useEffect(() => {
     if (props.thread) {
       setStatus(VerifiedStatus.Working)
@@ -36,15 +25,14 @@ const SigVerify = (props: SigVerifyProps) => {
           cleartextMessage: props.thread.body,
         })
 
-        const pubKeys = await client.query<{ publicKeys: PublicKey[]}>({
-          query: GET_PUBLICKEY,
-          variables: {
-            keyId: msg.getSigningKeyIDs().map((x) => x.toHex()),
-          },
-        })
+        const resp = await fetch(`/api/k/${props.thread.signedById}`)
+        if (!resp.ok) {
+          setStatus(VerifiedStatus.Error)
+          return
+        }
 
         const keys = await openpgp.readKeys({
-          armoredKeys: pubKeys.data.publicKeys.map(x => x.armoredKey).join("")
+          armoredKeys: await resp.text()
         })
 
         if (!(await Promise.all(keys.map(x => x.isRevoked())))) {

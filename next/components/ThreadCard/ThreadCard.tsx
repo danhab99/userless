@@ -1,35 +1,19 @@
-import type { Thread } from 'types/graphql'
-import SigVerify from '../SigVerify/SigVerify'
-import mailto from 'mailto-link'
-import ThreadBody from '../ThreadBody/ThreadBody'
-import { Link, routes } from '@redwoodjs/router'
-import { registerFragment } from '@redwoodjs/web/apollo'
-import { useState } from 'react'
-import PostThread from '../PostThread/PostThread'
-import { func } from 'prop-types'
-import { MakeToggleButton } from '../ToggleButton/ToggleButton'
+import SigVerify from "../SigVerify/SigVerify";
+import mailto from "mailto-link";
+import ThreadBody from "../ThreadBody/ThreadBody";
+import PostThread from "../PostThread/PostThread";
+import { MakeToggleButton } from "../ToggleButton/ToggleButton";
+import { Thread } from "@prisma/client";
+import Link from "next/link";
 
 type ThreadCardProps = {
-  thread: Pick<Thread, 'body' | 'hash' | 'signedBy' | 'timestamp'>
-}
-
-registerFragment(gql`
-  fragment ThreadCard on Thread {
-    body
-    hash
-    timestamp
-    signedBy {
-      email
-      name
-      keyId
-    }
-  }
-`)
+  thread: Thread;
+};
 
 const ThreadCard = ({ thread }: ThreadCardProps) => {
-  const [ReplyTB, showReply] = MakeToggleButton(false)
-  const [SourceTB, showSource] = MakeToggleButton(false)
-  const [FullTB, showFull] = MakeToggleButton(false)
+  const [ReplyTB, showReply] = MakeToggleButton(false);
+  const [SourceTB, showSource] = MakeToggleButton(false);
+  const [FullTB, showFull] = MakeToggleButton(false);
 
   const mailtoLink = mailto({
     to: thread.signedBy.email,
@@ -37,7 +21,7 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
 
 In response to your thread https://${window.location.hostname}/t/${thread.hash}`,
     subject: `RE: https://${window.location.hostname}/t/${thread.hash}`,
-  })
+  });
 
   function Controls() {
     return (
@@ -46,7 +30,7 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
         <SourceTB trueLabel="Hide source" falseLabel="Source" />
         <FullTB trueLabel="Less" falseLabel="More" />
       </div>
-    )
+    );
   }
 
   return (
@@ -54,37 +38,33 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
       <p className="text-sm">
         <span className="text-green-700">
           {new Date(thread.timestamp).toLocaleString()}
-        </span>{' '}
+        </span>{" "}
         <span className="text-username">
           {thread.signedBy.name}
-          <Link to={routes.key({ keyid: thread.signedBy.keyId })}>
-            {'('}
+          <Link href={`/k/${thread.signedBy.keyId}`}>
+            {"("}
             {thread.signedBy.keyId}
-            {')'}
+            {")"}
           </Link>
           <a href={mailtoLink} target="_blank">
-            {'<'}
+            {"<"}
             {thread.signedBy.email}
-            {'>'}
+            {">"}
           </a>
-        </span>{' '}
-        <Link
-          className="text-slate-600"
-          to={routes.thread({ threadhash: thread.hash })}
-        >
+        </span>{" "}
+        <Link className="text-slate-600" to={`/t/${thread.hash}`}>
           {thread.hash.slice(0, 16)}
-        </Link>{' '}
+        </Link>{" "}
         <SigVerify thread={thread as Thread} />
       </p>
 
       <Controls />
 
-      <div className={showFull ? 'h-full' : 'max-h-96 overflow-y-auto'}>
+      <div className={showFull ? "h-full" : "max-h-96 overflow-y-auto"}>
         <ThreadBody thread={thread as Thread} />
       </div>
 
       <Controls />
-
       {showReply ? (
         <div className="pt-4">
           <PostThread replyTo={thread} />
@@ -96,7 +76,7 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
         </pre>
       ) : null}
     </div>
-  )
-}
+  );
+};
 
-export default ThreadCard
+export default ThreadCard;

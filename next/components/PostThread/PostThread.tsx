@@ -1,111 +1,109 @@
-import { hashThread } from '../../../../hashThread'
-import { useCallback, useState } from 'react'
-import {
-  FieldValues,
-  Submit,
-  Form,
-  Label,
-  SelectField,
-  TextAreaField,
-} from '@redwoodjs/forms'
-import { KeyBody, usePrivateKeys } from 'src/components/KeyContext'
-import { useMutation } from '@redwoodjs/web'
-import { CreateThreadInput, Thread } from 'types/graphql'
-import * as openpgp from 'openpgp'
-
-const ADD_THREAD = gql`
-  mutation AddThread($input: CreateThreadInput!) {
-    createThread(input: $input) {
-      hash
-    }
-  }
-`
+import { useCallback } from "react";
+import { usePrivateKeys } from "@/components/KeyContext/KeyContext";
+import * as openpgp from "openpgp";
+import { Thread } from "@prisma/client";
+import { FieldValues, useForm } from "react-hook-form";
 
 export type PostThreadProps = {
-  replyTo?: Pick<Thread, 'hash'>
-}
+  replyTo?: Pick<Thread, "hash">;
+};
 
 const PostThread = (props: PostThreadProps) => {
-  const privateKeys = usePrivateKeys()
-  const [addThread] = useMutation<
-    { createThread: { hash: string } },
-    { input: CreateThreadInput }
-  >(ADD_THREAD)
+  const privateKeys = usePrivateKeys();
+  const { register, handleSubmit } = useForm();
 
-  const handleSubmit = useCallback(
+  const onSubmit = useCallback(
     (v: FieldValues) => {
-      ;(async () => {
+      (async () => {
         const msg = await openpgp.createCleartextMessage({
           text: [
-            props.replyTo?.hash ? `replyTo: ${props.replyTo.hash}` : '',
-            '',
+            props.replyTo?.hash ? `replyTo: ${props.replyTo.hash}` : "",
+            "",
             v.body,
           ]
-            .join('\n')
+            .join("\n")
             .trim(),
-        })
+        });
 
-        var pk = privateKeys.find((x) => x.getKeyID().toHex() === v['sk'])
+        var pk = privateKeys.find((x) => x.getKeyID().toHex() === v["sk"]);
         if (!pk.isPrivate()) {
-          throw 'not a pk'
+          throw "not a pk";
         }
 
         if (!pk.isDecrypted()) {
-          const password = prompt(`Password to decrypt ${pk.getKeyID().toHex()}`)
+          const password = prompt(
+            `Password to decrypt ${pk.getKeyID().toHex()}`,
+          );
 
           try {
             pk = await openpgp.decryptKey({
               privateKey: pk,
-              passphrase: password,
-            })
+              passphrase: password ?? "",
+            });
           } catch (e) {
-            alert(e)
+            alert(e);
           }
         }
 
         const signedMsg = await openpgp.sign({
           message: msg,
           signingKeys: [pk],
-          format: 'armored',
-        })
+          format: "armored",
+        });
 
-        const res = await addThread({
-          variables: {
-            input: {
-              clearText: signedMsg,
-            },
-          },
-        })
+        const resp = await fetch("/api/post", {
+          method: "POST",
+          body: signedMsg,
+          redirect: "manual",
+        });
 
-        window.location.href = `/t/${res.data.createThread.hash}`
-      })()
+        if (resp.redirected) {
+          window.location.href = `/t/${resp.headers.get("location")}`;
+        } else {
+          alert("Unable to post thread");
+          console.error(resp);
+        }
+      })();
     },
-    [privateKeys, addThread]
-  )
+    [privateKeys],
+  );
 
   return (
     <div className="bg-white shadow-xl w-full">
-      <Form onSubmit={handleSubmit}>
-        <Label name="body" className="px-2">
-          {props.replyTo ? `Reply to ${props.replyTo.hash}` : 'Body:'}
-        </Label>
-        <TextAreaField
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <label name="body" className="px-2">
+          {props.replyTo ? `Reply to ${props.replyTo.hash}` : "Body:"}
+        </label>
+        <textarea
+          {...register}
           name="body"
           className="w-full"
           rows={10}
           required
-        />
+        />{" "}
         <div className="flex flex-col md:flex-row">
-          <SelectField defaultValue={privateKeys[0]?.getKeyID().toHex()} required name="sk" className="w-8/10 w-full p-2 overflow-hidden">
+          <select
+            {...register}
+            defaultValue={privateKeys[0]?.getKeyID().toHex()}
+            required
+            name="sk"
+            className="w-8/10 w-full p-2 overflow-hidden"
+          >
             {privateKeys.map((key) => (
-              <option value={key.getKeyID().toHex()}>{key.users[0].userID.name} {"<"}{key.getKeyID().toHex()}{">"} {key.isDecrypted() ? "unlocked" : ""}</option>
+              <option value={key.getKeyID().toHex()}>
+                {key.users[0].userID?.name} {"<"}
+                {key.getKeyID().toHex()}
+                {">"} {key.isDecrypted() ? "unlocked" : ""}
+              </option>
             ))}
-          </SelectField>
-          <Submit className="px-4">Post</Submit>
+          </select>
+          <button className="px-4" type="submit">
+            Post
+          </button>
         </div>
-      </Form>
+      </form>
     </div>
-  )
-}
+  );
+};
 
-export default PostThread
+export default PostThread;
