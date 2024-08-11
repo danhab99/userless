@@ -1,13 +1,20 @@
-import { Link, routes } from '@redwoodjs/router'
-import { MetaTags } from '@redwoodjs/web'
-import PostThread from 'src/components/PostThread/PostThread'
-import ThreadsCell from 'src/components/ThreadsCell'
+import { PrismaClient } from "@prisma/client";
+import ThreadCard from "@/components/ThreadCard/ThreadCard";
+import { includes } from "@/db";
+import PostThread from "@/components/PostThread/PostThread";
 
-const WelcomePage = () => {
+const db = new PrismaClient();
+
+const WelcomePage = async () => {
+  const threads = await db.thread.findMany({
+    where: {
+      replyTo: null,
+    },
+    ...includes,
+  });
+
   return (
     <>
-      <MetaTags title="Welcome" description="Welcome page" />
-
       <header className="p-8 text-center">
         <h1>PGChan.gpg</h1>
         <p>
@@ -16,10 +23,13 @@ const WelcomePage = () => {
         </p>
       </header>
 
+      <PostThread />
 
-      <ThreadsCell />
+      {threads.map((thread) => (
+        <ThreadCard thread={thread} />
+      ))}
     </>
-  )
-}
+  );
+};
 
-export default WelcomePage
+export default WelcomePage;

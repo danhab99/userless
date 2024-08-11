@@ -1,17 +1,39 @@
-import { Link, routes, useParams } from '@redwoodjs/router'
-import { Metadata } from '@redwoodjs/web'
-import ThreadCell from 'src/components/ThreadCell'
+import ThreadCard from "@/components/ThreadCard/ThreadCard";
+import { getParents, getReplies, getThread } from "@/db";
 
-const ThreadPage = () => {
-  const { threadhash } = useParams()
+type ThreadPageProps = {
+  params: {
+    hash: string;
+  };
+};
+
+const ThreadPage = async ({ params }: ThreadPageProps) => {
+  const thread = await getThread(params.hash);
+  if (!thread) {
+    throw "didnt find thread";
+  }
+
+  const [replies, parents] = await Promise.all([
+    getReplies(params.hash),
+    getParents(params.hash),
+  ]);
 
   return (
     <>
-      <Metadata title="Thread" description="Thread page" />
+      {parents.map((thread) => (
+        <ThreadCard thread={thread} />
+      ))}
+      <hr />
 
-      <ThreadCell showParentsDef={true} showRepliesDef={true} threadHash={threadhash} />
+      <ThreadCard thread={thread} />
+
+      <div className="pr-4">
+        {replies.map((thread) => (
+          <ThreadCard thread={thread} />
+        ))}
+      </div>
     </>
-  )
-}
+  );
+};
 
-export default ThreadPage
+export default ThreadPage;
