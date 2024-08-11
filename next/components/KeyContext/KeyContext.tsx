@@ -30,8 +30,10 @@ function uniqueKeys(keys: openpgp.PrivateKey[][]) {
 }
 
 const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
+  "use client"
   const [keys, setKeys] = useState<openpgp.PrivateKey[]>([]);
   const [decryptedKeys, setDecryptedKeys] = useState<openpgp.PrivateKey[]>([]);
+
   useEffect(() => {
     (async () => {
       if (keys.length > 0) {

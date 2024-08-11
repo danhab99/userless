@@ -16,6 +16,7 @@ enum VerifiedStatus {
 }
 
 const SigVerify = (props: SigVerifyProps) => {
+  "use client"
   const [status, setStatus] = useState<VerifiedStatus>(VerifiedStatus.Working)
 
   useEffect(() => {

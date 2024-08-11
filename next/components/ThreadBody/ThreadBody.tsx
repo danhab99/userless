@@ -1,9 +1,10 @@
-import { useAsyncMemo } from "@/lib/useAsyncMemo";
+"use client"
 import * as openpgp from "openpgp";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import { Thread } from "@prisma/client";
+import { useAsync } from "react-use";
 // import * as syntax_highlight from 'highlight.js/lib/languages/*';
 
 type ThreadBodyProps = {
@@ -11,7 +12,7 @@ type ThreadBodyProps = {
 };
 
 const ThreadBody = (props: ThreadBodyProps) => {
-  const body = useAsyncMemo(async () => {
+  const body = useAsync(async () => {
     const msg = await openpgp.readCleartextMessage({
       cleartextMessage: props.thread.body,
     });
@@ -37,4 +38,3 @@ const ThreadBody = (props: ThreadBodyProps) => {
 };
 
 export default ThreadBody;
-
