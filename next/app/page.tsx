@@ -25,8 +25,8 @@ const WelcomePage = async () => {
 
       <PostThread />
 
-      {threads.map((thread) => (
-        <ThreadCard thread={thread} />
+      {threads.map((thread, i) => (
+        <ThreadCard key={i} thread={thread} />
       ))}
     </>
   );

@@ -1,3 +1,4 @@
+"use client"
 import SigVerify from "../SigVerify/SigVerify";
 import mailto from "mailto-link";
 import ThreadBody from "../ThreadBody/ThreadBody";

@@ -20,16 +20,16 @@ const ThreadPage = async ({ params }: ThreadPageProps) => {
 
   return (
     <>
-      {parents.map((thread) => (
-        <ThreadCard thread={thread} />
+      {parents.map((thread, i) => (
+        <ThreadCard key={i} thread={thread} />
       ))}
       <hr />
 
       <ThreadCard thread={thread} />
 
       <div className="pr-4">
-        {replies.map((thread) => (
-          <ThreadCard thread={thread} />
+        {replies.map((thread, i) => (
+          <ThreadCard key={i} thread={thread} />
         ))}
       </div>
     </>

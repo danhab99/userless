@@ -1,3 +1,4 @@
+"use client"
 import {
   CheckboxField,
   Form,
@@ -38,7 +39,7 @@ const GenerateKeyPage = () => {
     })
 
     addKey(skp)
-  }, [])
+  }, [addKey])
 
   return (
     <>

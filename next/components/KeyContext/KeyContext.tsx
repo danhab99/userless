@@ -275,7 +275,7 @@ function KeyRow(props: {
 
       props.unlock(sk, password ?? "");
     })();
-  }, [sk, props.unlock, primaryUser]);
+  }, [sk, props.unlock, primaryUser, addKey]);
 
   return (
     <div className="flex flex-row align-middle">

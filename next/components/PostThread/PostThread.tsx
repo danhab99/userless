@@ -90,8 +90,8 @@ const PostThread = (props: PostThreadProps) => {
             name="sk"
             className="w-8/10 w-full p-2 overflow-hidden"
           >
-            {privateKeys.map((key) => (
-              <option value={key.getKeyID().toHex()}>
+            {privateKeys.map((key, i) => (
+              <option key={i} value={key.getKeyID().toHex()}>
                 {key.users[0].userID?.name} {"<"}
                 {key.getKeyID().toHex()}
                 {">"} {key.isDecrypted() ? "unlocked" : ""}
