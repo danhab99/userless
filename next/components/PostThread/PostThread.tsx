@@ -1,3 +1,4 @@
+"use client"
 import { useCallback } from "react";
 import { usePrivateKeys } from "@/components/KeyContext/KeyContext";
 import * as openpgp from "openpgp";

@@ -1,3 +1,4 @@
+"use client"
 import {Thread} from '@prisma/client'
 import * as openpgp from 'openpgp'
 import { useEffect, useState } from 'react'
@@ -19,8 +20,8 @@ const SigVerify = (props: SigVerifyProps) => {
 
   useEffect(() => {
     if (props.thread) {
-      setStatus(VerifiedStatus.Working)
-      ;(async () => {
+      setStatus(VerifiedStatus.Working);
+      (async () => {
         const msg = await openpgp.readCleartextMessage({
           cleartextMessage: props.thread.body,
         })

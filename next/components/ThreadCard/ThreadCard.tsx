@@ -3,11 +3,12 @@ import mailto from "mailto-link";
 import ThreadBody from "../ThreadBody/ThreadBody";
 import PostThread from "../PostThread/PostThread";
 import { MakeToggleButton } from "../ToggleButton/ToggleButton";
-import { Thread } from "@prisma/client";
+import { Thread, Prisma } from "@prisma/client";
 import Link from "next/link";
+import { ThreadForThreadCard } from "@/global";
 
 type ThreadCardProps = {
-  thread: Thread;
+  thread: ThreadForThreadCard;
 };
 
 const ThreadCard = ({ thread }: ThreadCardProps) => {
@@ -17,10 +18,10 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
 
   const mailtoLink = mailto({
     to: thread.signedBy.email,
+    subject: `RE: https://${window.location.hostname}/t/${thread.hash}`,
     body: `Hello ${thread.signedBy.name},
 
 In response to your thread https://${window.location.hostname}/t/${thread.hash}`,
-    subject: `RE: https://${window.location.hostname}/t/${thread.hash}`,
   });
 
   function Controls() {
@@ -52,7 +53,7 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
             {">"}
           </a>
         </span>{" "}
-        <Link className="text-slate-600" to={`/t/${thread.hash}`}>
+        <Link className="text-slate-600" href={`/t/${thread.hash}`}>
           {thread.hash.slice(0, 16)}
         </Link>{" "}
         <SigVerify thread={thread as Thread} />
@@ -65,6 +66,7 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
       </div>
 
       <Controls />
+      o
       {showReply ? (
         <div className="pt-4">
           <PostThread replyTo={thread} />
