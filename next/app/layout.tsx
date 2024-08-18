@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "./globals.css";
+import "./index.css";
 import KeyContextProvider from "@/components/KeyContext/KeyContext";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -17,9 +17,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <KeyContextProvider>
-        <body className={inter.className}>{children}</body>
-      </KeyContextProvider>
+      <body className={inter.className}>{children}</body>
     </html>
   );
 }

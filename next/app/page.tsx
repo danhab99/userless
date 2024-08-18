@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import ThreadCard from "@/components/ThreadCard/ThreadCard";
-import { includes } from "@/db";
+import { includes } from "@/lib/db";
 import PostThread from "@/components/PostThread/PostThread";
 
 const db = new PrismaClient();
@@ -33,3 +33,5 @@ const WelcomePage = async () => {
 };
 
 export default WelcomePage;
+
+
