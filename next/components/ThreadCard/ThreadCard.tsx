@@ -43,7 +43,14 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
         </span>{" "}
         <span className="text-username">
           {thread.signedBy.name}
-          <Link href={`/k/${thread.signedBy.keyId}`}>
+          <Link
+            href={{
+              pathname: "/k/[keyid]",
+              query: {
+                keyid: thread.signedBy.keyId,
+              },
+            }}
+          >
             {"("}
             {thread.signedBy.keyId}
             {")"}
@@ -54,20 +61,22 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
             {">"}
           </a>
         </span>{" "}
-        <Link className="text-slate-600" href={`/t/${thread.hash}`}>
+        <Link
+          className="text-slate-600"
+          href={{
+            pathname: "/t/[hash]",
+            query: thread.hash,
+          }}
+        >
           {thread.hash.slice(0, 16)}
         </Link>{" "}
         <SigVerify thread={thread as Thread} />
       </p>
-
       <Controls />
-
       <div className={showFull ? "h-full" : "max-h-96 overflow-y-auto"}>
         <ThreadBody thread={thread as Thread} />
       </div>
-
-      <Controls />
-      o
+      <Controls />o
       {showReply ? (
         <div className="pt-4">
           <PostThread replyTo={thread} />

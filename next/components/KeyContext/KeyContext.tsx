@@ -164,7 +164,14 @@ export function KeyBody({ pgKey }: { pgKey: openpgp.PrivateKey }) {
   return (
     <span className="text-username">
       {primaryUser.value?.user.userID?.name}
-      <Link href={`/k/${pgKey.getKeyID()}`}>
+      <Link
+        href={{
+          pathname: "/k/{keyid}",
+          query: {
+            keyid: pgKey.getKeyID().toHex(),
+          },
+        }}
+      >
         {"("}
         {pgKey.getKeyID().toHex()}
         {")"}
