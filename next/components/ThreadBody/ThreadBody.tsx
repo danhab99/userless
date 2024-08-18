@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import * as openpgp from "openpgp";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";

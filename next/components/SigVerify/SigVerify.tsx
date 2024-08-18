@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import {Thread} from '@prisma/client'
 import * as openpgp from 'openpgp'
 import { useEffect, useState } from 'react'
