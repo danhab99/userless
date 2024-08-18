@@ -1,23 +1,21 @@
 "use client";
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import { useState, useEffect, useCallback } from "react";
 import * as openpgp from "openpgp";
 import ActionButton from "../ActionButton/ActionButton";
 import Link from "next/link";
-import { useAsync } from "react-use";
+import {
+  createStateContext,
+  useAsync,
+  useLocalStorage,
+  useSessionStorage,
+} from "react-use";
 
-const PrivateKeysContext = createContext<openpgp.PrivateKey[]>([]);
-const DecryptedPrivateKeysContext = createContext<openpgp.PrivateKey[]>([]);
-const ChangePrivateKeysContext = createContext<
-  React.Dispatch<React.SetStateAction<openpgp.PrivateKey[]>>
->(() => {
-  throw "no context";
-});
+const [usePrivateKeysState, PrivateKeysStateProvider] = createStateContext<
+  openpgp.PrivateKey[]
+>([]);
+const [useDecryptedKeysState, DecryptedKeysStateProvider] = createStateContext<
+  openpgp.PrivateKey[]
+>([]);
 
 function uniqueKeys(keys: openpgp.PrivateKey[][]) {
   const allKeys = keys.flat(1);
@@ -30,58 +28,44 @@ function uniqueKeys(keys: openpgp.PrivateKey[][]) {
 }
 
 const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
-  "use client"
-  const [keys, setKeys] = useState<openpgp.PrivateKey[]>([]);
-  const [decryptedKeys, setDecryptedKeys] = useState<openpgp.PrivateKey[]>([]);
+  return (
+    <>
+      <PrivateKeysStateProvider>
+        <DecryptedKeysStateProvider>
+          <KeyDrawer />
+          {props.children}
+        </DecryptedKeysStateProvider>
+      </PrivateKeysStateProvider>
+    </>
+  );
+};
+
+function KeyDrawer() {
+  const [privateKeysLocal, setPrivateKeysLocal] = useLocalStorage<
+    openpgp.PrivateKey[]
+  >("ring", []);
+  const [decryptedKeysLocal, setDecryptedKeysLocal] = useSessionStorage<
+    openpgp.PrivateKey[]
+  >("ring", []);
+
+  const [privateKeys, setPrivateKeys] = usePrivateKeysState();
+  const [decryptedKeys, setDecryptedKeys] = useDecryptedKeysState();
 
   useEffect(() => {
-    (async () => {
-      if (keys.length > 0) {
-        sessionStorage.setItem(
-          "keyring",
-          JSON.stringify(decryptedKeys.map((key) => key.armor())),
-        );
+    if (decryptedKeys.length == 0) {
+      setDecryptedKeys(decryptedKeysLocal);
+    } else {
+      setDecryptedKeysLocal(decryptedKeys);
+    }
+  }, [decryptedKeys, decryptedKeysLocal]);
 
-        localStorage.setItem(
-          "keyring",
-          JSON.stringify(keys.map((key) => key.armor())),
-        );
-      } else {
-        const rawKeyRing: string[] = JSON.parse(
-          localStorage.getItem("keyring") ?? "[]",
-        );
-
-        const localKeys = Promise.all(
-          rawKeyRing.map((rawKey) =>
-            openpgp.readPrivateKey({
-              armoredKey: rawKey,
-            }),
-          ),
-        );
-
-        const decryptedRawKeyRing: string[] = JSON.parse(
-          sessionStorage.getItem("keyring") ?? "[]",
-        );
-        const localDecryptedKeys = Promise.all(
-          decryptedRawKeyRing.map((rawKey) =>
-            openpgp.readPrivateKey({
-              armoredKey: rawKey,
-            }),
-          ),
-        );
-
-        try {
-          const lk = await localKeys;
-          setKeys(lk);
-        } catch (e) {}
-
-        try {
-          const dk = await localDecryptedKeys;
-          setDecryptedKeys(dk);
-        } catch (e) {}
-      }
-    })();
-  }, [keys, decryptedKeys]);
+  useEffect(() => {
+    if (privateKeys.length == 0) {
+      setPrivateKeys(privateKeysLocal ?? []);
+    } else {
+      setPrivateKeysLocal(privateKeys);
+    }
+  }, [privateKeysLocal, privateKeys]);
 
   const addKey = useCallback(
     async (files: FileList | null) => {
@@ -100,7 +84,7 @@ const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
             armoredKeys: rawKeys,
           });
 
-          setKeys((oldKeyRing) => {
+          setPrivateKeys((oldKeyRing) => {
             const existingKeyIds = oldKeyRing.map((x) => x.getKeyID().toHex());
             const addKeys = newKeyRing.filter(
               (x) => !existingKeyIds.includes(x.getKeyID().toHex()),
@@ -114,102 +98,54 @@ const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
         }
       }
     },
-    [setKeys],
+    [setPrivateKeys],
   );
-
-  const deleteKey = useCallback(
-    (sk: openpgp.PrivateKey) => {
-      setKeys((prev) =>
-        prev.filter((x) => x.getKeyID().toHex() != sk.getKeyID().toHex()),
-      );
-    },
-    [setKeys],
-  );
-
-  const unlock = useCallback(
-    async (sk: openpgp.PrivateKey, password: string) => {
-      const decryptedKey = await openpgp.decryptKey({
-        privateKey: sk,
-        passphrase: password,
-      });
-
-      setDecryptedKeys((prev) => {
-        const keys = prev.reduce((coll, sk) => {
-          return {
-            ...coll,
-            [sk.getKeyID().toHex()]: sk,
-          };
-        }, {} as Record<string, openpgp.PrivateKey>);
-
-        keys[sk.getKeyID().toHex()] = decryptedKey;
-
-        return Object.values(keys);
-      });
-    },
-    [setDecryptedKeys],
-  );
-
-  const allKeys = uniqueKeys([decryptedKeys, keys]);
+  const allKeys = uniqueKeys([decryptedKeys, privateKeys]);
 
   const [open, setOpen] = useState(false);
 
   return (
-    <>
-      <PrivateKeysContext.Provider value={keys}>
-        <DecryptedPrivateKeysContext.Provider value={decryptedKeys}>
-          <div className="fixed bottom-0 right-0 border border-solid border-black bg-white p-4">
-            <h4 onClick={() => setOpen((x) => !x)}>
-              {open ? "⮟" : "⮝"} Key mananger{" "}
-              {open ? (
-                <Link href="/generate-keys">
-                  <ActionButton label="Generate Key" />
-                </Link>
-              ) : null}
-            </h4>
-            {open ? (
-              <>
-                {allKeys.map((sk, i) => (
-                  <KeyRow
-                    sk={sk}
-                    key={i}
-                    deleteKey={deleteKey}
-                    unlock={unlock}
-                  />
-                ))}
-                <div>
-                  <label>Add keys</label>
-                  <input
-                    type="file"
-                    multiple
-                    onChange={(e) => addKey(e.target.files)}
-                  />
-                </div>
-              </>
-            ) : null}
+    <div className="fixed bottom-0 right-0 border border-solid border-black bg-white p-4">
+      <h4 onClick={() => setOpen((x) => !x)}>
+        {open ? "⮟" : "⮝"} Key mananger{" "}
+        {open ? (
+          <Link href="/generate-keys">
+            <ActionButton label="Generate Key" />
+          </Link>
+        ) : null}
+      </h4>
+      {open ? (
+        <>
+          {allKeys.map((sk, i) => (
+            <KeyRow sk={sk} key={i} />
+          ))}
+          <div>
+            <label>Add keys</label>
+            <input
+              type="file"
+              multiple
+              onChange={(e) => addKey(e.target.files)}
+            />
           </div>
-          <ChangePrivateKeysContext.Provider value={setKeys}>
-            {props.children}
-          </ChangePrivateKeysContext.Provider>
-        </DecryptedPrivateKeysContext.Provider>
-      </PrivateKeysContext.Provider>
-    </>
+        </>
+      ) : null}
+    </div>
   );
-};
+}
 
 export default KeyContextProvider;
 
 export function usePrivateKeys() {
-  return uniqueKeys([
-    useContext(DecryptedPrivateKeysContext),
-    useContext(PrivateKeysContext),
-  ]);
+  const [pk] = usePrivateKeysState();
+  const [dk] = useDecryptedKeysState();
+  return uniqueKeys([dk, pk]);
 }
 
 export function useAddPrivateKey(): (sk: openpgp.PrivateKey) => void {
-  const set = useContext(ChangePrivateKeysContext);
+  const [_, setPrivateKeys] = usePrivateKeysState();
   return useCallback(
-    (sk: openpgp.PrivateKey) => set((prev) => prev.concat(sk)),
-    [set],
+    (sk: openpgp.PrivateKey) => setPrivateKeys((prev) => prev.concat(sk)),
+    [setPrivateKeys],
   );
 }
 
@@ -240,13 +176,45 @@ export function KeyBody({ pgKey }: { pgKey: openpgp.PrivateKey }) {
   );
 }
 
-function KeyRow(props: {
-  sk: openpgp.PrivateKey;
-  deleteKey: (sk: openpgp.PrivateKey) => void;
-  unlock: (sk: openpgp.PrivateKey, password: string) => void;
-}) {
+function KeyRow(props: { sk: openpgp.PrivateKey }) {
   const { sk } = props;
   const keyId = sk.getKeyID().toHex();
+
+  const [_, setPrivateKeys] = usePrivateKeysState();
+  const [__, setDecryptedKeys] = useDecryptedKeysState();
+
+  const deleteKey = useCallback(() => {
+    setPrivateKeys((prev) =>
+      prev.filter((x) => x.getKeyID().toHex() != sk.getKeyID().toHex()),
+    );
+  }, [sk]);
+
+  const unlock = useCallback(async () => {
+    const password = prompt(
+      `Password to decrypt ${keyBodyString(primaryUser.value as openpgp.PrimaryUser, sk)}`,
+    );
+
+    const decryptedKey = await openpgp.decryptKey({
+      privateKey: sk,
+      passphrase: password ?? "",
+    });
+
+    setDecryptedKeys((prev) => {
+      const keys = prev.reduce(
+        (coll, sk) => {
+          return {
+            ...coll,
+            [sk.getKeyID().toHex()]: sk,
+          };
+        },
+        {} as Record<string, openpgp.PrivateKey>,
+      );
+
+      keys[sk.getKeyID().toHex()] = decryptedKey;
+
+      return Object.values(keys);
+    });
+  }, [setDecryptedKeys]);
 
   const registered = useAsync(async () => {
     const resp = await fetch(`/api/k/${keyId}`, {
@@ -256,7 +224,7 @@ function KeyRow(props: {
   }, [keyId]);
 
   const register = useCallback(async () => {
-    const resp = await fetch("/api/post", {
+    const resp = await fetch("/api/register", {
       method: "POST",
       body: sk.armor(),
     });
@@ -267,39 +235,21 @@ function KeyRow(props: {
 
   const primaryUser = useAsync(() => sk.getPrimaryUser(), [sk]);
 
-  const unlock = useCallback(() => {
-    (async () => {
-      const password = prompt(
-        `Password to decrypt ${keyBodyString(primaryUser.value as openpgp.PrimaryUser, sk)}`,
-      );
-
-      props.unlock(sk, password ?? "");
-    })();
-  }, [sk, props.unlock, primaryUser, addKey]);
-
   return (
     <div className="flex flex-row align-middle">
       <KeyBody pgKey={props.sk} />
-      <ActionButton
-        label="Delete"
-        color="text-red-500"
-        onClick={() => props.deleteKey(props.sk)}
-      />
+      <ActionButton label="Delete" color="text-red-500" onClick={deleteKey} />
 
       {!(registered.value || registered.loading) ? (
         <ActionButton
           label="Register"
           color="text-purple-500"
-          onClick={() => register()}
+          onClick={register}
         />
       ) : null}
 
       {sk.isDecrypted() ? null : (
-        <ActionButton
-          label="Unlock"
-          color="text-blue-500"
-          onClick={() => unlock()}
-        />
+        <ActionButton label="Unlock" color="text-blue-500" onClick={unlock} />
       )}
     </div>
   );
