@@ -2,16 +2,21 @@ import { PrismaClient } from "@prisma/client";
 import ThreadCard from "@/components/ThreadCard/ThreadCard";
 import { includes } from "@/lib/db";
 import PostThread from "@/components/PostThread/PostThread";
+import {revalidatePath} from "next/cache";
 
 const db = new PrismaClient();
 
 const WelcomePage = async () => {
   const threads = await db.thread.findMany({
     where: {
-      replyTo: null,
+      replyTo: {
+        isSet: false
+      },
     },
     ...includes,
   });
+
+  console.log("threads", threads);
 
   return (
     <>

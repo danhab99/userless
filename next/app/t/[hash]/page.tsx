@@ -1,5 +1,5 @@
 import ThreadCard from "@/components/ThreadCard/ThreadCard";
-import { getParents, getReplies, getThread } from "@/db";
+import { getParents, getReplies, getThread } from "@/lib/db";
 
 type ThreadPageProps = {
   params: {
