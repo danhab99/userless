@@ -13,16 +13,18 @@ type ThreadCardProps = {
 };
 
 const ThreadCard = ({ thread }: ThreadCardProps) => {
+  "use client";
   const [ReplyTB, showReply] = MakeToggleButton(false);
   const [SourceTB, showSource] = MakeToggleButton(false);
   const [FullTB, showFull] = MakeToggleButton(false);
 
   const mailtoLink = mailto({
     to: thread.signedBy.email,
-    subject: `RE: https://${window.location.hostname}/t/${thread.hash}`,
+    // subject: `RE: https://${window.location.hostname}/t/${thread.hash}`,
+    subject: `RE: https://t/${thread.hash}`,
     body: `Hello ${thread.signedBy.name},
 
-In response to your thread https://${window.location.hostname}/t/${thread.hash}`,
+In response to your thread https://t/${thread.hash}`,
   });
 
   function Controls() {
@@ -43,14 +45,7 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
         </span>{" "}
         <span className="text-username">
           {thread.signedBy.name}
-          <Link
-            href={{
-              pathname: "/k/[keyid]",
-              query: {
-                keyid: thread.signedBy.keyId,
-              },
-            }}
-          >
+          <Link href={`/k/${thread.signedBy.keyId}`}>
             {"("}
             {thread.signedBy.keyId}
             {")"}
@@ -63,10 +58,7 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
         </span>{" "}
         <Link
           className="text-slate-600"
-          href={{
-            pathname: "/t/[hash]",
-            query: thread.hash,
-          }}
+          href={`/t/${ thread.hash }`}
         >
           {thread.hash.slice(0, 16)}
         </Link>{" "}
@@ -76,7 +68,7 @@ In response to your thread https://${window.location.hostname}/t/${thread.hash}`
       <div className={showFull ? "h-full" : "max-h-96 overflow-y-auto"}>
         <ThreadBody thread={thread as Thread} />
       </div>
-      <Controls />o
+      <Controls />
       {showReply ? (
         <div className="pt-4">
           <PostThread replyTo={thread} />

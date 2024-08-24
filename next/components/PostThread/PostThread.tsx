@@ -11,11 +11,18 @@ export type PostThreadProps = {
 
 const PostThread = (props: PostThreadProps) => {
   const privateKeys = usePrivateKeys();
-  const { register, handleSubmit } = useForm();
+
+  type FieldValues = {
+    body: string;
+    sk: string;
+  }
+
+  const { register, handleSubmit } = useForm<FieldValues>();
 
   const onSubmit = useCallback(
     (v: FieldValues) => {
       (async () => {
+
         const msg = await openpgp.createCleartextMessage({
           text: [
             props.replyTo?.hash ? `replyTo: ${props.replyTo.hash}` : "",
@@ -26,8 +33,10 @@ const PostThread = (props: PostThreadProps) => {
             .trim(),
         });
 
-        var pk = privateKeys.find((x) => x.getKeyID().toHex() === v["sk"]);
-        if (!pk.isPrivate()) {
+        const skId = v["sk"].length == 0 ? privateKeys[0].getKeyID().toHex() : v["sk"];
+
+        var pk = privateKeys?.find((x) => x.getKeyID().toHex() === skId);
+        if (!pk?.isPrivate()) {
           throw "not a pk";
         }
 
@@ -36,13 +45,19 @@ const PostThread = (props: PostThreadProps) => {
             `Password to decrypt ${pk.getKeyID().toHex()}`,
           );
 
+          if (!password) {
+            alert("Password required");
+            return;
+          }
+
           try {
             pk = await openpgp.decryptKey({
               privateKey: pk,
-              passphrase: password ?? "",
+              passphrase: password,
             });
           } catch (e) {
             alert(e);
+            return
           }
         }
 
@@ -52,11 +67,12 @@ const PostThread = (props: PostThreadProps) => {
           format: "armored",
         });
 
-        const resp = await fetch("/api/post", {
+        const resp = await fetch("/post", {
           method: "POST",
           body: signedMsg,
-          redirect: "manual",
         });
+
+        debugger
 
         if (resp.redirected) {
           window.location.href = `/t/${resp.headers.get("location")}`;
@@ -73,22 +89,20 @@ const PostThread = (props: PostThreadProps) => {
     <div className="centered">
       <div className="bg-white shadow-xl centered-widths">
         <form onSubmit={handleSubmit(onSubmit)}>
-          <label name="body" className="px-2">
+          <label className="px-2">
             {props.replyTo ? `Reply to ${props.replyTo.hash}` : "Body:"}
           </label>
           <textarea
-            {...register}
-            name="body"
+            {...register("body")}
             className="w-full p-1"
             rows={10}
             required
-          />{" "}
+          />
           <div className="flex flex-col md:flex-row">
             <select
-              {...register}
+              {...register("sk")}
               defaultValue={privateKeys[0]?.getKeyID().toHex()}
               required
-              name="sk"
               className="w-8/10 w-full p-2 overflow-hidden"
             >
               {privateKeys.map((key, i) => (

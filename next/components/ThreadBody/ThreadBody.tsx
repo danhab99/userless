@@ -31,7 +31,7 @@ const ThreadBody = (props: ThreadBodyProps) => {
         remarkPlugins={[remarkGfm]}
         // rehypePlugins={[rehypeHighlight, { languages: syntax_highlight.default }]}
       >
-        {body}
+        {body.value}
       </Markdown>
     </div>
   );
