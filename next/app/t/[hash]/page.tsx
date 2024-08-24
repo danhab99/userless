@@ -23,11 +23,12 @@ const ThreadPage = async ({ params }: ThreadPageProps) => {
       {parents.map((thread, i) => (
         <ThreadCard key={i} thread={thread} />
       ))}
-      <hr />
+
+      {parents.length > 0 ? <hr /> : null}
 
       <ThreadCard thread={thread} />
 
-      <div className="pr-4">
+      <div className="pl-6">
         {replies.map((thread, i) => (
           <ThreadCard key={i} thread={thread} />
         ))}

@@ -65,5 +65,5 @@ export async function getParents(
     ancestors.push(thread);
   }
 
-  return ancestors;
+  return ancestors.slice(1);
 }

@@ -2,9 +2,9 @@
 import SigVerify from "../SigVerify/SigVerify";
 import mailto from "mailto-link";
 import ThreadBody from "../ThreadBody/ThreadBody";
-import PostThread from "../PostThread/PostThread";
+import { PostThread } from "../PostThread/PostThread";
 import { MakeToggleButton } from "../ToggleButton/ToggleButton";
-import { Thread, Prisma } from "@prisma/client";
+import { Thread } from "@prisma/client";
 import Link from "next/link";
 import { ThreadForThreadCard } from "@/global";
 
@@ -75,7 +75,7 @@ In response to your thread https://t/${thread.hash}`,
         </div>
       ) : null}
       {showSource ? (
-        <pre className="h-40 overflow-auto bg-slate-900 text-xs text-slate-100">
+        <pre className="h-40 overflow-auto bg-slate-900 text-xs text-slate-100 p-1">
           {thread.body}
         </pre>
       ) : null}
