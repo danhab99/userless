@@ -27,7 +27,7 @@ const SigVerify = (props: SigVerifyProps) => {
           cleartextMessage: props.thread.body,
         })
 
-        const resp = await fetch(`/api/k/${props.thread.signedById}`)
+        const resp = await fetch(`/k/${props.thread.signedById}/armored`)
         if (!resp.ok) {
           setStatus(VerifiedStatus.Error)
           return
