@@ -1,18 +1,49 @@
-import { Link, routes, useParams } from '@redwoodjs/router'
-import { Metadata } from '@redwoodjs/web'
-import ThreadsCell from 'src/components/ThreadsCell'
-import KeyInfoCell from 'src/components/KeyInfoCell'
+import { PrismaClient } from "@prisma/client";
+import { notFound } from "next/navigation";
+import Markdown from "react-markdown";
 
-const KeyPage = () => {
-  const { keyid } = useParams()
+type KeyPageParams = {
+  params: {
+    keyId: string;
+  };
+};
+
+const db = new PrismaClient();
+
+const KeyPage = async ({ params }: KeyPageParams) => {
+  const publicKey = await db.publicKey.findUnique({
+    where: {
+      keyId: params.keyId,
+    },
+  });
+
+  if (!publicKey) {
+    notFound();
+  }
 
   return (
     <>
-      <Metadata title="Key" description="Key page" />
-
-      <KeyInfoCell keyId={keyid} />
+      <div className="px-4">
+        <div className="flexflex-col items-center border border-black bg-yellow-100">
+          <div className="p-2">
+            <h3 className="text-center">
+              {publicKey.name} {"<"}
+              {publicKey.email}
+              {">"}
+            </h3>
+            <p className="py-2">
+              <div className="markdown">
+                <Markdown>{publicKey.comment}</Markdown>
+              </div>
+            </p>
+          </div>
+          <pre className="h-40 w-full overflow-y-scroll bg-slate-300 p-1 text-xs">
+            {publicKey.armoredKey}
+          </pre>
+        </div>
+      </div>
     </>
-  )
-}
+  );
+};
 
-export default KeyPage
+export default KeyPage;
