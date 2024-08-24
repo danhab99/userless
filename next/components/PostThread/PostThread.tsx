@@ -9,7 +9,7 @@ export type PostThreadProps = {
   replyTo?: Pick<Thread, "hash">;
 };
 
-const PostThread = (props: PostThreadProps) => {
+export const PostThread = (props: PostThreadProps) => {
   const privateKeys = usePrivateKeys();
 
   type FieldValues = {
@@ -86,41 +86,45 @@ const PostThread = (props: PostThreadProps) => {
   );
 
   return (
-    <div className="centered">
-      <div className="bg-white shadow-xl centered-widths">
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <label className="px-2">
-            {props.replyTo ? `Reply to ${props.replyTo.hash}` : "Body:"}
-          </label>
-          <textarea
-            {...register("body")}
-            className="w-full p-1"
-            rows={10}
+    <div className="bg-white shadow-xl">
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <label className="px-2">
+          {props.replyTo ? `Reply to ${props.replyTo.hash}` : "Body:"}
+        </label>
+        <textarea
+          {...register("body")}
+          className="w-full p-1"
+          rows={10}
+          required
+        />
+        <div className="flex flex-col md:flex-row">
+          <select
+            {...register("sk")}
+            defaultValue={privateKeys[0]?.getKeyID().toHex()}
             required
-          />
-          <div className="flex flex-col md:flex-row">
-            <select
-              {...register("sk")}
-              defaultValue={privateKeys[0]?.getKeyID().toHex()}
-              required
-              className="w-8/10 w-full p-2 overflow-hidden"
-            >
-              {privateKeys.map((key, i) => (
-                <option key={i} value={key.getKeyID().toHex()}>
-                  {key.users[0].userID?.name} {"<"}
-                  {key.getKeyID().toHex()}
-                  {">"} {key.isDecrypted() ? "unlocked" : ""}
-                </option>
-              ))}
-            </select>
-            <button className="px-4" type="submit">
-              Post
-            </button>
-          </div>
-        </form>
-      </div>
+            className="w-8/10 w-full p-2 overflow-hidden"
+          >
+            {privateKeys.map((key, i) => (
+              <option key={i} value={key.getKeyID().toHex()}>
+                {key.users[0].userID?.name} {"<"}
+                {key.getKeyID().toHex()}
+                {">"} {key.isDecrypted() ? "unlocked" : ""}
+              </option>
+            ))}
+          </select>
+          <button className="px-4" type="submit">
+            Post
+          </button>
+        </div>
+      </form>
     </div>
   );
 };
 
-export default PostThread;
+export function PostThreadNarrow(props: PostThreadProps) {
+  return <div className="centered">
+    <div className="centered-widths">
+      <PostThread {...props} />
+    </div>
+  </div>
+}

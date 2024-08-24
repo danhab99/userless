@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import ThreadCard from "@/components/ThreadCard/ThreadCard";
 import { includes } from "@/lib/db";
-import PostThread from "@/components/PostThread/PostThread";
+import PostThread, {PostThreadNarrow} from "@/components/PostThread/PostThread";
 import {revalidatePath} from "next/cache";
 
 const db = new PrismaClient();
@@ -28,7 +28,7 @@ const WelcomePage = async () => {
         </p>
       </header>
 
-      <PostThread />
+      <PostThreadNarrow />
 
       {threads.map((thread, i) => (
         <ThreadCard key={i} thread={thread} />
