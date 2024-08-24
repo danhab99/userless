@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   createStateContext,
   useAsync,
+  useDeepCompareEffect,
   useLocalStorage,
   useSessionStorage,
 } from "react-use";
@@ -42,30 +43,51 @@ export const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
 
 function KeyDrawer() {
   "use client";
-  const [privateKeysLocal, setPrivateKeysLocal] = useLocalStorage<
-    openpgp.PrivateKey[]
-  >("ring", []);
+  const [privateKeysLocal, setPrivateKeysLocal] = useLocalStorage<string[]>(
+    "ring",
+    [],
+  );
   const [decryptedKeysLocal, setDecryptedKeysLocal] = useSessionStorage<
-    openpgp.PrivateKey[]
+    string[]
   >("ring", []);
 
   const [privateKeys, setPrivateKeys] = usePrivateKeysState();
   const [decryptedKeys, setDecryptedKeys] = useDecryptedKeysState();
 
-  useEffect(() => {
-    if (decryptedKeys.length == 0) {
-      setDecryptedKeys(decryptedKeysLocal);
-    } else {
-      setDecryptedKeysLocal(decryptedKeys);
-    }
+  useDeepCompareEffect(() => {
+    (async () => {
+      if (decryptedKeys.length == 0) {
+        const pks = await Promise.all(
+          decryptedKeysLocal?.map((armored) =>
+            openpgp.readPrivateKeys({
+              armoredKeys: armored,
+            }),
+          ) ?? [],
+        );
+        setDecryptedKeys(pks.flat(1));
+      } else {
+        const armoredKeys = decryptedKeys.map(k => k.armor())
+        setDecryptedKeysLocal(armoredKeys);
+      }
+    })();
   }, [decryptedKeys, decryptedKeysLocal]);
 
-  useEffect(() => {
-    if (privateKeys.length == 0) {
-      setPrivateKeys(privateKeysLocal ?? []);
-    } else {
-      setPrivateKeysLocal(privateKeys);
-    }
+  useDeepCompareEffect(() => {
+    (async () => {
+      if (privateKeys.length == 0) {
+        const pks = await Promise.all(
+          privateKeysLocal?.map((armored) =>
+            openpgp.readPrivateKeys({
+              armoredKeys: armored,
+            }),
+          ) ?? [],
+        );
+        setPrivateKeys(pks.flat(1));
+      } else {
+        const armoredKeys = privateKeys.map(k => k.armor())
+        setPrivateKeysLocal(armoredKeys);
+      }
+    })();
   }, [privateKeysLocal, privateKeys]);
 
   const addKey = useCallback(
@@ -133,7 +155,6 @@ function KeyDrawer() {
     </div>
   );
 }
-
 
 export function usePrivateKeys() {
   const [pk] = usePrivateKeysState();
