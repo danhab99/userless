@@ -70,39 +70,41 @@ const PostThread = (props: PostThreadProps) => {
   );
 
   return (
-    <div className="bg-white shadow-xl w-full">
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <label name="body" className="px-2">
-          {props.replyTo ? `Reply to ${props.replyTo.hash}` : "Body:"}
-        </label>
-        <textarea
-          {...register}
-          name="body"
-          className="w-full"
-          rows={10}
-          required
-        />{" "}
-        <div className="flex flex-col md:flex-row">
-          <select
+    <div className="centered">
+      <div className="bg-white shadow-xl centered-widths">
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <label name="body" className="px-2">
+            {props.replyTo ? `Reply to ${props.replyTo.hash}` : "Body:"}
+          </label>
+          <textarea
             {...register}
-            defaultValue={privateKeys[0]?.getKeyID().toHex()}
+            name="body"
+            className="w-full p-1"
+            rows={10}
             required
-            name="sk"
-            className="w-8/10 w-full p-2 overflow-hidden"
-          >
-            {privateKeys.map((key, i) => (
-              <option key={i} value={key.getKeyID().toHex()}>
-                {key.users[0].userID?.name} {"<"}
-                {key.getKeyID().toHex()}
-                {">"} {key.isDecrypted() ? "unlocked" : ""}
-              </option>
-            ))}
-          </select>
-          <button className="px-4" type="submit">
-            Post
-          </button>
-        </div>
-      </form>
+          />{" "}
+          <div className="flex flex-col md:flex-row">
+            <select
+              {...register}
+              defaultValue={privateKeys[0]?.getKeyID().toHex()}
+              required
+              name="sk"
+              className="w-8/10 w-full p-2 overflow-hidden"
+            >
+              {privateKeys.map((key, i) => (
+                <option key={i} value={key.getKeyID().toHex()}>
+                  {key.users[0].userID?.name} {"<"}
+                  {key.getKeyID().toHex()}
+                  {">"} {key.isDecrypted() ? "unlocked" : ""}
+                </option>
+              ))}
+            </select>
+            <button className="px-4" type="submit">
+              Post
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };
