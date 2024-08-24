@@ -22,7 +22,7 @@
   @apply rounded-xl shadow-xl
 }
 
-input, textarea {
+input:not([type='checkbox']):not([type='submit']), textarea {
   @apply bg-slate-200 shadow-inner shadow-slate-300;
 }
 

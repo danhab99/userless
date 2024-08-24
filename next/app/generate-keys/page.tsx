@@ -1,28 +1,24 @@
-"use client"
-import {
-  CheckboxField,
-  Form,
-  InputField,
-  Label,
-  Submit,
-  TextAreaField,
-} from '@redwoodjs/forms'
-import { Metadata } from '@redwoodjs/web'
-import { useCallback } from 'react'
-import * as openpgp from 'openpgp'
-import { useAddPrivateKey } from 'src/components/KeyContext'
+"use client";
+import { useCallback } from "react";
+import * as openpgp from "openpgp";
+import { useAddPrivateKey } from "@/components/KeyContext/KeyContext";
+import { useForm } from "react-hook-form";
+import { CenteredLayout } from "@/layouts/centered";
 
 const GenerateKeyPage = () => {
   type MyFieldVals = {
-    name: string
-    email: string
-    comment: string
-    password: string
-  }
+    name: string;
+    email: string;
+    comment: string;
+    password: string;
+    autoregister: boolean;
+  };
 
-  const addKey = useAddPrivateKey()
+  const addKey = useAddPrivateKey();
 
-  const handleGenerate = useCallback(async (f: MyFieldVals) => {
+  const { register, handleSubmit } = useForm<MyFieldVals>();
+
+  const handleGenerate = handleSubmit(async (f) => {
     const sk = await openpgp.generateKey({
       userIDs: [
         {
@@ -32,55 +28,59 @@ const GenerateKeyPage = () => {
         },
       ],
       passphrase: f.password,
-    })
+    });
 
     const skp = await openpgp.readPrivateKey({
       armoredKey: sk.privateKey,
-    })
+    });
 
-    addKey(skp)
-  }, [addKey])
+    addKey(skp);
+
+    if (f.autoregister) {
+      const resp = await fetch("/api/register", {
+        method: "POST",
+        body: skp.toPublic().armor(),
+      });
+
+      if (resp.ok) {
+        console.error("REGISTER ERROR", await resp.text());
+        alert("couldn't register");
+      }
+    }
+  });
 
   return (
     <>
-      <Metadata title="GenerateKey" description="GenerateKey page" />
-      <h1>Generate Keys</h1>
-
-      <div className="flex flex-row justify-center pt-40">
-        <Form
+      <CenteredLayout>
+        <form
           className="card p-4 text-right bg-white"
           onSubmit={handleGenerate}
         >
-          <div className="grid grid-cols-2 gap-2">
-            <Label name="name">Name:</Label>
-            <InputField name="name" type="text" required />
+          <h1 className="text-slate-800 text-center pb-2">Generate Keys</h1>
+          <div className="grid grid-cols-2 gap-4">
+            <label>Name:</label>
+            <input type="text" required {...register("name")} />
 
-            <Label name="email">Email:</Label>
-            <InputField name="email" type="email" required />
+            <label>Email:</label>
+            <input type="email" {...register("email")} />
 
-            <Label name="password">Password:</Label>
-            <InputField name="password" type="password" required />
+            <label>Password:</label>
+            <input type="password" required {...register("password")} />
 
-            <Label name="email">Auto register:</Label>
-            <div className="text-left">
-              <CheckboxField name="autoregister" />
-            </div>
+            <label>Auto register:</label>
+            <input type="checkbox" {...register("autoregister")} />
           </div>
 
-          <div>
-            <Label name="comment">Bio (comment):</Label>
+          <div className="py-2">
+            <label>Bio (comment):</label>
+            <textarea className="w-full" {...register("comment")} />
           </div>
-          <TextAreaField name="comment" className="w-full" />
 
-          <Submit className="w-full">
-            <button className="w-full rounded bg-red-400 p-2 text-white">
-              Generate
-            </button>
-          </Submit>
-        </Form>
-      </div>
+          <input type="submit" className="w-full rounded bg-red-400 p-2" />
+        </form>
+      </CenteredLayout>
     </>
-  )
-}
+  );
+};
 
-export default GenerateKeyPage
+export default GenerateKeyPage;

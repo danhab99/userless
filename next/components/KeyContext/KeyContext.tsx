@@ -27,7 +27,7 @@ function uniqueKeys(keys: openpgp.PrivateKey[][]) {
   );
 }
 
-const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
+export const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
   return (
     <>
       <PrivateKeysStateProvider>
@@ -41,6 +41,7 @@ const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
 };
 
 function KeyDrawer() {
+  "use client";
   const [privateKeysLocal, setPrivateKeysLocal] = useLocalStorage<
     openpgp.PrivateKey[]
   >("ring", []);
@@ -105,7 +106,7 @@ function KeyDrawer() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="fixed bottom-0 right-0 border border-solid border-black bg-white p-4">
+    <div className="fixed bottom-0 right-0 bg-white p-4 shadow-lg">
       <h4 onClick={() => setOpen((x) => !x)}>
         {open ? "⮟" : "⮝"} Key mananger{" "}
         {open ? (
@@ -119,7 +120,7 @@ function KeyDrawer() {
           {allKeys.map((sk, i) => (
             <KeyRow sk={sk} key={i} />
           ))}
-          <div>
+          <div className="pt-2">
             <label>Add keys</label>
             <input
               type="file"
@@ -133,7 +134,6 @@ function KeyDrawer() {
   );
 }
 
-export default KeyContextProvider;
 
 export function usePrivateKeys() {
   const [pk] = usePrivateKeysState();
