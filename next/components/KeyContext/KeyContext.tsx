@@ -66,7 +66,7 @@ function KeyDrawer() {
         );
         setDecryptedKeys(pks.flat(1));
       } else {
-        const armoredKeys = decryptedKeys.map(k => k.armor())
+        const armoredKeys = decryptedKeys.map((k) => k.armor());
         setDecryptedKeysLocal(armoredKeys);
       }
     })();
@@ -84,7 +84,7 @@ function KeyDrawer() {
         );
         setPrivateKeys(pks.flat(1));
       } else {
-        const armoredKeys = privateKeys.map(k => k.armor())
+        const armoredKeys = privateKeys.map((k) => k.armor());
         setPrivateKeysLocal(armoredKeys);
       }
     })();
@@ -185,14 +185,7 @@ export function KeyBody({ pgKey }: { pgKey: openpgp.PrivateKey }) {
   return (
     <span className="text-username">
       {primaryUser.value?.user.userID?.name}
-      <Link
-        href={{
-          pathname: "/k/{keyid}",
-          query: {
-            keyid: pgKey.getKeyID().toHex(),
-          },
-        }}
-      >
+      <Link href={`/k/${pgKey.getKeyID().toHex()}`}>
         {"("}
         {pgKey.getKeyID().toHex()}
         {")"}
@@ -245,14 +238,14 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
   }, [setDecryptedKeys]);
 
   const registered = useAsync(async () => {
-    const resp = await fetch(`/api/k/${keyId}`, {
+    const resp = await fetch(`/k/${keyId}/armored`, {
       method: "HEAD",
     });
     return resp.ok;
   }, [keyId]);
 
   const register = useCallback(async () => {
-    const resp = await fetch("/api/register", {
+    const resp = await fetch("/register", {
       method: "POST",
       body: sk.armor(),
     });
