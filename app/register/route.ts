@@ -4,12 +4,6 @@ import * as openpgp from "openpgp";
 
 const db = new PrismaClient();
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
 export async function POST(request: Request) {
   const body = await request.text()
 

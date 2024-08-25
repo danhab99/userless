@@ -20,11 +20,10 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
 
   const mailtoLink = mailto({
     to: thread.signedBy.email,
-    // subject: `RE: https://${window.location.hostname}/t/${thread.hash}`,
-    subject: `RE: https://t/${thread.hash}`,
+    subject: `RE: https://${window.location.hostname}/t/${thread.hash}`,
     body: `Hello ${thread.signedBy.name},
 
-In response to your thread https://t/${thread.hash}`,
+In response to your thread https://${window.location.hostname}/t/${thread.hash}`,
   });
 
   function Controls() {
