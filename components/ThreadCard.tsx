@@ -1,9 +1,9 @@
 "use client";
-import SigVerify from "../SigVerify/SigVerify";
+import SigVerify from "@/components/SigVerify";
 import mailto from "mailto-link";
-import ThreadBody from "../ThreadBody/ThreadBody";
-import { PostThread } from "../PostThread/PostThread";
-import { MakeToggleButton } from "../ToggleButton/ToggleButton";
+import ThreadBody from "@/components/ThreadBody";
+import { PostThread } from "@/components/PostThread";
+import { MakeToggleButton } from "@/components/ToggleButton";
 import { Thread } from "@prisma/client";
 import Link from "next/link";
 import { ThreadForThreadCard } from "@/global";

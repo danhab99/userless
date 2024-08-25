@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import * as openpgp from "openpgp";
-import ActionButton from "../ActionButton/ActionButton";
+import ActionButton from "./ActionButton";
 import Link from "next/link";
 import {
   createStateContext,

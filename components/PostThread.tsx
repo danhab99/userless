@@ -1,6 +1,6 @@
 "use client";
 import { useCallback } from "react";
-import { usePrivateKeys } from "@/components/KeyContext/KeyContext";
+import { usePrivateKeys } from "@/components/KeyContext";
 import * as openpgp from "openpgp";
 import { Thread } from "@prisma/client";
 import { useForm } from "react-hook-form";
