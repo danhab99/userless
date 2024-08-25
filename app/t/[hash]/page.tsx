@@ -1,5 +1,8 @@
 import ThreadCard from "@/components/ThreadCard/ThreadCard";
+import { ThreadForThreadCard } from "@/global";
 import { getParents, getReplies, getThread } from "@/lib/db";
+import { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 type ThreadPageProps = {
   params: {
@@ -10,7 +13,7 @@ type ThreadPageProps = {
 const ThreadPage = async ({ params }: ThreadPageProps) => {
   const thread = await getThread(params.hash);
   if (!thread) {
-    throw "didnt find thread";
+    notFound();
   }
 
   const [replies, parents] = await Promise.all([
@@ -38,3 +41,23 @@ const ThreadPage = async ({ params }: ThreadPageProps) => {
 };
 
 export default ThreadPage;
+
+export async function generateMetadata({
+  params,
+}: ThreadPageProps): Promise<Metadata> {
+  const thread: ThreadForThreadCard | null = await getThread(params.hash);
+  if (!thread) {
+    notFound();
+  }
+
+  return {
+    title: `${thread.hash} by ${thread.signedBy.name}`,
+    authors: [
+      {
+        name: thread.signedBy.name,
+        url: `/k/${thread.signedBy.keyId}`,
+      },
+    ],
+    robots: "index, follow",
+  };
+}

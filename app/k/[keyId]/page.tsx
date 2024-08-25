@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import {Metadata} from "next";
 import { notFound } from "next/navigation";
 import Markdown from "react-markdown";
 
@@ -47,3 +48,23 @@ const KeyPage = async ({ params }: KeyPageParams) => {
 };
 
 export default KeyPage;
+
+
+export async function generateMetadata({
+  params,
+}: KeyPageParams): Promise<Metadata> {
+  const publicKey = await db.publicKey.findUnique({
+    where: {
+      keyId: params.keyId,
+    },
+  });
+
+  if (!publicKey) {
+    notFound();
+  }
+
+  return {
+    title: `${publicKey.name}<${publicKey.email}>`,
+    robots: "index, follow",
+  };
+}
