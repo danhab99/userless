@@ -16,7 +16,6 @@ enum VerifiedStatus {
 }
 
 const SigVerify = (props: SigVerifyProps) => {
-  "use client"
   const [status, setStatus] = useState<VerifiedStatus>(VerifiedStatus.Working)
 
   useEffect(() => {
@@ -39,7 +38,9 @@ const SigVerify = (props: SigVerifyProps) => {
           armoredKeys: await resp.text()
         })
 
-        if (!(await Promise.all(keys.map(x => x.isRevoked())))) {
+        const allRevoked = await Promise.all(keys.map(x => x.isRevoked()))
+        const revoked = allRevoked.some(x => x)
+        if (revoked) {
           setStatus(VerifiedStatus.Revoked)
           return
         }

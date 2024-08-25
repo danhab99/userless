@@ -240,7 +240,7 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
   const registered = useAsync(async () => {
     const resp = await fetch(`/k/${keyId}/armored`, {
       method: "HEAD",
-      cache: "force-cache",
+      cache: "reload",
     });
     return resp.ok;
   }, [keyId]);
@@ -248,7 +248,7 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
   const register = useCallback(async () => {
     const resp = await fetch("/register", {
       method: "POST",
-      body: sk.armor(),
+      body: sk.toPublic().armor(),
     });
     if (!resp.ok) {
       alert("unable to register");
