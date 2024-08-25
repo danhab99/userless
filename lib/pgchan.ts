@@ -83,7 +83,10 @@ export async function uploadThread(threadClearText: string) {
   var armoredSignature: string = spoofArmoredSignature(threadClearText);
 
   const signature = await openpgp.readSignature({ armoredSignature });
-  var timestamp: Date = signature.packets[0].created;
+  var timestamp: Date | null = signature.packets[0].created;
+  if (!timestamp) {
+    throw "no timestamp";
+  }
 
   var postContent = msg.getText();
   const lines = postContent.split("\n");
@@ -94,7 +97,7 @@ export async function uploadThread(threadClearText: string) {
     replyTo = lines[0].split(":")[1].trim();
     postContent = lines.slice(1).join("\n");
 
-    const { policy } = await db.thread.findUnique({
+    const thread = await db.thread.findUnique({
       where: {
         hash: replyTo,
       },
@@ -103,7 +106,7 @@ export async function uploadThread(threadClearText: string) {
       },
     });
 
-    if (!policy.acceptsReplies) {
+    if (!thread?.policy.acceptsReplies) {
       throw "Not allowed to reply to";
     }
   }
@@ -134,6 +137,9 @@ export async function registerPublicKey(publicKeyArmored: string) {
     armoredKey: publicKeyArmored,
   });
   const { user } = await newKey.getPrimaryUser();
+  if (!user.userID) {
+    throw "no user";
+  }
 
   return db.publicKey.create({
     data: {

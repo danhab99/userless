@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 
-import { ThreadForThreadCard } from "./global";
+import { ThreadForThreadCard } from "@/global";
 
 const db = new PrismaClient();
 

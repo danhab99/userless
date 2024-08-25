@@ -1,4 +1,4 @@
-import ThreadCard from "@/components/ThreadCard/ThreadCard";
+import ThreadCard from "@/components/ThreadCard";
 import { ThreadForThreadCard } from "@/global";
 import { getParents, getReplies, getThread } from "@/lib/db";
 import { Metadata } from "next";

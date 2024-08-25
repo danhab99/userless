@@ -18,12 +18,9 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
   const [SourceTB, showSource] = MakeToggleButton(false);
   const [FullTB, showFull] = MakeToggleButton(false);
 
+
   const mailtoLink = mailto({
     to: thread.signedBy.email,
-    subject: `RE: https://${window.location.hostname}/t/${thread.hash}`,
-    body: `Hello ${thread.signedBy.name},
-
-In response to your thread https://${window.location.hostname}/t/${thread.hash}`,
   });
 
   function Controls() {

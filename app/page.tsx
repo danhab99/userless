@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
-import ThreadCard from "@/components/ThreadCard/ThreadCard";
+import ThreadCard from "@/components/ThreadCard";
 import { includes } from "@/lib/db";
-import { PostThreadNarrow } from "@/components/PostThread/PostThread";
+import { PostThreadNarrow } from "@/components/PostThread";
 
 const db = new PrismaClient();
 

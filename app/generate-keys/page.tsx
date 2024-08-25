@@ -1,7 +1,6 @@
 "use client";
-import { useCallback } from "react";
 import * as openpgp from "openpgp";
-import { useAddPrivateKey } from "@/components/KeyContext/KeyContext";
+import { useAddPrivateKey } from "@/components/KeyContext";
 import { useForm } from "react-hook-form";
 import { CenteredLayout } from "@/layouts/centered";
 
