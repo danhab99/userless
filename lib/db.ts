@@ -10,7 +10,7 @@ export const includes = {
       select: {
         email: true,
         name: true,
-        keyId: true,
+        finger: true,
       },
     },
   },
@@ -72,10 +72,10 @@ export async function getParents(
 }
 
 
-export async function getThreadsForThreadGroup(keyId: string) {
+export async function getThreadsForThreadGroup(finger: string) {
   return db.thread.findMany({
     where: {
-      signedBy: { keyId },
+      signedBy: { finger },
     },
     include: {
       ...includes.include,

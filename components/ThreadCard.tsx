@@ -41,9 +41,9 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
         </span>{" "}
         <span className="text-username">
           {thread.signedBy.name}
-          <Link href={`/k/${thread.signedBy.keyId}`}>
+          <Link href={`/k/${thread.signedBy.finger}`}>
             {"("}
-            {thread.signedBy.keyId}
+            {thread.signedBy.finger}
             {")"}
           </Link>
           <a href={mailtoLink} target="_blank">

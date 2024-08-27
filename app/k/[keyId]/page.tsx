@@ -17,7 +17,7 @@ type KeyPageParams = {
 const KeyPage = async ({ params }: KeyPageParams) => {
   const publicKey = await db.publicKey.findUnique({
     where: {
-      keyId: params.keyId,
+      finger: params.keyId.toLowerCase(),
     },
   });
 
@@ -65,7 +65,7 @@ export async function generateMetadata({
 }: KeyPageParams): Promise<Metadata> {
   const publicKey = await db.publicKey.findUnique({
     where: {
-      keyId: params.keyId,
+      finger: params.keyId,
     },
   });
 

@@ -6,7 +6,7 @@ export type ThreadForThreadCard = Prisma.ThreadGetPayload<{
       select: {
         name: true;
         email: true;
-        keyId: true;
+        finger: true;
       };
     };
   };

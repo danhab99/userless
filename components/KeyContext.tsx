@@ -185,9 +185,9 @@ export function KeyBody({ pgKey }: { pgKey: openpgp.PrivateKey }) {
   return (
     <span className="text-username">
       {primaryUser.value?.user.userID?.name}
-      <Link href={`/k/${pgKey.getKeyID().toHex()}`}>
+      <Link href={`/k/${pgKey.getFingerprint()}`}>
         {"("}
-        {pgKey.getKeyID().toHex()}
+        {pgKey.getFingerprint()}
         {")"}
       </Link>
       {"<"}
@@ -199,14 +199,14 @@ export function KeyBody({ pgKey }: { pgKey: openpgp.PrivateKey }) {
 
 function KeyRow(props: { sk: openpgp.PrivateKey }) {
   const { sk } = props;
-  const keyId = sk.getKeyID().toHex();
+  const fingerPrint = sk.getFingerprint()
 
   const [_, setPrivateKeys] = usePrivateKeysState();
   const [__, setDecryptedKeys] = useDecryptedKeysState();
 
   const deleteKey = useCallback(() => {
     setPrivateKeys((prev) =>
-      prev.filter((x) => x.getKeyID().toHex() != sk.getKeyID().toHex()),
+      prev.filter((x) => x.getFingerprint() != sk.getFingerprint()),
     );
   }, [sk]);
 
@@ -240,12 +240,12 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
   const [registerTrigger, setRegisterTrigger] = useState(false);
 
   const registered = useAsync(async () => {
-    const resp = await fetch(`/k/${keyId}/armored`, {
+    const resp = await fetch(`/k/${fingerPrint}/armored`, {
       method: "HEAD",
       cache: "force-cache",
     });
     return resp.ok;
-  }, [keyId, registerTrigger]);
+  }, [fingerPrint, registerTrigger]);
 
   const register = useCallback(async () => {
     const resp = await fetch("/register", {

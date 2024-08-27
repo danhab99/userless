@@ -5,11 +5,10 @@ const db = new PrismaClient();
 
 export async function HEAD(request: Request) {
   const u = new URL(request.url);
-
-  const keyId = u.pathname.split("/")[2];
+  const finger = u.pathname.split("/")[2].toLowerCase()
 
   await db.publicKey.findUniqueOrThrow({
-    where: { keyId },
+    where: { finger },
     select: {
       id: true,
     },
@@ -22,11 +21,10 @@ export async function HEAD(request: Request) {
 
 export async function GET(request: Request) {
   const u = new URL(request.url);
-
-  const keyId = u.pathname.split("/")[2];
+  const finger = u.pathname.split("/")[2].toLowerCase();
 
   const publicKey = await db.publicKey.findUniqueOrThrow({
-    where: { keyId },
+    where: { finger },
     select: {
       armoredKey: true,
     },
