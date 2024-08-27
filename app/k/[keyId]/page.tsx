@@ -1,17 +1,17 @@
-import ThreadCard from "@/components/ThreadCard";
 import { PrismaClient } from "@prisma/client";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Markdown from "react-markdown";
-import { includes } from "@/lib/db";
+import { getThreadsForThreadGroup } from "@/lib/db";
+import {ThreadGroup} from "@/components/ThreadGroup";
+
+const db = new PrismaClient();
 
 type KeyPageParams = {
   params: {
     keyId: string;
   };
 };
-
-const db = new PrismaClient();
 
 const KeyPage = async ({ params }: KeyPageParams) => {
   const publicKey = await db.publicKey.findUnique({
@@ -24,26 +24,7 @@ const KeyPage = async ({ params }: KeyPageParams) => {
     notFound();
   }
 
-  const threads = await db.thread.findMany({
-    where: {
-      signedBy: {
-        keyId: params.keyId,
-      },
-    },
-    include: {
-      ...includes.include,
-      parent: {
-        ...includes,
-      },
-      replies: {
-        ...includes,
-        take: 3,
-        orderBy: {
-          timestamp: "desc",
-        }
-      },
-    },
-  });
+  const threads = await getThreadsForThreadGroup(params.keyId)
 
   return (
     <>
@@ -67,21 +48,7 @@ const KeyPage = async ({ params }: KeyPageParams) => {
         </div>
       </div>
 
-      {threads.map((thread, i) => (
-        <div key={i}>
-          {thread.parent ? <ThreadCard thread={thread.parent} /> : null}
-          {thread.parent ? <hr /> : null}
-
-          <div className={thread.parent ? "pl-6" : ""}>
-            <ThreadCard thread={thread} />
-            <div className="pl-6">
-              {thread.replies.map((thread, i) => (
-                <ThreadCard key={i} thread={thread} />
-              ))}
-            </div>
-          </div>
-        </div>
-      ))}
+      {threads.map((thread, i) => <ThreadGroup thread={thread} key={i} />)}
     </>
   );
 };

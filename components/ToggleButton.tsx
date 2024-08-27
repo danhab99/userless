@@ -7,7 +7,7 @@ export type ToggleButtonProps = {
   trueLabel?: string;
 };
 
-export function MakeToggleButton(
+export function useToggleButton(
   initialState: boolean = false,
 ): [React.ElementType<ToggleButtonProps>, boolean] {
   const [state, setState] = useState(initialState);

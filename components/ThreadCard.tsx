@@ -3,7 +3,7 @@ import SigVerify from "@/components/SigVerify";
 import mailto from "mailto-link";
 import ThreadBody from "@/components/ThreadBody";
 import { PostThread } from "@/components/PostThread";
-import { MakeToggleButton } from "@/components/ToggleButton";
+import { useToggleButton } from "@/components/ToggleButton";
 import { Thread } from "@prisma/client";
 import Link from "next/link";
 import { ThreadForThreadCard } from "@/global";
@@ -14,9 +14,9 @@ type ThreadCardProps = {
 
 const ThreadCard = ({ thread }: ThreadCardProps) => {
   "use client";
-  const [ReplyTB, showReply] = MakeToggleButton(false);
-  const [SourceTB, showSource] = MakeToggleButton(false);
-  const [FullTB, showFull] = MakeToggleButton(false);
+  const [ReplyTB, showReply] = useToggleButton(false);
+  const [SourceTB, showSource] = useToggleButton(false);
+  const [FullTB, showFull] = useToggleButton(false);
 
 
   const mailtoLink = mailto({

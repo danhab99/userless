@@ -70,3 +70,27 @@ export async function getParents(
 
   return ancestors.slice(1);
 }
+
+
+export async function getThreadsForThreadGroup(keyId: string) {
+  return db.thread.findMany({
+    where: {
+      signedBy: { keyId },
+    },
+    include: {
+      ...includes.include,
+      parent: {
+        ...includes,
+      },
+      replies: {
+        ...includes,
+        take: 3,
+        orderBy: {
+          timestamp: "desc",
+        },
+      },
+    },
+  });
+}
+
+export type ThreadForThreadGroup = Awaited<ReturnType<typeof getThreadsForThreadGroup>>[number];
