@@ -11,14 +11,14 @@ type ThreadPageProps = {
 };
 
 const ThreadPage = async ({ params }: ThreadPageProps) => {
-  const thread = await getThread(params.hash);
+  const thread = await getThread(params.hash.toLowerCase());
   if (!thread) {
     notFound();
   }
 
   const [replies, parents] = await Promise.all([
-    getReplies(params.hash),
-    getParents(params.hash),
+    getReplies(params.hash.toLowerCase()),
+    getParents(params.hash.toLowerCase()),
   ]);
 
   return (
