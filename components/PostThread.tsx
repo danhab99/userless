@@ -89,7 +89,7 @@ export const PostThread = (props: PostThreadProps) => {
   return (
     <div className="bg-white shadow-xl">
       <form onSubmit={handleSubmit(onSubmit)}>
-        <label className="px-2">
+        <label className="px-2 truncate w-full inline-block">
           {props.replyTo ? `Reply to ${props.replyTo.hash}` : "Body:"}
         </label>
         <textarea
