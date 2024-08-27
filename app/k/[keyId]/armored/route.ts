@@ -10,7 +10,9 @@ export async function HEAD(request: Request) {
 
   await db.publicKey.findUniqueOrThrow({
     where: { keyId },
-    select: {},
+    select: {
+      id: true,
+    },
   });
 
   return new NextResponse(null, {

@@ -211,10 +211,10 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
   }, [sk]);
 
   const unlock = useCallback(async () => {
+    const primaryUser = await sk.getPrimaryUser()
     const password = prompt(
-      `Password to decrypt ${keyBodyString(primaryUser.value as openpgp.PrimaryUser, sk)}`,
+      `Password to decrypt ${keyBodyString(primaryUser, sk)}`,
     );
-
     const decryptedKey = await openpgp.decryptKey({
       privateKey: sk,
       passphrase: password ?? "",
@@ -237,13 +237,15 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
     });
   }, [setDecryptedKeys]);
 
+  const [registerTrigger, setRegisterTrigger] = useState(false);
+
   const registered = useAsync(async () => {
     const resp = await fetch(`/k/${keyId}/armored`, {
       method: "HEAD",
-      cache: "reload",
+      cache: "force-cache",
     });
     return resp.ok;
-  }, [keyId]);
+  }, [keyId, registerTrigger]);
 
   const register = useCallback(async () => {
     const resp = await fetch("/register", {
@@ -253,9 +255,11 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
     if (!resp.ok) {
       alert("unable to register");
     }
+    setTimeout(() => {
+      setRegisterTrigger(x => !x);
+    }, 50)
   }, [sk]);
 
-  const primaryUser = useAsync(() => sk.getPrimaryUser(), [sk]);
 
   return (
     <div className="flex flex-row align-middle">

@@ -123,6 +123,10 @@ h5 {
   @apply lg:w-2/3 md:w-1/2 sm:w-11/12;
 }
 
-textarea {
+textarea, input {
   @apply outline-none;
+}
+
+input {
+  @apply px-1;
 }
