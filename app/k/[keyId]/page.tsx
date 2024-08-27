@@ -1,7 +1,9 @@
+import ThreadCard from "@/components/ThreadCard";
 import { PrismaClient } from "@prisma/client";
-import {Metadata} from "next";
+import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Markdown from "react-markdown";
+import { includes } from "@/lib/db";
 
 type KeyPageParams = {
   params: {
@@ -21,6 +23,15 @@ const KeyPage = async ({ params }: KeyPageParams) => {
   if (!publicKey) {
     notFound();
   }
+
+  const threads = await db.thread.findMany({
+    where: {
+      signedBy: {
+        keyId: params.keyId,
+      },
+    },
+    ...includes,
+  });
 
   return (
     <>
@@ -43,12 +54,15 @@ const KeyPage = async ({ params }: KeyPageParams) => {
           </pre>
         </div>
       </div>
+
+      {threads.map((thread, i) => (
+        <ThreadCard key={i} thread={thread} />
+      ))}
     </>
   );
 };
 
 export default KeyPage;
-
 
 export async function generateMetadata({
   params,
