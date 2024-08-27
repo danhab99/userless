@@ -16,6 +16,9 @@ export async function GET(req: NextRequest) {
     select: {
       hash: true,
     },
+    orderBy: {
+      timestamp: "desc",
+    }
   });
 
   const ret = replies.map(x => x.hash).join("\n")

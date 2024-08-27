@@ -55,7 +55,7 @@ export async function generateMetadata({
     authors: [
       {
         name: thread.signedBy.name,
-        url: `/k/${thread.signedBy.keyId}`,
+        url: `/k/${thread.signedBy.finger}`,
       },
     ],
     robots: "index, follow",
