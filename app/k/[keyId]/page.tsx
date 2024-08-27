@@ -30,7 +30,19 @@ const KeyPage = async ({ params }: KeyPageParams) => {
         keyId: params.keyId,
       },
     },
-    ...includes,
+    include: {
+      ...includes.include,
+      parent: {
+        ...includes,
+      },
+      replies: {
+        ...includes,
+        take: 3,
+        orderBy: {
+          timestamp: "desc",
+        }
+      },
+    },
   });
 
   return (
@@ -56,7 +68,19 @@ const KeyPage = async ({ params }: KeyPageParams) => {
       </div>
 
       {threads.map((thread, i) => (
-        <ThreadCard key={i} thread={thread} />
+        <div key={i}>
+          {thread.parent ? <ThreadCard thread={thread.parent} /> : null}
+          {thread.parent ? <hr /> : null}
+
+          <div className={thread.parent ? "pl-6" : ""}>
+            <ThreadCard thread={thread} />
+            <div className="pl-6">
+              {thread.replies.map((thread, i) => (
+                <ThreadCard key={i} thread={thread} />
+              ))}
+            </div>
+          </div>
+        </div>
       ))}
     </>
   );
