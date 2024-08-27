@@ -28,6 +28,9 @@ export async function getReplies(hash: string): Promise<ThreadForThreadCard[]> {
       replyTo: hash,
     },
     ...includes,
+    orderBy: {
+      timestamp: "desc",
+    }
   });
 }
 

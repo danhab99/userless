@@ -13,6 +13,9 @@ const WelcomePage = async () => {
       },
     },
     ...includes,
+    orderBy: {
+      timestamp: "desc",
+    }
   });
 
   console.log("threads", threads);
