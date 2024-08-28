@@ -50,7 +50,7 @@ const GenerateKeyPage = () => {
 
   return (
     <>
-      <CenteredLayout>
+      <CenteredLayout fullscreen>
         <form
           className="card p-4 text-right bg-white"
           onSubmit={handleGenerate}

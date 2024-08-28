@@ -7,6 +7,7 @@ import { useToggleButton } from "@/components/ToggleButton";
 import { Thread } from "@prisma/client";
 import Link from "next/link";
 import { ThreadForThreadCard } from "@/global";
+import { Hash } from "@/components/Hash";
 
 type ThreadCardProps = {
   thread: ThreadForThreadCard;
@@ -17,7 +18,6 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
   const [ReplyTB, showReply] = useToggleButton(false);
   const [SourceTB, showSource] = useToggleButton(false);
   const [FullTB, showFull] = useToggleButton(false);
-
 
   const mailtoLink = mailto({
     to: thread.signedBy.email,
@@ -43,7 +43,7 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
           {thread.signedBy.name}
           <Link href={`/k/${thread.signedBy.finger}`}>
             {"("}
-            {thread.signedBy.finger}
+            <Hash content={thread.signedBy.finger} />
             {")"}
           </Link>
           <a href={mailtoLink} target="_blank">
@@ -52,11 +52,8 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
             {">"}
           </a>
         </span>{" "}
-        <Link
-          className="text-slate-600"
-          href={`/t/${ thread.hash }`}
-        >
-          {thread.hash.slice(0, 16)}
+        <Link className="text-slate-600" href={`/t/${thread.hash}`}>
+          <Hash content={thread.hash} />
         </Link>{" "}
         <SigVerify thread={thread as Thread} />
       </p>

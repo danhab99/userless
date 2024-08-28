@@ -1,11 +1,11 @@
 "use client";
-import {Thread} from '@prisma/client'
-import * as openpgp from 'openpgp'
-import { useEffect, useState } from 'react'
+import { Thread } from "@prisma/client";
+import * as openpgp from "openpgp";
+import { useEffect, useState } from "react";
 
 type SigVerifyProps = {
-  thread: Thread
-}
+  thread: Thread;
+};
 
 enum VerifiedStatus {
   Working,
@@ -16,7 +16,7 @@ enum VerifiedStatus {
 }
 
 const SigVerify = (props: SigVerifyProps) => {
-  const [status, setStatus] = useState<VerifiedStatus>(VerifiedStatus.Working)
+  const [status, setStatus] = useState<VerifiedStatus>(VerifiedStatus.Working);
 
   useEffect(() => {
     if (props.thread) {
@@ -24,61 +24,84 @@ const SigVerify = (props: SigVerifyProps) => {
       (async () => {
         const msg = await openpgp.readCleartextMessage({
           cleartextMessage: props.thread.body,
-        })
+        });
 
         const resp = await fetch(`/k/${props.thread.signedById}/armored`, {
           cache: "force-cache",
-        })
+        });
         if (!resp.ok) {
-          setStatus(VerifiedStatus.Error)
-          return
+          setStatus(VerifiedStatus.Error);
+          return;
         }
 
         const keys = await openpgp.readKeys({
-          armoredKeys: await resp.text()
-        })
+          armoredKeys: await resp.text(),
+        });
 
-        const allRevoked = await Promise.all(keys.map(x => x.isRevoked()))
-        const revoked = allRevoked.some(x => x)
+        const allRevoked = await Promise.all(keys.map((x) => x.isRevoked()));
+        const revoked = allRevoked.some((x) => x);
         if (revoked) {
-          setStatus(VerifiedStatus.Revoked)
-          return
+          setStatus(VerifiedStatus.Revoked);
+          return;
         }
 
         try {
-          const verify = await msg.verify(keys)
+          const verify = await msg.verify(keys);
 
           const verifications = await Promise.all(
-            verify.map(x => x.verified)
-          )
+            verify.map((x) => x.verified),
+          );
 
           if (verifications.every((x) => x)) {
-            setStatus(VerifiedStatus.Success)
+            setStatus(VerifiedStatus.Success);
           } else {
-            setStatus(VerifiedStatus.NoMatch)
+            setStatus(VerifiedStatus.NoMatch);
           }
         } catch (e: any) {
-          console.error("Verify Error", e)
-          setStatus(VerifiedStatus.Error)
+          console.error("Verify Error", e);
+          setStatus(VerifiedStatus.Error);
         }
-      })()
+      })();
     }
-  }, [props.thread])
+  }, [props.thread]);
+
+  var label: React.ReactNode;
 
   switch (status) {
     case VerifiedStatus.Working:
-      return <span className="text-sig-working">{'[WORKING...]'}</span>
+      label = <span className="text-sig-working">{"[WORKING...]"}</span>;
+      break;
     case VerifiedStatus.Error:
-      return <span className="text-sig-error">{'[ERROR]'}</span>
+      label = <span className="text-sig-error">{"[ERROR]"}</span>;
+      break;
     case VerifiedStatus.NoMatch:
-      return <span className="text-sig-nomatch">{'[!! NO MATCH !!]'}</span>
+      label = <span className="text-sig-nomatch">{"[!! NO MATCH !!]"}</span>;
+      break;
     case VerifiedStatus.Revoked:
-      return <span className="text-sig-revoked">{'[REVOKED]'}</span>
+      label = <span className="text-sig-revoked">{"[REVOKED]"}</span>;
+      break;
     case VerifiedStatus.Success:
-      return <span className="text-sig-success">{'[VERIFIED]'}</span>
+      label = <span className="text-sig-success">{"[VERIFIED]"}</span>;
+      break;
     default:
-      throw 'how'
+      throw "how";
   }
-}
 
-export default SigVerify
+  return (
+    <>
+      <div className="hs-tooltip inline-block">
+        <button type="button" className="hs-tooltip-toggle">
+          {label}
+          <span
+            className="hs-tooltip-content hs-tooltip-shown:opacity-100 hs-tooltip-shown:visible opacity-0 transition-opacity inline-block absolute invisible z-10 py-1 px-2 bg-gray-900 text-white"
+            role="tooltip"
+          >
+            Tooltip on top
+          </span>
+        </button>
+      </div>
+    </>
+  );
+};
+
+export default SigVerify;
