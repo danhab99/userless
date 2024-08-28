@@ -10,6 +10,7 @@ import {
   useLocalStorage,
   useSessionStorage,
 } from "react-use";
+import {Hash} from "./Hash";
 
 const [usePrivateKeysState, PrivateKeysStateProvider] = createStateContext<
   openpgp.PrivateKey[]
@@ -42,7 +43,6 @@ export const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
 };
 
 function KeyDrawer() {
-  "use client";
   const [privateKeysLocal, setPrivateKeysLocal] = useLocalStorage<string[]>(
     "ring",
     [],
@@ -187,7 +187,7 @@ export function KeyBody({ pgKey }: { pgKey: openpgp.PrivateKey }) {
       {primaryUser.value?.user.userID?.name}
       <Link href={`/k/${pgKey.getFingerprint()}`}>
         {"("}
-        {pgKey.getFingerprint()}
+        <Hash content={pgKey.getFingerprint()} />
         {")"}
       </Link>
       {"<"}
