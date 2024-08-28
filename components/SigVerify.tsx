@@ -1,6 +1,7 @@
 "use client";
 import { Thread } from "@prisma/client";
 import * as openpgp from "openpgp";
+import { setegid } from "process";
 import { useEffect, useState } from "react";
 
 type SigVerifyProps = {
@@ -17,6 +18,7 @@ enum VerifiedStatus {
 
 const SigVerify = (props: SigVerifyProps) => {
   const [status, setStatus] = useState<VerifiedStatus>(VerifiedStatus.Working);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (props.thread) {
@@ -31,6 +33,9 @@ const SigVerify = (props: SigVerifyProps) => {
         });
         if (!resp.ok) {
           setStatus(VerifiedStatus.Error);
+          setError(
+            `status code ${[resp.status, await resp.text()].filter((x) => x).join(" ")}`,
+          );
           return;
         }
 
@@ -58,50 +63,29 @@ const SigVerify = (props: SigVerifyProps) => {
             setStatus(VerifiedStatus.NoMatch);
           }
         } catch (e: any) {
+          debugger;
           console.error("Verify Error", e);
           setStatus(VerifiedStatus.Error);
+          setError(e);
         }
       })();
     }
   }, [props.thread]);
 
-  var label: React.ReactNode;
-
   switch (status) {
     case VerifiedStatus.Working:
-      label = <span className="text-sig-working">{"[WORKING...]"}</span>;
-      break;
+      return <span className="text-sig-working">{"[WORKING...]"}</span>;
     case VerifiedStatus.Error:
-      label = <span className="text-sig-error">{"[ERROR]"}</span>;
-      break;
+      return <span className="text-sig-error">{`[ERROR: ${error}]`}</span>;
     case VerifiedStatus.NoMatch:
-      label = <span className="text-sig-nomatch">{"[!! NO MATCH !!]"}</span>;
-      break;
+      return <span className="text-sig-nomatch">{"[!! NO MATCH !!]"}</span>;
     case VerifiedStatus.Revoked:
-      label = <span className="text-sig-revoked">{"[REVOKED]"}</span>;
-      break;
+      return <span className="text-sig-revoked">{"[REVOKED]"}</span>;
     case VerifiedStatus.Success:
-      label = <span className="text-sig-success">{"[VERIFIED]"}</span>;
-      break;
+      return <span className="text-sig-success">{"[VERIFIED]"}</span>;
     default:
       throw "how";
   }
-
-  return (
-    <>
-      <div className="hs-tooltip inline-block">
-        <button type="button" className="hs-tooltip-toggle">
-          {label}
-          <span
-            className="hs-tooltip-content hs-tooltip-shown:opacity-100 hs-tooltip-shown:visible opacity-0 transition-opacity inline-block absolute invisible z-10 py-1 px-2 bg-gray-900 text-white"
-            role="tooltip"
-          >
-            Tooltip on top
-          </span>
-        </button>
-      </div>
-    </>
-  );
 };
 
 export default SigVerify;
