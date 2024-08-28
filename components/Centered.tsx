@@ -1,7 +1,7 @@
 const Centered = (props: React.PropsWithChildren<{}>) => {
   return (
-    <div className="my-8 flex flex-row justify-center px-8">
-      <div className="max-w-4xl flex-grow">{props.children}</div>
+    <div className="w-full px-4 md:w-2/3 md:mx-auto">
+      {props.children}
     </div>
   )
 }
