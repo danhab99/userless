@@ -5,9 +5,9 @@ const db = new PrismaClient();
 
 export async function HEAD(request: Request) {
   const u = new URL(request.url);
-  const finger = u.pathname.split("/")[2].toLowerCase()
+  const finger = u.pathname.split("/")[2].toLowerCase();
 
-  await db.publicKey.findUniqueOrThrow({
+  const res = await db.publicKey.findUnique({
     where: { finger },
     select: {
       id: true,
@@ -15,7 +15,7 @@ export async function HEAD(request: Request) {
   });
 
   return new NextResponse(null, {
-    status: 200,
+    status: res ? 200 : 404,
   });
 }
 
@@ -23,14 +23,14 @@ export async function GET(request: Request) {
   const u = new URL(request.url);
   const finger = u.pathname.split("/")[2].toLowerCase();
 
-  const publicKey = await db.publicKey.findUniqueOrThrow({
+  const publicKey = await db.publicKey.findUnique({
     where: { finger },
     select: {
       armoredKey: true,
     },
   });
 
-  return new NextResponse(publicKey.armoredKey, {
-    status: 200,
+  return new NextResponse(publicKey?.armoredKey, {
+    status: publicKey ? 200 : 404,
   });
 }
