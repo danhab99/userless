@@ -23,9 +23,11 @@ const ThreadPage = async ({ params }: ThreadPageProps) => {
 
   return (
     <>
-      {parents.map((thread, i) => (
-        <ThreadCard key={i} thread={thread} />
-      ))}
+      <div className="flex flex-col-reverse">
+        {parents.map((thread, i) => (
+          <ThreadCard key={i} thread={thread} />
+        ))}
+      </div>
 
       {parents.length > 0 ? <hr /> : null}
 
