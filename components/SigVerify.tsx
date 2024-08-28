@@ -1,8 +1,6 @@
 "use client";
 import {ThreadForThreadCard} from "@/global";
-import { Thread } from "@prisma/client";
 import * as openpgp from "openpgp";
-import { setegid } from "process";
 import { useEffect, useState } from "react";
 
 type SigVerifyProps = {
