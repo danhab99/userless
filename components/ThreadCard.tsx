@@ -55,7 +55,7 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
         <Link className="text-slate-600" href={`/t/${thread.hash}`}>
           <Hash content={thread.hash} />
         </Link>{" "}
-        <SigVerify thread={thread as Thread} />
+        <SigVerify thread={thread} />
       </p>
       <Controls />
       <div className={showFull ? "h-full" : "max-h-96 overflow-y-auto"}>
