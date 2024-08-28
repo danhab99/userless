@@ -10,15 +10,16 @@ export function ThreadGroup({ thread }: { thread: ThreadForThreadGroup }) {
   return (
     <div className="py-4">
       {thread.parent ? <ThreadCard thread={thread.parent} /> : null}
-      {thread.parent ? <hr /> : null}
 
       <div className={thread.parent ? "pl-6" : ""}>
         <ThreadCard thread={thread} />
         <span className="text-xs">
-          <ShowRepliesButton
-            falseLabel="Show replies"
-            trueLabel="Hide replies"
-          />
+          {thread.replies.length > 0 ? (
+            <ShowRepliesButton
+              falseLabel="Show replies"
+              trueLabel="Hide replies"
+            />
+          ) : null}
         </span>
         {showReplies ? (
           <div className="pl-6">

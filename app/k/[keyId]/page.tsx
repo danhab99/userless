@@ -5,6 +5,7 @@ import Markdown from "react-markdown";
 import { getThreadsForThreadGroup } from "@/lib/db";
 import { ThreadGroup } from "@/components/ThreadGroup";
 import Centered from "@/components/Centered";
+import * as openpgp from "openpgp";
 
 const db = new PrismaClient();
 
@@ -25,26 +26,36 @@ const KeyPage = async ({ params }: KeyPageParams) => {
     notFound();
   }
 
-  const threads = await getThreadsForThreadGroup(params.keyId);
+  const threadsPromise = getThreadsForThreadGroup(params.keyId);
+
+  const pk = await openpgp.readKey({
+    armoredKey: publicKey.armoredKey,
+  });
+
+  const timestamp = pk.getCreationTime();
+  const threads = await threadsPromise;
 
   return (
     <>
       <Centered>
-        <div className="px-4 pt-8">
-          <div className="flexflex-col items-center bg-yellow-100">
-            <div className="p-2">
-              <h3 className="text-center">
+        <div className="px-4 pt-8 md:w-full sm:w-full">
+          <div className="bg-yellow-100 shadow-lg w-full">
+            <div className="p-2 text-center">
+              <h3 className="">
                 {publicKey.name} {"<"}
                 {publicKey.email}
                 {">"}
               </h3>
-              <div className="pt-2">
-                <div className="markdown no-scrollbar">
-                  <Markdown>{publicKey.comment}</Markdown>
-                </div>
+              <p className="text-sm text-slate-700">
+                Created {timestamp.toLocaleString()}
+              </p>
+            </div>
+            <div className="pt-2 w-full">
+              <div className="markdown no-scrollbar">
+                <Markdown>{publicKey.comment}</Markdown>
               </div>
             </div>
-            <pre className="h-40 w-full overflow-y-scroll bg-slate-300 p-1 text-xs">
+            <pre className="h-40 w-full overflow-auto bg-slate-300 p-1 text-xs w-full">
               {publicKey.armoredKey}
             </pre>
           </div>

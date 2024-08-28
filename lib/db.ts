@@ -77,6 +77,9 @@ export async function getThreadsForThreadGroup(finger: string) {
     where: {
       signedBy: { finger },
     },
+    orderBy: {
+      timestamp: "desc",
+    },
     include: {
       ...includes.include,
       parent: {
