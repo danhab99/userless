@@ -242,7 +242,6 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
   const registered = useAsync(async () => {
     const resp = await fetch(`/k/${fingerPrint}/armored`, {
       method: "HEAD",
-      cache: "force-cache",
     });
     return resp.ok;
   }, [fingerPrint, registerTrigger]);

@@ -1,11 +1,12 @@
 "use client";
+import {ThreadForThreadCard} from "@/global";
 import { Thread } from "@prisma/client";
 import * as openpgp from "openpgp";
 import { setegid } from "process";
 import { useEffect, useState } from "react";
 
 type SigVerifyProps = {
-  thread: Thread;
+  thread: ThreadForThreadCard;
 };
 
 enum VerifiedStatus {
@@ -28,7 +29,7 @@ const SigVerify = (props: SigVerifyProps) => {
           cleartextMessage: props.thread.body,
         });
 
-        const resp = await fetch(`/k/${props.thread.signedById}/armored`, {
+        const resp = await fetch(`/k/${props.thread.signedBy.finger}/armored`, {
           cache: "force-cache",
         });
         if (!resp.ok) {
@@ -63,7 +64,6 @@ const SigVerify = (props: SigVerifyProps) => {
             setStatus(VerifiedStatus.NoMatch);
           }
         } catch (e: any) {
-          debugger;
           console.error("Verify Error", e);
           setStatus(VerifiedStatus.Error);
           setError(e);
