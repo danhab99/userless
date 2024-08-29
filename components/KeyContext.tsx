@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import * as openpgp from "openpgp";
 import ActionButton from "./ActionButton";
 import Link from "next/link";
@@ -10,7 +10,7 @@ import {
   useLocalStorage,
   useSessionStorage,
 } from "react-use";
-import {Hash} from "./Hash";
+import { Hash } from "./Hash";
 
 const [usePrivateKeysState, PrivateKeysStateProvider] = createStateContext<
   openpgp.PrivateKey[]
@@ -42,6 +42,32 @@ export const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
   );
 };
 
+function useKeyBridge(
+  useKeys: ReturnType<typeof useState<openpgp.PrivateKey[]>>,
+  useLocal: ReturnType<typeof useState<string[]>>,
+) {
+  const [local, setLocal] = useLocal;
+  const [keys, setKeys] = useKeys;
+
+  useDeepCompareEffect(() => {
+    (async () => {
+      if (keys?.length == 0) {
+        const pks = await Promise.all(
+          local?.map((armored) =>
+            openpgp.readPrivateKeys({
+              armoredKeys: armored,
+            }),
+          ) ?? [],
+        );
+        setKeys(pks.flat(1));
+      } else {
+        const armoredKeys = keys?.map((k) => k.armor());
+        setLocal(armoredKeys);
+      }
+    })();
+  }, [keys, local]);
+}
+
 function KeyDrawer() {
   const [privateKeysLocal, setPrivateKeysLocal] = useLocalStorage<string[]>(
     "ring",
@@ -54,41 +80,15 @@ function KeyDrawer() {
   const [privateKeys, setPrivateKeys] = usePrivateKeysState();
   const [decryptedKeys, setDecryptedKeys] = useDecryptedKeysState();
 
-  useDeepCompareEffect(() => {
-    (async () => {
-      if (decryptedKeys.length == 0) {
-        const pks = await Promise.all(
-          decryptedKeysLocal?.map((armored) =>
-            openpgp.readPrivateKeys({
-              armoredKeys: armored,
-            }),
-          ) ?? [],
-        );
-        setDecryptedKeys(pks.flat(1));
-      } else {
-        const armoredKeys = decryptedKeys.map((k) => k.armor());
-        setDecryptedKeysLocal(armoredKeys);
-      }
-    })();
-  }, [decryptedKeys, decryptedKeysLocal]);
+  useKeyBridge(
+    [privateKeys, setPrivateKeys],
+    [privateKeysLocal, setPrivateKeysLocal],
+  );
 
-  useDeepCompareEffect(() => {
-    (async () => {
-      if (privateKeys.length == 0) {
-        const pks = await Promise.all(
-          privateKeysLocal?.map((armored) =>
-            openpgp.readPrivateKeys({
-              armoredKeys: armored,
-            }),
-          ) ?? [],
-        );
-        setPrivateKeys(pks.flat(1));
-      } else {
-        const armoredKeys = privateKeys.map((k) => k.armor());
-        setPrivateKeysLocal(armoredKeys);
-      }
-    })();
-  }, [privateKeysLocal, privateKeys]);
+  useKeyBridge(
+    [decryptedKeys, setDecryptedKeys],
+    [decryptedKeysLocal, setDecryptedKeysLocal],
+  );
 
   const addKey = useCallback(
     async (files: FileList | null) => {
@@ -199,7 +199,7 @@ export function KeyBody({ pgKey }: { pgKey: openpgp.PrivateKey }) {
 
 function KeyRow(props: { sk: openpgp.PrivateKey }) {
   const { sk } = props;
-  const fingerPrint = sk.getFingerprint()
+  const fingerPrint = sk.getFingerprint();
 
   const [_, setPrivateKeys] = usePrivateKeysState();
   const [__, setDecryptedKeys] = useDecryptedKeysState();
@@ -211,7 +211,7 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
   }, [sk]);
 
   const unlock = useCallback(async () => {
-    const primaryUser = await sk.getPrimaryUser()
+    const primaryUser = await sk.getPrimaryUser();
     const password = prompt(
       `Password to decrypt ${keyBodyString(primaryUser, sk)}`,
     );
@@ -255,10 +255,9 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
       alert("unable to register");
     }
     setTimeout(() => {
-      setRegisterTrigger(x => !x);
-    }, 50)
+      setRegisterTrigger((x) => !x);
+    }, 50);
   }, [sk]);
-
 
   return (
     <div className="flex flex-row align-middle">
