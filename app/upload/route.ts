@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import * as openpgp from "openpgp";
-import { s3Client } from "@/lib/s3";
+import { BUCKET, s3Client } from "@/lib/s3";
 import { createHash } from "crypto";
 
 const db = new PrismaClient();
@@ -74,16 +74,8 @@ export async function POST(req: NextRequest) {
   const hash = hasher.digest("hex");
 
   await Promise.all([
-    s3Client.putObject(
-      process.env["S3_OBJECT_BUCKET"] as string,
-      hash,
-      document as Buffer,
-    ),
-    s3Client.putObject(
-      process.env["S3_OBJECT_BUCKET"] as string,
-      `${hash}_sig`,
-      signature 
-    ),
+    s3Client.putObject(BUCKET, hash, document as Buffer),
+    s3Client.putObject(BUCKET, `${hash}_sig`, signature),
     db.file.create({
       data: {
         hash,

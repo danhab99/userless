@@ -1,5 +1,7 @@
 import * as Minio from 'minio'
 
+export const BUCKET = process.env["S3_BUCKET"] as string;
+
 export const s3Client = new Minio.Client({
   endPoint: process.env["S3_ENDPOINT"] as string,
   port: parseInt( process.env["S3_PORT"] ?? ""),
