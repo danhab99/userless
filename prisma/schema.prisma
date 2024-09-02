@@ -25,10 +25,10 @@ model Thread {
 }
 
 type ThreadPolicy {
-  visible          Boolean  @default(true)
-  acceptsReplies   Boolean  @default(true)
-  encryptFor       String[]
-  policyEditors    String[]
+  visible        Boolean  @default(true)
+  acceptsReplies Boolean  @default(true)
+  encryptFor     String[]
+  policyEditors  String[]
 }
 
 model PublicKey {
@@ -41,6 +41,7 @@ model PublicKey {
   name       String
   threads    Thread[]
   policy     PublicKeyPolicy
+  files      File[]
 
   @@index([email])
   @@index([name])
@@ -51,4 +52,16 @@ type PublicKeyPolicy {
   allowedToPost        Boolean @default(true)
   canStartThreads      Boolean @default(true)
   isMaster             Boolean @default(false)
+  allowedToUploadFiles Boolean @default(true)
+  maxFileSize          BigInt  @default(1000000)
+}
+
+model File {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  signedBy   PublicKey @relation(fields: [signedById], references: [finger])
+  signedById String
+  hash       String    @unique
+  timestamp  DateTime
+  size       BigInt
+  mimeType   String?
 }
