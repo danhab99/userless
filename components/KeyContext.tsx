@@ -12,6 +12,12 @@ import {
 } from "react-use";
 import { Hash } from "./Hash";
 
+const [useHasMasterState, HasMasterStateProvider] = createStateContext(false);
+
+export function useHasMaster() {
+  return useHasMasterState()[0];
+}
+
 const [usePrivateKeysState, PrivateKeysStateProvider] = createStateContext<
   openpgp.PrivateKey[]
 >([]);
@@ -34,8 +40,10 @@ export const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
     <>
       <PrivateKeysStateProvider>
         <DecryptedKeysStateProvider>
-          <KeyDrawer />
-          {props.children}
+          <HasMasterStateProvider>
+            <KeyDrawer />
+            {props.children}
+          </HasMasterStateProvider>
         </DecryptedKeysStateProvider>
       </PrivateKeysStateProvider>
     </>
@@ -43,7 +51,7 @@ export const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
 };
 
 function useKeyBridge(
-  useKeys: ReturnType<typeof useState<openpgp.PrivateKey[]>>,
+  useKeys: ReturnType<typeof useState<openpgp.PrivateKey[] | undefined>>,
   useLocal: ReturnType<typeof useState<string[]>>,
 ) {
   const [local, setLocal] = useLocal;
@@ -179,24 +187,6 @@ function keyBodyString(
   return `${primaryUser?.user.userID?.name}(${keyid})<${primaryUser?.user.userID?.email}>`;
 }
 
-export function KeyBody({ pgKey }: { pgKey: openpgp.PrivateKey }) {
-  const primaryUser = useAsync(() => pgKey.getPrimaryUser(), [pgKey]);
-
-  return (
-    <span className="text-username">
-      {primaryUser.value?.user.userID?.name}
-      <Link href={`/k/${pgKey.getFingerprint()}`}>
-        {"("}
-        <Hash content={pgKey.getFingerprint()} />
-        {")"}
-      </Link>
-      {"<"}
-      {primaryUser.value?.user.userID?.email}
-      {">"}
-    </span>
-  );
-}
-
 function KeyRow(props: { sk: openpgp.PrivateKey }) {
   const { sk } = props;
   const fingerPrint = sk.getFingerprint();
@@ -259,9 +249,45 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
     }, 50);
   }, [sk]);
 
+  const setHasMaster = useHasMasterState()[1];
+
+  const isMaster = useAsync(async () => {
+    const resp = await fetch("/admin", {
+      cache: "force-cache",
+    });
+
+    const test = await resp.text();
+
+    const msg = await openpgp.readMessage({
+      armoredMessage: test,
+    });
+
+    try {
+      await msg.decrypt([sk]);
+      setHasMaster(true);
+      return true;
+    } catch (e) {
+      console.error("this key isn't a master", { sk, e });
+      return false;
+    }
+  }, [sk]);
+
+  const primaryUser = useAsync(() => sk.getPrimaryUser(), [sk]);
+
   return (
     <div className="flex flex-row align-middle">
-      <KeyBody pgKey={props.sk} />
+      <span className="text-username">
+        {isMaster.value ? "👑" : ""}
+        {primaryUser.value?.user.userID?.name}
+        <Link href={`/k/${sk.getFingerprint()}`}>
+          {"("}
+          <Hash content={sk.getFingerprint()} />
+          {")"}
+        </Link>
+        {"<"}
+        {primaryUser.value?.user.userID?.email}
+        {">"}
+      </span>
       <ActionButton label="Delete" color="text-red-500" onClick={deleteKey} />
 
       {!(registered.value || registered.loading) ? (
