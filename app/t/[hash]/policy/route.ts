@@ -1,6 +1,6 @@
+import { encryptForMasters, getMasters } from "@/lib/admin";
 import { PrismaClient } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { encryptForMasters, getMasters } from "@/lib/admin";
 import * as openpgp from "openpgp";
 
 const db = new PrismaClient();
@@ -36,8 +36,8 @@ export async function PATCH(req: NextRequest) {
 
   const actionClearText = await req.text();
 
-  const actionPgp = await openpgp.createCleartextMessage({
-    text: actionClearText,
+  const actionPgp = await openpgp.readCleartextMessage({
+    cleartextMessage: actionClearText,
   });
 
   const masters = await mastersPromise;
@@ -56,10 +56,11 @@ export async function PATCH(req: NextRequest) {
   const verified = verifieds.every((x) => x);
 
   if (verified) {
+    console.log("Changing policy", { threadHash, text: actionPgp.getText() });
     await db.thread.update({
       where: { hash: threadHash },
       data: {
-        policy: {},
+        policy: JSON.parse(actionPgp.getText()),
       },
     });
 
