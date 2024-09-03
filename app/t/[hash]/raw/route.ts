@@ -1,5 +1,5 @@
-import {PrismaClient} from "@prisma/client";
-import {NextRequest, NextResponse} from "next/server";
+import { PrismaClient } from "@prisma/client";
+import { NextRequest, NextResponse } from "next/server";
 
 const db = new PrismaClient();
 
@@ -10,11 +10,16 @@ export async function GET(req: NextRequest) {
   const thread = await db.thread.findUniqueOrThrow({
     where: {
       hash: threadHash.toLowerCase(),
+      policy: {
+        is: {
+          visible: true,
+        },
+      },
     },
     select: {
       body: true,
-    }
-  })
+    },
+  });
 
-  return new NextResponse(thread.body)
+  return new NextResponse(thread.body);
 }

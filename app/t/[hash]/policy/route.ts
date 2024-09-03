@@ -12,6 +12,11 @@ export async function GET(req: NextRequest) {
   const thread = await db.thread.findUniqueOrThrow({
     where: {
       hash: threadHash.toLowerCase(),
+      policy: {
+        is: {
+          visible: true,
+        },
+      },
     },
     select: {
       policy: true,

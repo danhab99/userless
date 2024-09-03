@@ -100,6 +100,11 @@ export async function uploadThread(threadClearText: string) {
     const thread = await db.thread.findUnique({
       where: {
         hash: replyTo,
+        policy: {
+          is: {
+            visible: true,
+          }
+        }
       },
       select: {
         policy: true,

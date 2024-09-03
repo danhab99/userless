@@ -10,6 +10,11 @@ export async function GET(req: NextRequest) {
   const replyHashes = await db.thread.findMany({
     where: {
       replyTo: threadHash.toLowerCase(),
+      policy: {
+        is: {
+          visible: true,
+        },
+      },
     },
     orderBy: {
       timestamp: "desc",

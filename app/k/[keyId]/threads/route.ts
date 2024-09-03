@@ -12,16 +12,21 @@ export async function GET(req: NextRequest) {
       signedBy: {
         finger,
       },
+      policy: {
+        is: {
+          visible: true,
+        },
+      },
     },
     select: {
       hash: true,
     },
     orderBy: {
       timestamp: "desc",
-    }
+    },
   });
 
-  const ret = replies.map(x => x.hash).join("\n")
+  const ret = replies.map((x) => x.hash).join("\n");
 
   return new NextResponse(ret);
 }

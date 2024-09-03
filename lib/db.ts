@@ -19,18 +19,34 @@ export const includes = {
 export async function getThread(
   hash: string,
 ): Promise<ThreadForThreadCard | null> {
-  return db.thread.findUnique({ where: { hash }, ...includes });
+  return db.thread.findUnique({
+    where: {
+      hash,
+
+      policy: {
+        is: {
+          visible: true,
+        },
+      },
+    },
+    ...includes,
+  });
 }
 
 export async function getReplies(hash: string): Promise<ThreadForThreadCard[]> {
   return db.thread.findMany({
     where: {
       replyTo: hash,
+      policy: {
+        is: {
+          visible: true,
+        },
+      },
     },
     ...includes,
     orderBy: {
       timestamp: "desc",
-    }
+    },
   });
 }
 
@@ -57,6 +73,11 @@ export async function getParents(
     const thread: ThreadForThreadCard | null = await db.thread.findFirst({
       where: {
         hash: ancestors[ancestors.length - 1].replyTo as string,
+        policy: {
+          is: {
+            visible: true,
+          },
+        },
       },
       ...includes,
     });
@@ -70,7 +91,6 @@ export async function getParents(
 
   return ancestors.slice(1);
 }
-
 
 export async function getThreadsForThreadGroup(finger: string) {
   return db.thread.findMany({
@@ -96,4 +116,6 @@ export async function getThreadsForThreadGroup(finger: string) {
   });
 }
 
-export type ThreadForThreadGroup = Awaited<ReturnType<typeof getThreadsForThreadGroup>>[number];
+export type ThreadForThreadGroup = Awaited<
+  ReturnType<typeof getThreadsForThreadGroup>
+>[number];

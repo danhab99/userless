@@ -11,11 +11,16 @@ const WelcomePage = async () => {
       replyTo: {
         isSet: false,
       },
+      policy: {
+        is: {
+          visible: true,
+        },
+      },
     },
     ...includes,
     orderBy: {
       timestamp: "desc",
-    }
+    },
   });
 
   console.log("threads", threads);
