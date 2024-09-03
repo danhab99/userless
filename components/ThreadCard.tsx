@@ -10,8 +10,9 @@ import { ThreadForThreadCard } from "@/global";
 import { Hash } from "@/components/Hash";
 import { useHasMaster, useMasterKey } from "./KeyContext";
 import ActionButton from "./ActionButton";
-import { useAsyncFn } from "react-use";
+import { useAsync, useAsyncFn } from "react-use";
 import * as openpgp from "openpgp";
+import {useState} from "react";
 
 type ThreadCardProps = {
   thread: ThreadForThreadCard;
@@ -22,13 +23,27 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
   const [ReplyTB, showReply] = useToggleButton(false);
   const [SourceTB, showSource] = useToggleButton(false);
   const [FullTB, showFull] = useToggleButton(false);
-
-  const mailtoLink = mailto({
-    to: thread.signedBy.email,
-  });
+  const [refresh, setRefresh] = useState(false);
 
   function Controls() {
     const master = useMasterKey();
+
+    const policy = useAsync(async () => {
+      if (master) {
+        const resp = await fetch(`/t/${thread.hash}/policy`);
+        const policyTxt = await resp.text();
+        const message = await openpgp.readMessage({
+          armoredMessage: policyTxt,
+        });
+        const msg = await openpgp.decrypt({
+          message,
+          decryptionKeys: [master],
+        });
+
+        const policyRaw = msg.data.toString();
+        return JSON.parse(policyRaw) as ThreadPolicy;
+      }
+    }, [master, thread, refresh]);
 
     const change = async (policy: Partial<ThreadPolicy>) => {
       if (master) {
@@ -44,6 +59,8 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
           body: packet,
         });
 
+        setRefresh(x => !x);
+
         return resp.ok;
       }
       return false;
@@ -57,7 +74,7 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
 
     const [{ loading: disablingReplies }, disableReplies] = useAsyncFn(() => {
       return change({
-        acceptsReplies: false,
+        acceptsReplies: !policy.value?.acceptsReplies,
       });
     });
 
@@ -75,7 +92,13 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
             />
             <ActionButton
               color="text-red-500"
-              label={disablingReplies ? "Disabling..." : "Disable replies"}
+              label={
+                disablingReplies
+                  ? "Changing..."
+                  : policy.value?.acceptsReplies
+                    ? "Disable replies"
+                    : "Enable replies"
+              }
               onClick={disableReplies}
             />
           </>
@@ -83,6 +106,10 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
       </div>
     );
   }
+
+  const mailtoLink = mailto({
+    to: thread.signedBy.email,
+  });
 
   return (
     <div className="card my-2 max-w-4xl bg-card p-4">
