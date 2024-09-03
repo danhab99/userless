@@ -4,10 +4,14 @@ import mailto from "mailto-link";
 import ThreadBody from "@/components/ThreadBody";
 import { PostThread } from "@/components/PostThread";
 import { useToggleButton } from "@/components/ToggleButton";
-import { Thread } from "@prisma/client";
+import { Thread, ThreadPolicy } from "@prisma/client";
 import Link from "next/link";
 import { ThreadForThreadCard } from "@/global";
 import { Hash } from "@/components/Hash";
+import { useHasMaster, useMasterKey } from "./KeyContext";
+import ActionButton from "./ActionButton";
+import { useAsyncFn } from "react-use";
+import * as openpgp from "openpgp";
 
 type ThreadCardProps = {
   thread: ThreadForThreadCard;
@@ -24,11 +28,58 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
   });
 
   function Controls() {
+    const master = useMasterKey();
+
+    const change = async (policy: Partial<ThreadPolicy>) => {
+      if (master) {
+        const packet = await openpgp.sign({
+          message: await openpgp.createCleartextMessage({
+            text: JSON.stringify(policy),
+          }),
+          signingKeys: [master],
+        });
+
+        const resp = await fetch(`/t/${thread.hash}/policy`, {
+          method: "PATCH",
+          body: packet,
+        });
+
+        return resp.ok;
+      }
+      return false;
+    };
+
+    const [{ loading: deleting }, doDelete] = useAsyncFn(() => {
+      return change({
+        visible: false,
+      });
+    });
+
+    const [{ loading: disablingReplies }, disableReplies] = useAsyncFn(() => {
+      return change({
+        acceptsReplies: false,
+      });
+    });
+
     return (
       <div className="text-xs">
         <ReplyTB trueLabel="Hide reply" falseLabel="Reply" />
         <SourceTB trueLabel="Hide source" falseLabel="Source" />
         <FullTB trueLabel="Less" falseLabel="More" />
+        {master ? (
+          <>
+            <ActionButton
+              color="text-red-500"
+              label={deleting ? "Deleting" : "Delete"}
+              onClick={doDelete}
+            />
+            <ActionButton
+              color="text-red-500"
+              label={disablingReplies ? "Disabling..." : "Disable replies"}
+              onClick={disableReplies}
+            />
+          </>
+        ) : null}
       </div>
     );
   }

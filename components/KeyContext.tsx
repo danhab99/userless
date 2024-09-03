@@ -11,11 +11,14 @@ import {
   useSessionStorage,
 } from "react-use";
 import { Hash } from "./Hash";
+import { create } from "domain";
 
-const [useHasMasterState, HasMasterStateProvider] = createStateContext(false);
+const [useMasterKeyState, MasterKeyStateProvider] = createStateContext<
+  openpgp.PrivateKey | undefined
+>(undefined);
 
-export function useHasMaster() {
-  return useHasMasterState()[0];
+export function useMasterKey() {
+  return useMasterKeyState()[0];
 }
 
 const [usePrivateKeysState, PrivateKeysStateProvider] = createStateContext<
@@ -40,10 +43,10 @@ export const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
     <>
       <PrivateKeysStateProvider>
         <DecryptedKeysStateProvider>
-          <HasMasterStateProvider>
+          <MasterKeyStateProvider>
             <KeyDrawer />
             {props.children}
-          </HasMasterStateProvider>
+          </MasterKeyStateProvider>
         </DecryptedKeysStateProvider>
       </PrivateKeysStateProvider>
     </>
@@ -249,7 +252,7 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
     }, 50);
   }, [sk]);
 
-  const setHasMaster = useHasMasterState()[1];
+  const setMaster = useMasterKeyState()[1];
 
   const isMaster = useAsync(async () => {
     const resp = await fetch("/admin", {
@@ -264,7 +267,7 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
 
     try {
       await msg.decrypt([sk]);
-      setHasMaster(true);
+      setMaster(x => x ? x : sk);
       return true;
     } catch (e) {
       console.error("this key isn't a master", { sk, e });
