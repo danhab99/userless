@@ -1,5 +1,11 @@
 "use client";
-import { ChangeEventHandler, useCallback, useEffect, useRef, useState } from "react";
+import {
+  ChangeEventHandler,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { usePrivateKeys } from "@/components/KeyContext";
 import * as openpgp from "openpgp";
 import { Thread } from "@prisma/client";
@@ -23,15 +29,14 @@ export const PostThread = (props: PostThreadProps) => {
 
   useEffect(() => {
     setKeyId(privateKeys[0]?.getFingerprint());
-  }, [privateKeys])
+  }, [privateKeys]);
 
   const router = useRouter();
 
   const onSubmit = useCallback(() => {
     (async () => {
       setLoading(true);
-      const skId =
-        keyId?.length == 0 ? privateKeys[0].getFingerprint() : keyId;
+      const skId = keyId?.length == 0 ? privateKeys[0].getFingerprint() : keyId;
 
       var pk = privateKeys?.find((x) => x.getFingerprint() === skId);
       if (!pk) {
@@ -60,12 +65,17 @@ export const PostThread = (props: PostThreadProps) => {
         }
       }
 
+      const fileHashes = Object.keys(files);
+      const fileContents = Object.values(files);
+
       const allowHashs = MATCH_SHA256.exec(body);
-      allowHashs?.forEach((hash) => {
+      const deleteHashes = fileHashes.filter((x) => !allowHashs?.includes(x));
+
+      deleteHashes?.forEach((hash) => {
         delete files[hash];
       });
 
-      const uploadPromises = Object.values(files).map(async (data) => {
+      const uploadPromises = fileContents.map(async (data) => {
         const msg = await openpgp.createMessage({
           binary: data,
         });
@@ -81,12 +91,13 @@ export const PostThread = (props: PostThreadProps) => {
         f.append("document", new Blob([data]));
         f.append("signature", new Blob([sig.toString()]));
 
-        await fetch("/upload", {
+        const resp = await fetch("/upload", {
           method: "POST",
           body: f,
         });
-      });
 
+        return resp.ok;
+      });
 
       const msg = await openpgp.createCleartextMessage({
         text: [
@@ -104,19 +115,22 @@ export const PostThread = (props: PostThreadProps) => {
         format: "armored",
       });
 
-      const resp = await fetch("/post", {
-        method: "POST",
-        body: signedMsg,
-      });
+      const succeses = await Promise.all(uploadPromises);
 
-      await Promise.all(uploadPromises);
+      if (succeses.every((x) => x)) {
+        const resp = await fetch("/post", {
+          method: "POST",
+          body: signedMsg,
+        });
 
-      if (resp.redirected) {
-        router.push(resp.url);
-      } else {
-        alert("Unable to post thread");
-        console.error(resp);
+        if (resp.redirected) {
+          router.push(resp.url);
+        } else {
+          alert("Unable to post thread");
+          console.error(resp);
+        }
       }
+
       setLoading(false);
     })();
   }, [privateKeys, files]);
