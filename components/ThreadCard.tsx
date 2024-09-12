@@ -8,7 +8,7 @@ import { Thread, ThreadPolicy } from "@prisma/client";
 import Link from "next/link";
 import { ThreadForThreadCard } from "@/global";
 import { Hash } from "@/components/Hash";
-import { useHasMaster, useMasterKey } from "./KeyContext";
+import { useMasterKey } from "./KeyContext";
 import ActionButton from "./ActionButton";
 import { useAsync, useAsyncFn } from "react-use";
 import * as openpgp from "openpgp";
@@ -27,22 +27,13 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
 
   const master = useMasterKey();
 
-  const policy = useAsync(async () => {
-    if (master) {
-      const resp = await fetch(`/t/${thread.hash}/policy`);
-      const policyTxt = await resp.text();
-      const message = await openpgp.readMessage({
-        armoredMessage: policyTxt,
-      });
-      const msg = await openpgp.decrypt({
-        message,
-        decryptionKeys: [master],
-      });
-
-      const policyRaw = msg.data.toString();
-      return JSON.parse(policyRaw) as ThreadPolicy;
-    }
-  }, [master, thread, refresh]);
+  // const policy = useAsync(async () => {
+  //   if (master) {
+  //     const resp = await fetch(`/t/${thread.hash}/policy`);
+  //     const policyTxt = await resp.text();
+  //     return JSON.parse(policyTxt) as ThreadPolicy;
+  //   }
+  // }, [master, thread, refresh]);
 
   const change = async (policy: Partial<ThreadPolicy>) => {
     if (master) {
@@ -58,7 +49,7 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
         body: packet,
       });
 
-      await new Promise(r => setTimeout(r, 50))
+      await new Promise((r) => setTimeout(r, 50));
 
       setRefresh((x) => !x);
 
@@ -75,13 +66,15 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
 
   const [{ loading: disablingReplies }, disableReplies] = useAsyncFn(() => {
     return change({
-      acceptsReplies: !policy.value?.acceptsReplies,
+      acceptsReplies: !thread.policy.acceptsReplies,
     });
   });
 
   const controls = (
     <div className="text-xs">
-      <ReplyTB trueLabel="Hide reply" falseLabel="Reply" />
+      {thread.policy.acceptsReplies ? (
+        <ReplyTB trueLabel="Hide reply" falseLabel="Reply" />
+      ) : null}
       <SourceTB trueLabel="Hide source" falseLabel="Source" />
       <FullTB trueLabel="Less" falseLabel="More" />
       {master ? (
@@ -96,7 +89,7 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
             label={
               disablingReplies
                 ? "Changing..."
-                : policy.value?.acceptsReplies
+                : thread.policy.acceptsReplies
                   ? "Disable replies"
                   : "Enable replies"
             }
@@ -135,16 +128,21 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
         </Link>{" "}
         <SigVerify thread={thread} />
       </p>
+
       {controls}
+
       <div className={showFull ? "h-full" : "max-h-96 overflow-y-auto"}>
         <ThreadBody thread={thread as Thread} />
       </div>
+
       {controls}
+
       {showReply ? (
         <div className="pt-4">
           <PostThread replyTo={thread} />
         </div>
       ) : null}
+
       {showSource ? (
         <pre className="h-40 overflow-auto bg-slate-900 text-xs text-slate-100 p-1">
           {thread.body}
