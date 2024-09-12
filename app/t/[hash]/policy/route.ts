@@ -23,9 +23,7 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  return new NextResponse(
-    await encryptForMasters(JSON.stringify(thread.policy)),
-  );
+  return new NextResponse(JSON.stringify(thread.policy));
 }
 
 export async function PATCH(req: NextRequest) {
