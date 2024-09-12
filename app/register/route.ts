@@ -1,11 +1,11 @@
 import { Prisma, PrismaClient } from "@prisma/client";
-import {redirect} from "next/navigation";
+import { redirect } from "next/navigation";
 import * as openpgp from "openpgp";
 
 const db = new PrismaClient();
 
 export async function POST(request: Request) {
-  const body = await request.text()
+  const body = await request.text();
 
   console.log("Read armored keys", body);
 
@@ -15,19 +15,20 @@ export async function POST(request: Request) {
 
   await db.publicKey.createMany({
     data: await Promise.all(
-      pks.map(async (pk) => {
-        const { user } = await pk.getPrimaryUser();
-
-        return {
-          armoredKey: pk.armor(),
-          comment: user.userID?.comment,
-          email: user.userID?.email,
-          finger: pk.getFingerprint(),
-          keyId: pk.getKeyID().toHex(),
-          name: user.userID?.name,
-          policy: {},
-        } as Prisma.PublicKeyCreateManyInput;
-      }),
+      pks
+        .filter((k) => !k.isPrivate())
+        .map(async (pk) => {
+          const { user } = await pk.getPrimaryUser();
+          return {
+            armoredKey: pk.armor(),
+            comment: user.userID?.comment,
+            email: user.userID?.email,
+            finger: pk.getFingerprint(),
+            keyId: pk.getKeyID().toHex(),
+            name: user.userID?.name,
+            policy: {},
+          } as Prisma.PublicKeyCreateManyInput;
+        }),
     ),
   });
 
@@ -36,5 +37,5 @@ export async function POST(request: Request) {
     pks.map((x) => x.getKeyID().toHex()),
   );
 
-  redirect(`/k/${pks[0].getKeyID().toHex()}`)
+  redirect(`/k/${pks[0].getKeyID().toHex()}`);
 }
