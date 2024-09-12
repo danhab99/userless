@@ -1,9 +1,14 @@
 import { PrismaClient } from "@prisma/client";
+import { notFound } from "next/navigation";
 import { NextRequest, NextResponse } from "next/server";
 
 const db = new PrismaClient();
 
 export async function GET(req: NextRequest) {
+  if (!process.env["ALLOW_DISCOVER_FILES"]) {
+    notFound();
+  }
+
   const u = new URL(req.url);
   const finger = u.pathname.split("/")[2].toLowerCase();
 
