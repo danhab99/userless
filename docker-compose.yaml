@@ -9,3 +9,15 @@ services:
       - 27017:27017
     volumes:
       - ./notes/data:/data/db
+
+  minio:
+    image: minio/minio
+    ports:
+      - 9000:9000
+      - 9001:9001
+    command: server --console-address ":9001" /data
+    volumes:
+      - ~/minio:/data
+    environment: 
+      MINIO_ROOT_USER: root
+      MINIO_ROOT_PASSWORD: password
