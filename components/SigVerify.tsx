@@ -1,10 +1,12 @@
 "use client";
-import {ThreadForThreadCard} from "@/global";
+import { ThreadForThreadCard } from "@/global";
+import { digestHash } from "@/lib/hash";
 import * as openpgp from "openpgp";
 import { useEffect, useState } from "react";
 
 type SigVerifyProps = {
-  thread: ThreadForThreadCard;
+  content: string | ArrayBuffer;
+  detatched?: boolean;
 };
 
 enum VerifiedStatus {
@@ -20,14 +22,10 @@ const SigVerify = (props: SigVerifyProps) => {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (props.thread) {
-      setStatus(VerifiedStatus.Working);
-      (async () => {
-        const msg = await openpgp.readCleartextMessage({
-          cleartextMessage: props.thread.body,
-        });
-
-        const resp = await fetch(`/k/${props.thread.signedBy.finger}/armored`, {
+    setStatus(VerifiedStatus.Working);
+    (async () => {
+      const getKey = async (keyId: string) => {
+        const resp = await fetch(`/k/${keyId}/armored`, {
           cache: "force-cache",
         });
         if (!resp.ok) {
@@ -49,26 +47,62 @@ const SigVerify = (props: SigVerifyProps) => {
           return;
         }
 
-        try {
-          const verify = await msg.verify(keys);
+        return keys[0];
+      };
 
-          const verifications = await Promise.all(
-            verify.map((x) => x.verified),
-          );
+      try {
+        let verify: openpgp.VerificationResult[] = [];
+        if (props.detatched) {
+          const msg = await (props.content instanceof ArrayBuffer
+            ? openpgp.createMessage({
+                format: "binary",
+                text: Buffer.from(new Uint8Array(props.content)),
+              })
+            : openpgp.createMessage({
+                text: props.content,
+                format: "text",
+              }));
 
-          if (verifications.every((x) => x)) {
-            setStatus(VerifiedStatus.Success);
-          } else {
-            setStatus(VerifiedStatus.NoMatch);
+          const hash = digestHash(props.content);
+          const resp = await fetch(`/f/${hash}/sig`, {
+            cache: "force-cache",
+          });
+
+          const signature = await openpgp.readSignature({
+            armoredSignature: await resp.text(),
+          });
+
+          const pk = await getKey(signature.getSigningKeyIDs()[0].toHex());
+
+          if (pk) {
+            verify = await msg.verify([pk]);
           }
-        } catch (e: any) {
-          console.error("Verify Error", e);
-          setStatus(VerifiedStatus.Error);
-          setError(e);
+        } else {
+          const msg = await openpgp.readCleartextMessage({
+            cleartextMessage: props.content as string,
+          })
+          const keys = await getKey(msg.getSigningKeyIDs()[0].toHex());
+          if (!keys) {
+            return;
+          }
+
+          verify = await msg.verify([keys]);
         }
-      })();
-    }
-  }, [props.thread]);
+
+        const verifications = await Promise.all(verify.map((x) => x.verified));
+
+        if (verifications.every((x) => x)) {
+          setStatus(VerifiedStatus.Success);
+        } else {
+          setStatus(VerifiedStatus.NoMatch);
+        }
+      } catch (e: any) {
+        console.error("Verify Error", e);
+        setStatus(VerifiedStatus.Error);
+        setError(e);
+      }
+    })();
+  }, [props]);
 
   switch (status) {
     case VerifiedStatus.Working:

@@ -126,7 +126,7 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
         <Link className="text-slate-600" href={`/t/${thread.hash}`}>
           <Hash content={thread.hash} />
         </Link>{" "}
-        <SigVerify thread={thread} />
+        <SigVerify content={thread.body} />
       </p>
 
       {controls}
