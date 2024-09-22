@@ -77,7 +77,7 @@ export const PostThread = (props: PostThreadProps) => {
 
       const uploadPromises = fileContents.map(async (data) => {
         const msg = await openpgp.createMessage({
-          binary: data,
+          binary: new Uint8Array(data),
         });
 
         const sig = await openpgp.sign({

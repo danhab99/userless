@@ -42,7 +42,11 @@ async function getSigner(msg: openpgp.CleartextMessage): Promise<PublicKey> {
   const x = await db.publicKey.findFirst({
     where: {
       keyId: ownerKeyId.toHex(),
-      revoked: false,
+      policy: {
+        is: {
+          revoked: false,
+        }
+      }
     },
   });
 

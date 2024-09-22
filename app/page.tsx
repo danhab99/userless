@@ -23,8 +23,6 @@ const WelcomePage = async () => {
     },
   });
 
-  console.log("threads", threads);
-
   return (
     <>
       <header className="p-8 text-center">
