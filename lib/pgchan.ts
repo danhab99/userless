@@ -1,6 +1,7 @@
 import * as openpgp from "openpgp";
 import { createHash } from "crypto";
 import { PrismaClient, PublicKey } from "@prisma/client";
+import {digestHash} from "./hash";
 
 const db = new PrismaClient();
 
@@ -120,9 +121,7 @@ export async function uploadThread(threadClearText: string) {
     }
   }
 
-  const hasher = createHash("sha256");
-  hasher.write(threadClearText);
-  const hash = hasher.digest().toString("hex");
+  const hash = digestHash(threadClearText)
 
   return db.thread.create({
     data: {
@@ -166,3 +165,5 @@ export async function registerPublicKey(publicKeyArmored: string) {
     },
   });
 }
+
+
