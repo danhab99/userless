@@ -8,17 +8,30 @@ const db = new PrismaClient();
 
 export async function POST(req: NextRequest) {
   const data = await req.formData();
-  const [document, signature] = await Promise.all([
-    (data.get("document") as Blob).arrayBuffer(),
-    (data.get("document") as Blob).text(),
-  ]);
+
+  const docFormData = data.get("document");
+  if (!(docFormData instanceof File)) {
+    return
+  }
+  const docArrBuffPromise = docFormData.arrayBuffer()
+  
+  const sigFormData = data.get("signature");
+  if (!(sigFormData instanceof File)) {
+    return
+  }
+  const sigArrBuffPromise = sigFormData.text();
+
+  const [docArrayBuff, sigArmored ] = await Promise.all([docArrBuffPromise, sigArrBuffPromise]);
+  const docBuff = Buffer.from(docArrayBuff);
+
+  console.log("Receiving upload");
 
   const pgpDoc = openpgp.createMessage({
-    binary: document,
+    binary: docBuff,
   });
 
   const pgpSig = await openpgp.readSignature({
-    armoredSignature: signature.toString(),
+    armoredSignature: sigArmored,
   });
 
   if (!pgpSig.packets[0].created) {
@@ -49,7 +62,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  if (publicKey.policy.maxFileSize < document.byteLength) {
+  if (publicKey.policy.maxFileSize < docBuff.byteLength) {
     return new NextResponse("file to big", { status: 403 });
   }
 
@@ -70,16 +83,16 @@ export async function POST(req: NextRequest) {
   }
 
   const hasher = createHash("sha256");
-  hasher.write(document);
+  hasher.write(docBuff);
   const hash = hasher.digest("hex");
 
   await Promise.all([
-    s3Client.putObject(BUCKET, hash, document as Buffer),
-    s3Client.putObject(BUCKET, `${hash}_sig`, signature),
+    s3Client.putObject(BUCKET, `${hash}_sig`, sigArmored),
+    s3Client.putObject(BUCKET, hash, docBuff),
     db.file.create({
       data: {
         hash,
-        size: document.byteLength,
+        size: docBuff.length,
         timestamp: pgpSig.packets[0].created,
         signedBy: {
           connect: {
