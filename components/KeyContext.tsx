@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   createStateContext,
   useAsync,
+  useAsyncRetry,
   useDeepCompareEffect,
   useLocalStorage,
   useSessionStorage,
@@ -230,14 +231,12 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
     });
   }, [setDecryptedKeys]);
 
-  const [registerTrigger, setRegisterTrigger] = useState(false);
-
-  const registered = useAsync(async () => {
+  const registered = useAsyncRetry(async () => {
     const resp = await fetch(`/k/${fingerPrint}/armored`, {
       method: "HEAD",
     });
     return resp.ok;
-  }, [fingerPrint, registerTrigger]);
+  }, [fingerPrint]);
 
   const register = useCallback(async () => {
     const resp = await fetch("/register", {
@@ -248,8 +247,8 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
       alert("unable to register");
     }
     setTimeout(() => {
-      setRegisterTrigger((x) => !x);
-    }, 50);
+      registered.retry();
+    }, 100);
   }, [sk]);
 
   const setMaster = useMasterKeyState()[1];
