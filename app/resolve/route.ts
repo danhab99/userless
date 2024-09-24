@@ -28,8 +28,7 @@ export async function GET(req: NextRequest) {
 
   if (userlessPath[0] === "t") {
     const hasThread = await db.thread.count({
-      where: {
-        hash: userlessPath[1],
+      where: { hash: userlessPath[1],
       },
     });
 

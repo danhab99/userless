@@ -11,17 +11,20 @@ export async function POST(req: NextRequest) {
 
   const docFormData = data.get("document");
   if (!(docFormData instanceof File)) {
-    return
+    return new NextResponse("document must be a file", {
+      status: 400
+    });
   }
-  const docArrBuffPromise = docFormData.arrayBuffer()
-  
-  const sigFormData = data.get("signature");
-  if (!(sigFormData instanceof File)) {
-    return
-  }
-  const sigArrBuffPromise = sigFormData.text();
+  const docArrBuffPromise = docFormData.arrayBuffer();
 
-  const [docArrayBuff, sigArmored ] = await Promise.all([docArrBuffPromise, sigArrBuffPromise]);
+  const sigArmored = data.get("signature");
+  if (typeof sigArmored !== "string") {
+    return new NextResponse("sig must be armored text", {
+      status: 400
+    });
+  }
+
+  const docArrayBuff = await docArrBuffPromise;
   const docBuff = Buffer.from(docArrayBuff);
 
   console.log("Receiving upload");
@@ -36,7 +39,7 @@ export async function POST(req: NextRequest) {
 
   if (!pgpSig.packets[0].created) {
     return new NextResponse("signature doesn't have date", {
-      status: 401,
+      status: 400,
     });
   }
 
@@ -79,7 +82,7 @@ export async function POST(req: NextRequest) {
   ).every((x) => x);
 
   if (!verified) {
-    return new NextResponse("signature not valid", { status: 401 });
+    return new NextResponse("signature not valid", { status: 400 });
   }
 
   const hasher = createHash("sha256");
@@ -94,6 +97,7 @@ export async function POST(req: NextRequest) {
         hash,
         size: docBuff.length,
         timestamp: pgpSig.packets[0].created,
+        mimeType: docFormData.type,
         signedBy: {
           connect: {
             keyId: pgpSig.getSigningKeyIDs()[0].toHex(),

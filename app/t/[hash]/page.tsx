@@ -1,4 +1,4 @@
-import {InfiniteScroll} from "@/components/InfiniteScroll";
+import { InfiniteScroll } from "@/components/InfiniteScroll";
 import ThreadCard from "@/components/ThreadCard";
 import { ThreadForThreadCard } from "@/global";
 import { getParents, getReplies, getThread } from "@/lib/db";
@@ -38,9 +38,8 @@ const ThreadPage = async ({ params }: ThreadPageProps) => {
         {replies.map((thread, i) => (
           <ThreadCard key={i} thread={thread} enableReplies />
         ))}
+        <InfiniteScroll replyTo={params.hash} start={replies.length} />
       </div>
-
-      <InfiniteScroll replyTo={params.hash} start={replies.length} />
     </>
   );
 };
