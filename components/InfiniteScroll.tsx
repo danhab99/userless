@@ -22,17 +22,20 @@ export function InfiniteScroll(props: InfiniteScrollProps) {
 
     setHashes((prev) => {
       const h = hs.filter((x) => !prev.includes(x));
-      debugger;
       return prev.concat(h);
     });
   }, [setHashes, props.start, props.replyTo]);
 
   return (
     <>
-      {hashes.map((hash) => (
-        <ThreadCardFromHash hash={hash} />
-      ))}
-      <ActionButton label="More" onClick={next} />
+      {hashes
+        .filter((x) => x)
+        .map((hash) => (
+          <ThreadCardFromHash hash={hash} />
+        ))}
+      <span className="text-sm">
+        <ActionButton label="More" onClick={next} />
+      </span>
     </>
   );
 }

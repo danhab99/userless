@@ -216,6 +216,10 @@ export function ThreadCardFromHash(props: ThreadCardFromHashProps) {
   if (loading) {
     return <h3>Loading...</h3>;
   } else {
-    return value ? <ThreadCard thread={value} /> : null;
+    return value ? (
+      <ThreadCard thread={value} />
+    ) : (
+      <h3 className="font-bold text-xl text-red-500">404: thread not found</h3>
+    );
   }
 }
