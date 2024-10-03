@@ -193,7 +193,7 @@ function keyBodyString(
 
 function KeyRow(props: { sk: openpgp.PrivateKey }) {
   const { sk } = props;
-  const fingerPrint = sk.getFingerprint();
+  const keyId = sk.getKeyID().toHex();
 
   const [_, setPrivateKeys] = usePrivateKeysState();
   const [__, setDecryptedKeys] = useDecryptedKeysState();
@@ -232,24 +232,27 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
   }, [setDecryptedKeys]);
 
   const registered = useAsyncRetry(async () => {
-    const resp = await fetch(`/k/${fingerPrint}/armored`, {
+    const resp = await fetch(`/k/${keyId}/armored`, {
       method: "HEAD",
+      cache: "no-cache"
     });
     return resp.ok;
-  }, [fingerPrint]);
+  }, [keyId]);
 
   const register = useCallback(async () => {
     const resp = await fetch("/register", {
       method: "POST",
       body: sk.toPublic().armor(),
     });
-    if (!resp.ok) {
+
+    if (!resp.ok && !resp.redirected) {
       alert("unable to register");
     }
+
     setTimeout(() => {
       registered.retry();
     }, 100);
-  }, [sk]);
+  }, [sk, registered]);
 
   const setMaster = useMasterKeyState()[1];
 
