@@ -169,39 +169,48 @@ export function ThreadCardFromHash(props: ThreadCardFromHashProps) {
     }
 
     const [threadResp, policyResp] = await Promise.all([
-      fetch(`/t/${props.hash}`, {
+      fetch(`/t/${props.hash}/txt`, {
         cache: "force-cache",
       }),
       fetch(`/t/${props.hash}/policy`),
     ]);
 
+    const threadContent = await threadResp.text();
+
     const msg = await openpgp.readCleartextMessage({
-      cleartextMessage: await threadResp.text(),
+      cleartextMessage: threadContent,
     });
 
-    const publicKeyResp = await fetch(`/k/${msg.getSigningKeyIDs()[0]}`, {
-      cache: "force-cache",
-    });
+    const publicKeyResp = await fetch(
+      `/k/${msg.getSigningKeyIDs()[0].toHex()}/armored`,
+      {
+        cache: "force-cache",
+      },
+    );
 
-    const pk = await openpgp.readPrivateKey({
+    const pk = await openpgp.readKey({
       armoredKey: await publicKeyResp.text(),
     });
 
     const primaryUser = await pk.getPrimaryUser();
 
-    const body = msg.getText();
-    const firstNewlineIndex = body.indexOf("\n");
-    const firstLine = body.slice(0, firstNewlineIndex);
-    const replyTo = firstLine.startsWith("replyTo: ")
-      ? firstLine.slice(9, firstNewlineIndex)
-      : undefined;
+    const content = msg.getText();
+    var [infoContent, body] = content.split("\n---\n", 2);
+
+    var info: Record<string, toml.TomlPrimitive> | undefined;
+
+    if (!body) {
+      info = toml.parse(infoContent);
+    }
+
+    body = body || infoContent;
 
     return {
-      body: await threadResp.text(),
+      body: threadContent,
       hash: props.hash,
       id: "",
       policy: await policyResp.json(),
-      replyTo,
+      replyTo: info?.["replyTo"],
       signedBy: {
         email: primaryUser.user.userID?.email,
         finger: pk.getFingerprint(),
