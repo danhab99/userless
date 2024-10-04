@@ -32,14 +32,7 @@ const ThreadPage = async ({ params }: ThreadPageProps) => {
 
       {parents.length > 0 ? <hr /> : null}
 
-      <ThreadCard thread={thread} />
-
-      <div className="pl-6">
-        {replies.map((thread, i) => (
-          <ThreadCard key={i} thread={thread} enableReplies />
-        ))}
-        <InfiniteScroll replyTo={params.hash} start={replies.length} />
-      </div>
+      <ThreadCard thread={thread} enableReplies />
     </>
   );
 };

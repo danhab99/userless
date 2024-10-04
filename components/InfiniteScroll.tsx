@@ -1,7 +1,8 @@
 "use client";
-import { useCallback, useState } from "react";
+import { useEffect, useState } from "react";
 import { ThreadCardFromHash } from "./ThreadCard";
 import ActionButton from "./ActionButton";
+import { useAsyncFn } from "react-use";
 
 export type InfiniteScrollProps = {
   replyTo: string;
@@ -11,7 +12,7 @@ export type InfiniteScrollProps = {
 export function InfiniteScroll(props: InfiniteScrollProps) {
   const [hashes, setHashes] = useState<string[]>([]);
 
-  const next = useCallback(async () => {
+  const [{ loading }, next] = useAsyncFn(async () => {
     const u = new URL(window.location.href);
     u.pathname = `/t/${props.replyTo}/replies`;
     u.searchParams.set("skip", `${hashes.length + props.start}`);
@@ -26,15 +27,21 @@ export function InfiniteScroll(props: InfiniteScrollProps) {
     });
   }, [setHashes, props.start, props.replyTo]);
 
+  useEffect(() => {
+    next();
+  }, [next]);
+
   return (
     <>
       {hashes
         .filter((x) => x)
         .map((hash) => (
-          <ThreadCardFromHash hash={hash} />
+          <div className="py-px">
+            <ThreadCardFromHash hash={hash} />
+          </div>
         ))}
       <span className="text-sm">
-        <ActionButton label="More" onClick={next} />
+        <ActionButton label={loading ? "More..." : "More"} onClick={next} />
       </span>
     </>
   );
