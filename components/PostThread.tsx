@@ -168,9 +168,11 @@ export const PostThread = (props: PostThreadProps) => {
   return (
     <div className="bg-white shadow-xl">
       <form onSubmit={() => onSubmit()}>
-        <label className="px-2 truncate w-full inline-block">
-          {props.replyTo ? `Reply to ${props.replyTo.hash}` : "Body:"}
-        </label>
+        <div className="w-full flex">
+          <label className="px-2 flex-1 truncate overflow-hidden text-ellipsis whitespace-nowrap">
+            {props.replyTo ? `Reply to ${props.replyTo.hash}` : "Body:"}
+          </label>
+        </div>
         <textarea
           ref={(ref) => {
             textareaRef.current = ref || undefined;
