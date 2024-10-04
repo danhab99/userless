@@ -1,7 +1,7 @@
 import * as openpgp from "openpgp";
-import { createHash } from "crypto";
 import { PrismaClient, PublicKey } from "@prisma/client";
 import {digestHash} from "./hash";
+import * as toml from "smol-toml";
 
 const db = new PrismaClient();
 
@@ -94,33 +94,9 @@ export async function uploadThread(threadClearText: string) {
   }
 
   var postContent = msg.getText();
-  const lines = postContent.split("\n");
 
-  var replyTo: string | undefined;
-
-  if (lines[0].startsWith("replyTo:")) {
-    replyTo = lines[0].split(":")[1].trim();
-    postContent = lines.slice(1).join("\n");
-
-    const thread = await db.thread.findUnique({
-      where: {
-        hash: replyTo,
-        policy: {
-          is: {
-            visible: true,
-          }
-        }
-      },
-      select: {
-        policy: true,
-      },
-    });
-
-    if (!thread?.policy.acceptsReplies) {
-      throw "Not allowed to reply to";
-    }
-  }
-
+  const [infoStr] = postContent.split(/\n---\n/, 2);
+  const info = toml.parse(infoStr)
   const hash = digestHash(threadClearText)
 
   return db.thread.create({
@@ -128,8 +104,9 @@ export async function uploadThread(threadClearText: string) {
       body: threadClearText,
       hash: hash,
       timestamp: timestamp,
-      replyTo: replyTo,
+      replyTo: info["replyTo"],
       signedById: signature.getSigningKeyIDs()[0].toHex(),
+      info,
       policy: {
         acceptsReplies: true,
         visible: true,

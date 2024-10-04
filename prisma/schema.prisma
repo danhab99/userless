@@ -19,6 +19,7 @@ model Thread {
   signedById String
   timestamp  DateTime
   policy     ThreadPolicy
+  info       Json?
 
   @@index([replyTo])
   @@index([signedById])

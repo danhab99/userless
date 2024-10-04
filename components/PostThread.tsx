@@ -12,6 +12,7 @@ import { Thread } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useMap } from "react-use";
 import { createHash } from "crypto";
+import * as toml from "smol-toml";
 
 export type PostThreadProps = {
   replyTo?: Pick<Thread, "hash">;
@@ -99,14 +100,12 @@ export const PostThread = (props: PostThreadProps) => {
         return resp.ok;
       });
 
+      const info = toml.stringify({
+        replyTo: props.replyTo?.hash,
+      });
+
       const msg = await openpgp.createCleartextMessage({
-        text: [
-          props.replyTo?.hash ? `replyTo: ${props.replyTo.hash}` : "",
-          "",
-          body,
-        ]
-          .join("\n")
-          .trim(),
+        text: info.trim() + "\n\n---\n\n" + body.trim(),
       });
 
       const signedMsg = await openpgp.sign({

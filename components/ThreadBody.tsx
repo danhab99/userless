@@ -18,16 +18,15 @@ const ThreadBody = (props: ThreadBodyProps) => {
       cleartextMessage: props.thread.body,
     });
 
-    var body = msg.getText();
-    if (body.startsWith("replyTo:")) {
-      body = body.slice(body.indexOf("\n"));
-    }
+    var content = msg.getText();
+    var [info, body] = content.split("---", 2)
+    body = body || info;
 
-    return body;
+    return body.trim();
   }, [props.thread]);
 
   return (
-    <div className="markdown py-4">
+    <div className="markdown pb-2">
       <Markdown
         remarkPlugins={[remarkGfm]}
         // rehypePlugins={[rehypeHighlight, { languages: syntax_highlight.default }]}

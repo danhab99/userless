@@ -10,9 +10,8 @@ import { ThreadForThreadCard } from "@/global";
 import { Hash } from "@/components/Hash";
 import { useMasterKey } from "./KeyContext";
 import ActionButton from "./ActionButton";
-import { useAsync, useAsyncFn, useAsyncRetry } from "react-use";
+import { useAsyncFn, useAsyncRetry } from "react-use";
 import * as openpgp from "openpgp";
-import { useState } from "react";
 import { InfiniteScroll } from "./InfiniteScroll";
 
 type ThreadCardProps = {
@@ -21,7 +20,6 @@ type ThreadCardProps = {
 };
 
 const ThreadCard = ({ thread, enableReplies }: ThreadCardProps) => {
-  "use client";
   const [ReplyTB, showReply] = useToggleButton(false);
   const [SourceTB, showSource] = useToggleButton(false);
   const [FullTB, showFull] = useToggleButton(false);
