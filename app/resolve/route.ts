@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  console.log("Resolving", userlessUrlStr);
   const userlessUrl = new URL(userlessUrlStr);
 
   if (userlessUrl.protocol.includes("http")) {
@@ -24,32 +25,47 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const userlessPath = userlessUrl.pathname.split("/");
+  const userlessPath = userlessUrl.pathname.split("/").slice(1)
 
-  if (userlessPath[0] === "t") {
+  if (userlessPath[0] === "thread") {
+    console.log("Finding thread", userlessPath[1])
     const hasThread = await db.thread.count({
-      where: { hash: userlessPath[1],
-      },
+      where: { hash: userlessPath[1] },
     });
 
-    if (hasThread) {
-      return redirect(`/t/${userlessPath[1]}`);
+    if (hasThread > 0) {
+      return new NextResponse(`/t/${userlessPath[1]}`)
     } else {
-      return notFound();
+      notFound();
     }
-  } else if (userlessPath[0] === "k") {
+  } else if (userlessPath[0] === "key") {
+    console.log("Finding key", userlessPath[1])
     const hasKey = await db.publicKey.count({
       where: {
         finger: userlessPath[1],
       },
     });
 
-    if (hasKey) {
-      return redirect(`/k/${userlessPath[1]}`);
+    if (hasKey > 0) {
+      return new NextResponse(`/k/${userlessPath[1]}`)
     } else {
-      return notFound();
+      notFound();
     }
-  }
+  } else if (userlessPath[0] === "file") {
+    console.log("Finding file", userlessPath[1])
+    const hasFile = await db.file.count({
+      where: {
+        hash: userlessPath[1],
+      },
+    });
+    if (hasFile > 0) {
+      return new NextResponse(`/f/${userlessPath[1]}`)
+    } else {
+      notFound();
+    }
+  } 
 
-  notFound();
+  return new NextResponse(`unknown resource type ${userlessPath[0]}`, {
+    status: 403,
+  })
 }
