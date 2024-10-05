@@ -18,6 +18,8 @@ export async function getMasters() {
 
 export async function encryptForMasters(data: string) {
   const admins = await getMasters();
+  console.log("Encrypting for master", admins.map(x => x.finger), data.length);
+
   const packet = await openpgp.encrypt({
     message: await openpgp.createMessage({
       text: data,

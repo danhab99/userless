@@ -65,6 +65,7 @@ export type Policy = {
 };
 
 export async function uploadThread(threadClearText: string) {
+  console.log("Uploading thread", threadClearText);
   const msg = await openpgp.readCleartextMessage({
     cleartextMessage: threadClearText,
   });
