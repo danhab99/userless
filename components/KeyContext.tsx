@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import * as openpgp from "openpgp";
 import ActionButton from "./ActionButton";
 import Link from "next/link";
@@ -10,17 +10,9 @@ import {
   useDeepCompareEffect,
   useLocalStorage,
   useSessionStorage,
+  useShallowCompareEffect,
 } from "react-use";
 import { Hash } from "./Hash";
-import { create } from "domain";
-
-const [useMasterKeyState, MasterKeyStateProvider] = createStateContext<
-  openpgp.PrivateKey | undefined
->(undefined);
-
-export function useMasterKey() {
-  return useMasterKeyState()[0];
-}
 
 const [usePrivateKeysState, PrivateKeysStateProvider] = createStateContext<
   openpgp.PrivateKey[]
@@ -28,15 +20,24 @@ const [usePrivateKeysState, PrivateKeysStateProvider] = createStateContext<
 const [useDecryptedKeysState, DecryptedKeysStateProvider] = createStateContext<
   openpgp.PrivateKey[]
 >([]);
+const [useMasterKeysState, MasterKeysStateProvider] = createStateContext<
+  openpgp.PrivateKey[]
+>([]);
+
+export function useMasterKey() {
+  return useMasterKeysState()[0];
+}
 
 function uniqueKeys(keys: openpgp.PrivateKey[][]) {
-  const allKeys = keys.flat(1);
-  return allKeys.filter(
-    (k, i) =>
-      allKeys.findIndex(
-        (o) => o.getKeyID().toHex() === k.getKeyID().toHex(),
-      ) === i,
-  );
+  return useMemo(() => {
+    const allKeys = keys.flat(1);
+    return allKeys.filter(
+      (k, i) =>
+        allKeys.findIndex(
+          (o) => o.getKeyID().toHex() === k.getKeyID().toHex(),
+        ) === i,
+    );
+  }, [keys]);
 }
 
 export const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
@@ -44,15 +45,65 @@ export const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
     <>
       <PrivateKeysStateProvider>
         <DecryptedKeysStateProvider>
-          <MasterKeyStateProvider>
+          <MasterKeysStateProvider>
+            <MasterLoader />
             <KeyDrawer />
             {props.children}
-          </MasterKeyStateProvider>
+          </MasterKeysStateProvider>
         </DecryptedKeysStateProvider>
       </PrivateKeysStateProvider>
     </>
   );
 };
+
+function MasterLoader() {
+  const privateKeys = usePrivateKeys();
+  const setMasters = useMasterKeysState()[1];
+
+  const { value: testMessage } = useAsync(async () => {
+    const resp = await fetch("/admin", {
+      cache: "force-cache",
+    });
+
+    const test = await resp.text();
+
+    const msg = await openpgp.readMessage({
+      armoredMessage: test,
+    });
+
+    return msg;
+  }, []);
+
+  useShallowCompareEffect(() => {
+    if (testMessage) {
+      (async () => {
+        const masks = await Promise.all(
+          privateKeys.map(
+            (pk) =>
+              new Promise<boolean>(async (resolve) => {
+                try {
+                  await openpgp.decrypt({
+                    message: testMessage,
+                    decryptionKeys: [pk],
+                  });
+                  console.log("This key is admin", pk);
+                  resolve(true);
+                } catch (e: any) {
+                  console.error("Decrypt error", e);
+                  resolve(false);
+                }
+              }),
+          ),
+        );
+
+        const masterKeys = privateKeys.filter((_, i) => masks[i]);
+        setMasters(masterKeys);
+      })();
+    }
+  }, [testMessage, privateKeys]);
+
+  return <></>;
+}
 
 function useKeyBridge(
   useKeys: ReturnType<typeof useState<openpgp.PrivateKey[] | undefined>>,
@@ -195,8 +246,9 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
   const { sk } = props;
   const keyId = sk.getKeyID().toHex();
 
-  const [_, setPrivateKeys] = usePrivateKeysState();
-  const [__, setDecryptedKeys] = useDecryptedKeysState();
+  const setPrivateKeys = usePrivateKeysState()[1];
+  const setDecryptedKeys = useDecryptedKeysState()[1];
+  const masterKeys = useMasterKeysState()[0];
 
   const deleteKey = useCallback(() => {
     setPrivateKeys((prev) =>
@@ -234,7 +286,7 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
   const registered = useAsyncRetry(async () => {
     const resp = await fetch(`/k/${keyId}/armored`, {
       method: "HEAD",
-      cache: "no-cache"
+      cache: "no-cache",
     });
     return resp.ok;
   }, [keyId]);
@@ -254,35 +306,14 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
     }, 100);
   }, [sk, registered]);
 
-  const setMaster = useMasterKeyState()[1];
-
-  const isMaster = useAsync(async () => {
-    const resp = await fetch("/admin", {
-      cache: "force-cache",
-    });
-
-    const test = await resp.text();
-
-    const msg = await openpgp.readMessage({
-      armoredMessage: test,
-    });
-
-    try {
-      await msg.decrypt([sk]);
-      setMaster(x => x ? x : sk);
-      return true;
-    } catch (e) {
-      console.error("this key isn't a master", { sk, e });
-      return false;
-    }
-  }, [sk]);
-
   const primaryUser = useAsync(() => sk.getPrimaryUser(), [sk]);
+  const isMaster =
+    masterKeys.findIndex((x) => x.getKeyID().equals(sk.getKeyID())) >= 0;
 
   return (
     <div className="flex flex-row align-middle">
       <span className="text-username">
-        {isMaster.value ? "👑" : ""}
+        {isMaster ? "👑" : ""}
         {primaryUser.value?.user.userID?.name}
         <Link href={`/k/${sk.getFingerprint()}`}>
           {"("}
