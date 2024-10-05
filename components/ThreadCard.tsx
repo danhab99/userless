@@ -41,7 +41,7 @@ const ThreadCard = ({ thread, enableReplies }: ThreadCardProps) => {
         message: await openpgp.createCleartextMessage({
           text: JSON.stringify(newPolicy),
         }),
-        signingKeys: [master],
+        signingKeys: master,
       });
 
       const resp = await fetch(`/t/${thread.hash}/policy`, {
@@ -77,7 +77,7 @@ const ThreadCard = ({ thread, enableReplies }: ThreadCardProps) => {
       ) : null}
       <SourceTB trueLabel="Hide source" falseLabel="Source" />
       <FullTB trueLabel="Less" falseLabel="More" />
-      {master ? (
+      {master.length > 0 ? (
         <>
           <ActionButton
             color="text-red-500"
