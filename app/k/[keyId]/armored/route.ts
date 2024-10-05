@@ -11,10 +11,13 @@ export async function HEAD(request: Request) {
     where: { keyId },
   });
 
-  console.log("Finding public key", keyId, res)
+  console.log("Finding public key", keyId, res);
 
   return new NextResponse(null, {
     status: res > 0 ? 200 : 404,
+    headers: {
+      "cache-control": " public, max-age=31536000, immutable",
+    },
   });
 }
 
@@ -29,9 +32,12 @@ export async function GET(request: Request) {
     },
   });
 
-  console.log("Sending public key", keyId)
+  console.log("Sending public key", keyId);
 
   return new NextResponse(publicKey?.armoredKey, {
     status: publicKey ? 200 : 404,
+    headers: {
+      "cache-control": " public, max-age=31536000, immutable",
+    },
   });
 }
