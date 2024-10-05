@@ -130,3 +130,7 @@ textarea, input {
 input {
   @apply px-1;
 }
+
+.markdown img {
+  @apply w-3/4;
+}

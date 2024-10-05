@@ -63,7 +63,11 @@ const SigVerify = (props: SigVerifyProps) => {
                 format: "text",
               }));
 
-          const hash = digestHash(Buffer.from(props.content));
+          const hash = digestHash(
+            typeof props.content === "string"
+              ? props.content
+              : Buffer.from(props.content),
+          );
           const resp = await fetch(`/f/${hash}/sig`, {
             cache: "force-cache",
           });

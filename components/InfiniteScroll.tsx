@@ -36,7 +36,7 @@ export function InfiniteScroll(props: InfiniteScrollProps) {
       {hashes
         .filter((x) => x)
         .map((hash) => (
-          <div className="py-px">
+          <div key={hash} className="py-px">
             <ThreadCardFromHash hash={hash} />
           </div>
         ))}

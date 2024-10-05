@@ -105,7 +105,7 @@ export async function uploadThread(threadClearText: string) {
       body: threadClearText,
       hash: hash,
       timestamp: timestamp,
-      replyTo: info["replyTo"],
+      replyTo: info["replyTo"] as string | undefined,
       signedById: signature.getSigningKeyIDs()[0].toHex(),
       info,
       policy: {

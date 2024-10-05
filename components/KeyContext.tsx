@@ -29,15 +29,14 @@ export function useMasterKey() {
 }
 
 function uniqueKeys(keys: openpgp.PrivateKey[][]) {
-  return useMemo(() => {
-    const allKeys = keys.flat(1);
-    return allKeys.filter(
-      (k, i) =>
-        allKeys.findIndex(
-          (o) => o.getKeyID().toHex() === k.getKeyID().toHex(),
-        ) === i,
-    );
-  }, [keys]);
+  const allKeys = keys.flat(1);
+  return allKeys.filter(
+    (k, i) =>
+      allKeys.findIndex(
+        (o) => o.getKeyID().toHex() === k.getKeyID().toHex(),
+    ) === i,
+  );
+  
 }
 
 export const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
@@ -144,13 +143,13 @@ function KeyDrawer() {
   const [decryptedKeys, setDecryptedKeys] = useDecryptedKeysState();
 
   useKeyBridge(
-    [privateKeys, setPrivateKeys],
+    [privateKeys, setPrivateKeys as any],
     [privateKeysLocal, setPrivateKeysLocal],
   );
 
   useKeyBridge(
-    [decryptedKeys, setDecryptedKeys],
-    [decryptedKeysLocal, setDecryptedKeysLocal],
+    [decryptedKeys, setDecryptedKeys as any],
+    [decryptedKeysLocal, setDecryptedKeysLocal as any],
   );
 
   const addKey = useCallback(
