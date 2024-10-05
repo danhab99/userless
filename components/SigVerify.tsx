@@ -1,8 +1,8 @@
 "use client";
-import { ThreadForThreadCard } from "@/global";
 import { digestHash } from "@/lib/hash";
 import * as openpgp from "openpgp";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useShallowCompareEffect } from "react-use";
 
 type SigVerifyProps = {
   content: string | ArrayBuffer;
@@ -21,7 +21,7 @@ const SigVerify = (props: SigVerifyProps) => {
   const [status, setStatus] = useState<VerifiedStatus>(VerifiedStatus.Working);
   const [error, setError] = useState("");
 
-  useEffect(() => {
+  useShallowCompareEffect(() => {
     setStatus(VerifiedStatus.Working);
     (async () => {
       const getKey = async (keyId: string) => {
@@ -56,14 +56,14 @@ const SigVerify = (props: SigVerifyProps) => {
           const msg = await (props.content instanceof ArrayBuffer
             ? openpgp.createMessage({
                 format: "binary",
-                text: Buffer.from(new Uint8Array(props.content)),
+                binary: Buffer.from(new Uint8Array(props.content)),
               })
             : openpgp.createMessage({
                 text: props.content,
                 format: "text",
               }));
 
-          const hash = digestHash(props.content);
+          const hash = digestHash(Buffer.from(props.content));
           const resp = await fetch(`/f/${hash}/sig`, {
             cache: "force-cache",
           });
@@ -80,7 +80,7 @@ const SigVerify = (props: SigVerifyProps) => {
         } else {
           const msg = await openpgp.readCleartextMessage({
             cleartextMessage: props.content as string,
-          })
+          });
           const keys = await getKey(msg.getSigningKeyIDs()[0].toHex());
           if (!keys) {
             return;
