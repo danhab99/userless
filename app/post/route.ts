@@ -1,8 +1,10 @@
-import {uploadThread} from "@/lib/pgchan";
-import {redirect} from "next/navigation";
+import { uploadThread } from "@/lib/pgchan";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(request: Request) {
-  const body = await request.text()
-  const t = await uploadThread(body)
-  redirect(`/t/${t.hash}`)
+export async function POST(request: NextRequest) {
+  const body = await request.text();
+  const t = await uploadThread(body);
+  return new NextResponse(t.hash, {
+    status: 201,
+  });
 }
