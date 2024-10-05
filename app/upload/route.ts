@@ -92,8 +92,12 @@ export async function POST(req: NextRequest) {
   await Promise.all([
     s3Client.putObject(BUCKET, `${hash}_sig`, sigArmored),
     s3Client.putObject(BUCKET, hash, docBuff),
-    db.file.create({
-      data: {
+    db.file.upsert({
+      where: {
+        hash
+      },
+      update: {},
+      create: {
         hash,
         size: docBuff.length,
         timestamp: pgpSig.packets[0].created,
