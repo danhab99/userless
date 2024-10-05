@@ -26,14 +26,6 @@ const WelcomePage = async () => {
 
   return (
     <>
-      <header className="p-8 text-center">
-        <h1>PGChan.gpg</h1>
-        <p>
-          PGChan is an activity-pub compliant file board that uses GPG for role
-          based access control.
-        </p>
-      </header>
-
       <PostThreadNarrow />
 
       {threads.map((thread, i) => (
