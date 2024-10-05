@@ -14,6 +14,7 @@ const WelcomePage = async () => {
       policy: {
         is: {
           visible: true,
+          advertise: true,
         },
       },
     },

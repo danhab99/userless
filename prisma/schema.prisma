@@ -30,6 +30,7 @@ type ThreadPolicy {
   acceptsReplies Boolean  @default(true)
   encryptFor     String[]
   policyEditors  String[]
+  advertise      Boolean @default(false)
 }
 
 model PublicKey {
