@@ -1,6 +1,7 @@
 "use client";
 import {
   ChangeEventHandler,
+  FormEventHandler,
   useCallback,
   useEffect,
   useRef,
@@ -25,7 +26,7 @@ export const PostThread = (props: PostThreadProps) => {
 
   const [body, setBody] = useState("");
   const [keyId, setKeyId] = useState<string>();
-  const [files, filesControls] = useMap<Record<string, ArrayBuffer>>();
+  const [files, filesControls] = useMap<Record<string, Blob>>();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -34,105 +35,118 @@ export const PostThread = (props: PostThreadProps) => {
 
   const router = useRouter();
 
-  const onSubmit = useCallback(() => {
-    (async () => {
-      setLoading(true);
-      const skId = keyId?.length == 0 ? privateKeys[0].getFingerprint() : keyId;
+  const onSubmit: FormEventHandler<HTMLFormElement> = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      (async () => {
+        setLoading(true);
+        const skId =
+          keyId?.length == 0 ? privateKeys[0].getFingerprint() : keyId;
 
-      var pk = privateKeys?.find((x) => x.getFingerprint() === skId);
-      if (!pk) {
-        throw "how";
-      }
-      if (!pk?.isPrivate()) {
-        throw "not a pk";
-      }
-
-      if (!pk.isDecrypted()) {
-        const password = prompt(`Password to decrypt ${pk.getKeyID().toHex()}`);
-
-        if (!password) {
-          alert("Password required");
-          return;
+        var pk = privateKeys?.find((x) => x.getFingerprint() === skId);
+        if (!pk) {
+          throw "how";
+        }
+        if (!pk?.isPrivate()) {
+          throw "not a pk";
         }
 
-        try {
-          pk = await openpgp.decryptKey({
-            privateKey: pk,
-            passphrase: password,
-          });
-        } catch (e) {
-          alert(e);
-          return;
+        if (!pk.isDecrypted()) {
+          const password = prompt(
+            `Password to decrypt ${pk.getKeyID().toHex()}`,
+          );
+
+          if (!password) {
+            alert("Password required");
+            return;
+          }
+
+          try {
+            pk = await openpgp.decryptKey({
+              privateKey: pk,
+              passphrase: password,
+            });
+          } catch (e) {
+            alert(e);
+            return;
+          }
         }
-      }
 
-      const fileHashes = Object.keys(files);
-      const fileContents = Object.values(files);
+        const fileHashes = Object.keys(files);
+        const fileContents = Object.values(files);
 
-      const allowHashs = MATCH_SHA256.exec(body);
-      const deleteHashes = fileHashes.filter((x) => !allowHashs?.includes(x));
+        const allowHashs = MATCH_SHA256.exec(body);
+        const deleteHashes = fileHashes.filter((x) => !allowHashs?.includes(x));
 
-      deleteHashes?.forEach((hash) => {
-        delete files[hash];
-      });
-
-      const uploadPromises = fileContents.map(async (data) => {
-        const msg = await openpgp.createMessage({
-          binary: new Uint8Array(data),
+        deleteHashes?.forEach((hash) => {
+          delete files[hash];
         });
 
-        const sig = await openpgp.sign({
+        const uploadPromises = fileContents.map(async (data) => {
+          const msg = await openpgp.createMessage({
+            binary: new Uint8Array(await data.arrayBuffer()),
+          });
+
+          const sig = await openpgp.sign({
+            message: msg,
+            signingKeys: [pk as openpgp.PrivateKey],
+            detached: true,
+            format: "armored",
+          });
+
+          const f = new FormData();
+          f.append("document", data);
+          f.append("signature", sig.toString());
+
+          const resp = await fetch("/upload", {
+            method: "POST",
+            body: f,
+            redirect: "manual",
+          });
+
+          return resp.ok;
+        });
+
+        const info = toml.stringify({
+          replyTo: props.replyTo?.hash,
+        });
+
+        const msg = await openpgp.createCleartextMessage({
+          text: info.trim() + "\n\n---\n\n" + body.trim(),
+        });
+
+        const signedMsg = await openpgp.sign({
           message: msg,
-          signingKeys: [pk as openpgp.PrivateKey],
-          detached: true,
+          signingKeys: [pk],
           format: "armored",
         });
 
-        const f = new FormData();
-        f.append("document", new Blob([data]));
-        f.append("signature", new Blob([sig.toString()]));
+        const succeses = await Promise.all(uploadPromises);
 
-        const resp = await fetch("/upload", {
-          method: "POST",
-          body: f,
-        });
+        if (!succeses.every((x) => x)) {
+          return;
+        }
 
-        return resp.ok;
-      });
-
-      const info = toml.stringify({
-        replyTo: props.replyTo?.hash,
-      });
-
-      const msg = await openpgp.createCleartextMessage({
-        text: info.trim() + "\n\n---\n\n" + body.trim(),
-      });
-
-      const signedMsg = await openpgp.sign({
-        message: msg,
-        signingKeys: [pk],
-        format: "armored",
-      });
-
-      const succeses = await Promise.all(uploadPromises);
-
-      if (succeses.every((x) => x)) {
         const resp = await fetch("/post", {
           method: "POST",
           body: signedMsg,
+          redirect: "manual",
         });
 
-        if (resp.redirected) {
-          router.push(resp.url);
+        setLoading(false);
+
+        if (resp.ok) {
+          const hash = await resp.text();
+          router.push(`/t/${hash}`);
         } else {
           alert("Unable to post thread");
           console.error(resp);
         }
-      }
-
-      setLoading(false);
-    })();
-  }, [privateKeys, files]);
+      })();
+    },
+    [privateKeys, files],
+  );
 
   const textareaRef = useRef<HTMLTextAreaElement>();
   const fileinputRef = useRef<HTMLInputElement>();
@@ -150,11 +164,13 @@ export const PostThread = (props: PostThreadProps) => {
       const hasher = createHash("sha256");
       hasher.write(Buffer.from(buff));
       const hash = hasher.digest("hex");
-      filesControls.set(hash, buff);
+      filesControls.set(hash, new Blob([buff], {
+        type: file.type,
+      }));
 
       const insert = file.type.includes("image")
-        ? `![${hash}](userless:///file/${hash})`
-        : `[Download ${hash.slice(0, 8)}](userless:///file/${hash})`;
+        ? `![${file.name} ${hash.slice(0, 8)}](userless:///file/${hash})`
+        : `[Download ${file.name} ${hash.slice(0, 8)}](userless:///file/${hash})`;
 
       setBody((prev) => prev.slice(0, cur) + insert + prev.slice(cur));
 
@@ -167,7 +183,7 @@ export const PostThread = (props: PostThreadProps) => {
 
   return (
     <div className="bg-white shadow-xl">
-      <form onSubmit={() => onSubmit()}>
+      <form onSubmit={onSubmit}>
         <div className="w-full flex">
           <label className="px-2 flex-1 truncate overflow-hidden text-ellipsis whitespace-nowrap">
             {props.replyTo ? `Reply to ${props.replyTo.hash}` : "Body:"}
