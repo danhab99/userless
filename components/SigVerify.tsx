@@ -3,6 +3,7 @@ import { digestHash } from "@/lib/hash";
 import * as openpgp from "openpgp";
 import { useState } from "react";
 import { useShallowCompareEffect } from "react-use";
+import dynamic from "next/dynamic";
 
 type SigVerifyProps = {
   content: string | ArrayBuffer;
@@ -20,6 +21,9 @@ enum VerifiedStatus {
 const SigVerify = (props: SigVerifyProps) => {
   const [status, setStatus] = useState<VerifiedStatus>(VerifiedStatus.Working);
   const [error, setError] = useState("");
+  const [sig, setSig] = useState(
+    typeof props.content === "string" ? props.content : undefined,
+  );
 
   useShallowCompareEffect(() => {
     setStatus(VerifiedStatus.Working);
@@ -72,8 +76,12 @@ const SigVerify = (props: SigVerifyProps) => {
             cache: "force-cache",
           });
 
+          const sig = await resp.text();
+
+          setSig(sig);
+
           const signature = await openpgp.readSignature({
-            armoredSignature: await resp.text(),
+            armoredSignature: sig,
           });
 
           const pk = await getKey(signature.getSigningKeyIDs()[0].toHex());
@@ -108,20 +116,31 @@ const SigVerify = (props: SigVerifyProps) => {
     })();
   }, [props]);
 
+  let label;
+
   switch (status) {
     case VerifiedStatus.Working:
-      return <span className="text-sig-working">{"[WORKING...]"}</span>;
+      label = <span className="text-sig-working">{"[WORKING...]"}</span>;
     case VerifiedStatus.Error:
-      return <span className="text-sig-error">{`[ERROR: ${error}]`}</span>;
+      label = <span className="text-sig-error">{`[ERROR: ${error}]`}</span>;
     case VerifiedStatus.NoMatch:
-      return <span className="text-sig-nomatch">{"[!! NO MATCH !!]"}</span>;
+      label = <span className="text-sig-nomatch">{"[!! NO MATCH !!]"}</span>;
     case VerifiedStatus.Revoked:
-      return <span className="text-sig-revoked">{"[REVOKED]"}</span>;
+      label = <span className="text-sig-revoked">{"[REVOKED]"}</span>;
     case VerifiedStatus.Success:
-      return <span className="text-sig-success">{"[VERIFIED]"}</span>;
-    default:
-      throw "how";
+      label = <span className="text-sig-success">{"[VERIFIED]"}</span>;
   }
+
+  return (
+    <a
+      href={`https://cirw.in/gpg-decoder/#${encodeURIComponent(sig ?? "")}`}
+      className="no-underline"
+    >
+      {label}
+    </a>
+  );
 };
 
-export default SigVerify;
+export default dynamic(() => Promise.resolve(SigVerify), {
+  ssr: false,
+});
