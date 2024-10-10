@@ -31,6 +31,28 @@ body {
   @apply background px-3 bg-cover min-h-screen;
 }
 
+/* Customize scrollbar for WebKit browsers (Chrome, Safari) */
+::-webkit-scrollbar {
+  width: 4px; /* Width of the scrollbar */
+}
+
+/* Track (background of the scrollbar) */
+::-webkit-scrollbar-track {
+  background: transparent; /* Transparent background to give a minimalist look */
+  border-radius: 10px; /* Rounded track corners */
+}
+
+/* Handle (the scrolling part) */
+::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2); /* Semi-transparent handle */
+  border-radius: 10px; /* Rounded corners for handle */
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.4); /* Darken the handle on hover */
+}
+
 h1 {
   @apply text-4xl;
 }
