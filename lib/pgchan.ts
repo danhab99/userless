@@ -94,10 +94,20 @@ export async function uploadThread(threadClearText: string) {
     throw "no timestamp";
   }
 
-  var postContent = msg.getText();
+  var content = msg.getText();
 
-  const [infoStr] = postContent.split(/\n---\n/, 2);
-  const info = toml.parse(infoStr)
+  const delimiter = content.indexOf("\n\n---\n\n")
+  let info: Record<string, any> | undefined;
+
+  if (delimiter > 0) {
+    let infoToml = content.slice(0, delimiter);
+    try {
+      info = toml.parse(infoToml)
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   const hash = digestHash(threadClearText)
 
   return db.thread.create({
@@ -105,7 +115,7 @@ export async function uploadThread(threadClearText: string) {
       body: threadClearText,
       hash: hash,
       timestamp: timestamp,
-      replyTo: info["replyTo"] as string | undefined,
+      replyTo: info?.["replyTo"],
       signedById: signature.getSigningKeyIDs()[0].toHex(),
       info,
       policy: {

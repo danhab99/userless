@@ -108,12 +108,19 @@ export const PostThread = (props: PostThreadProps) => {
           return resp.ok;
         });
 
-        const info = toml.stringify({
-          replyTo: props.replyTo?.hash,
-        });
+        let content = "";
+
+        if (props.replyTo?.hash) {
+          const info = toml.stringify({
+            replyTo: props.replyTo?.hash,
+          })
+          content += info.trim() + "\n\n---\n\n"
+        }
+
+        content += body.trim()
 
         const msg = await openpgp.createCleartextMessage({
-          text: info.trim() + "\n\n---\n\n" + body.trim(),
+          text: content,
         });
 
         const signedMsg = await openpgp.sign({
@@ -164,9 +171,12 @@ export const PostThread = (props: PostThreadProps) => {
       const hasher = createHash("sha256");
       hasher.write(Buffer.from(buff));
       const hash = hasher.digest("hex");
-      filesControls.set(hash, new Blob([buff], {
-        type: file.type,
-      }));
+      filesControls.set(
+        hash,
+        new Blob([buff], {
+          type: file.type,
+        }),
+      );
 
       const insert = file.type.includes("image")
         ? `![${file.name} ${hash.slice(0, 8)}](userless:///file/${hash})`
