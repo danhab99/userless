@@ -19,11 +19,54 @@ type ThreadCardProps = {
   enableReplies?: boolean;
 };
 
+type AdminActionProps = {
+  hash: string;
+  newPolicy: Partial<ThreadPolicy>;
+  label: string;
+  loadingLabel: string;
+  onClick: () => void;
+  color: string;
+};
+
+function AdminAction(props: AdminActionProps) {
+  const master = useMasterKey();
+
+  const [{ loading }, trigger] = useAsyncFn(async () => {
+    if (master) {
+      const packet = await openpgp.sign({
+        message: await openpgp.createCleartextMessage({
+          text: JSON.stringify(props.newPolicy),
+        }),
+        signingKeys: master,
+      });
+
+      const resp = await fetch(`/thread/${props.hash}/policy`, {
+        method: "PATCH",
+        body: packet,
+      });
+
+      await new Promise((r) => setTimeout(r, 100));
+
+      props.onClick();
+
+      return resp.ok;
+    }
+    return false;
+  });
+
+  return (
+    <ActionButton
+      color={`text-${props.color}-500`}
+      label={loading ? props.loadingLabel : props.label}
+      onClick={trigger}
+    />
+  );
+}
+
 const ThreadCard = ({ thread }: ThreadCardProps) => {
   const [ReplyTB, showReply] = useToggleButton(false);
   const [SourceTB, showSource] = useToggleButton(false);
   const [FullTB, showFull] = useToggleButton(false);
-
   const master = useMasterKey();
 
   const policy = useAsyncRetry(async () => {
@@ -34,41 +77,6 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
     }
   }, [master, thread]);
 
-  const change = async (newPolicy: Partial<ThreadPolicy>) => {
-    if (master) {
-      const packet = await openpgp.sign({
-        message: await openpgp.createCleartextMessage({
-          text: JSON.stringify(newPolicy),
-        }),
-        signingKeys: master,
-      });
-
-      const resp = await fetch(`/thread/${thread.hash}/policy`, {
-        method: "PATCH",
-        body: packet,
-      });
-
-      await new Promise((r) => setTimeout(r, 50));
-
-      policy.retry();
-
-      return resp.ok;
-    }
-    return false;
-  };
-
-  const [{ loading: deleting }, doDelete] = useAsyncFn(() => {
-    return change({
-      visible: false,
-    });
-  });
-
-  const [{ loading: disablingReplies }, disableReplies] = useAsyncFn(() => {
-    return change({
-      acceptsReplies: !thread.policy.acceptsReplies,
-    });
-  });
-
   const controls = (
     <div className="text-xs">
       {thread.policy.acceptsReplies ? (
@@ -78,21 +86,43 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
       <FullTB trueLabel="Less" falseLabel="More" />
       {master.length > 0 ? (
         <>
-          <ActionButton
-            color="text-red-500"
-            label={deleting ? "Deleting" : "Delete"}
-            onClick={doDelete}
+          <AdminAction
+            hash={thread.hash}
+            newPolicy={{
+              visible: false,
+            }}
+            label="Delete"
+            loadingLabel="Deleting"
+            onClick={policy.retry}
+            color="red"
           />
-          <ActionButton
-            color="text-red-500"
+          <AdminAction
+            hash={thread.hash}
+            newPolicy={{
+              acceptsReplies: !policy.value?.advertise
+            }}
             label={
-              disablingReplies
-                ? "Changing..."
-                : thread.policy.acceptsReplies
-                  ? "Disable replies"
-                  : "Enable replies"
+              policy.value?.advertise
+                ? "Disable replies"
+                : "Enable replies"
             }
-            onClick={disableReplies}
+            loadingLabel="Changing..."
+            onClick={policy.retry}
+            color="red"
+          />
+          <AdminAction
+            hash={thread.hash}
+            newPolicy={{
+              advertise: !policy.value?.advertise
+            }}
+            label={
+              policy.value?.advertise
+                ? "Unpublish"
+                : "Publish"
+            }
+            loadingLabel="Changing..."
+            onClick={policy.retry}
+            color="blue"
           />
         </>
       ) : null}
