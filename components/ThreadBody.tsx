@@ -6,6 +6,7 @@ import rehypeHighlight from "rehype-highlight";
 import { Thread } from "@prisma/client";
 import { useAsync, useLogger } from "react-use";
 import SigVerify from "./SigVerify";
+import { DELIMITER } from "@/constants";
 // import * as syntax_highlight from 'highlight.js/lib/languages/*';
 
 type ThreadBodyProps = {
@@ -66,7 +67,7 @@ const ThreadBody = (props: ThreadBodyProps) => {
     });
 
     var content = msg.getText();
-    var [info, body] = content.split("---", 2);
+    var [info, body] = content.split(DELIMITER, 2);
     body = body || info;
 
     return body.trim();

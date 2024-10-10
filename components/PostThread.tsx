@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { useMap } from "react-use";
 import { createHash } from "crypto";
 import * as toml from "smol-toml";
+import { DELIMITER } from "@/constants";
 
 export type PostThreadProps = {
   replyTo?: Pick<Thread, "hash">;
@@ -113,11 +114,11 @@ export const PostThread = (props: PostThreadProps) => {
         if (props.replyTo?.hash) {
           const info = toml.stringify({
             replyTo: props.replyTo?.hash,
-          })
-          content += info.trim() + "\n\n---\n\n"
+          });
+          content += info.trim() + DELIMITER;
         }
 
-        content += body.trim()
+        content += body.trim();
 
         const msg = await openpgp.createCleartextMessage({
           text: content,

@@ -1,7 +1,8 @@
 import * as openpgp from "openpgp";
 import { PrismaClient, PublicKey } from "@prisma/client";
-import {digestHash} from "./hash";
+import { digestHash } from "./hash";
 import * as toml from "smol-toml";
+import { DELIMITER } from "@/constants";
 
 const db = new PrismaClient();
 
@@ -46,8 +47,8 @@ async function getSigner(msg: openpgp.CleartextMessage): Promise<PublicKey> {
       policy: {
         is: {
           revoked: false,
-        }
-      }
+        },
+      },
     },
   });
 
@@ -96,19 +97,19 @@ export async function uploadThread(threadClearText: string) {
 
   var content = msg.getText();
 
-  const delimiter = content.indexOf("\n\n---\n\n")
+  const delimiter = content.indexOf(DELIMITER);
   let info: Record<string, any> | undefined;
 
   if (delimiter > 0) {
     let infoToml = content.slice(0, delimiter);
     try {
-      info = toml.parse(infoToml)
+      info = toml.parse(infoToml);
     } catch (e) {
       console.error(e);
     }
   }
 
-  const hash = digestHash(threadClearText)
+  const hash = digestHash(threadClearText);
 
   return db.thread.create({
     data: {
@@ -153,5 +154,3 @@ export async function registerPublicKey(publicKeyArmored: string) {
     },
   });
 }
-
-
