@@ -283,7 +283,7 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
   }, [setDecryptedKeys]);
 
   const registered = useAsyncRetry(async () => {
-    const resp = await fetch(`/k/${keyId}/armored`, {
+    const resp = await fetch(`/key/${keyId}/armored`, {
       method: "HEAD",
       cache: "no-cache",
     });

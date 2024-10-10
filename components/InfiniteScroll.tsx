@@ -14,7 +14,7 @@ export function InfiniteScroll(props: InfiniteScrollProps) {
 
   const [{ loading }, next] = useAsyncFn(async () => {
     const u = new URL(window.location.href);
-    u.pathname = `/t/${props.replyTo}/replies`;
+    u.pathname = `/thread/${props.replyTo}/replies`;
     u.searchParams.set("skip", `${hashes.length + props.start}`);
 
     const resp = await fetch(u.toString());

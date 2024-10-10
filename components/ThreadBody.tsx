@@ -41,14 +41,18 @@ function SignedImage(props: React.ImgHTMLAttributes<HTMLImageElement>) {
   const srcUrl = new URL(props.src as string);
   if (srcUrl.protocol === USERLESS_SCHEMA_NAME) {
     if (resolvedUrl.value) {
-    return (
-      <>
-        <img {...props} src={resolvedUrl.value} />
-        {content.value ? <span className="text-xs"><SigVerify detatched content={content.value} /></span> : null}
-      </>
-    );
+      return (
+        <>
+          <img {...props} src={resolvedUrl.value} />
+          {content.value ? (
+            <span className="text-xs">
+              <SigVerify detatched content={content.value} />
+            </span>
+          ) : null}
+        </>
+      );
     } else {
-      return <i>resolving ${props.src}...</i>
+      return <i>resolving ${props.src}...</i>;
     }
   } else {
     return <img {...props} />;

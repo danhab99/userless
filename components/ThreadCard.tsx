@@ -29,7 +29,7 @@ const ThreadCard = ({ thread, enableReplies }: ThreadCardProps) => {
 
   const policy = useAsyncRetry(async () => {
     if (master) {
-      const resp = await fetch(`/t/${thread.hash}/policy`);
+      const resp = await fetch(`/thread/${thread.hash}/policy`);
       const policyTxt = await resp.text();
       return JSON.parse(policyTxt) as ThreadPolicy;
     }
@@ -44,7 +44,7 @@ const ThreadCard = ({ thread, enableReplies }: ThreadCardProps) => {
         signingKeys: master,
       });
 
-      const resp = await fetch(`/t/${thread.hash}/policy`, {
+      const resp = await fetch(`/thread/${thread.hash}/policy`, {
         method: "PATCH",
         body: packet,
       });
@@ -172,10 +172,10 @@ export function ThreadCardFromHash(props: ThreadCardFromHashProps) {
     }
 
     const [threadResp, policyResp] = await Promise.all([
-      fetch(`/t/${props.hash}/txt`, {
+      fetch(`/thread/${props.hash}/txt`, {
         cache: "force-cache",
       }),
-      fetch(`/t/${props.hash}/policy`),
+      fetch(`/thread/${props.hash}/policy`),
     ]);
 
     const threadContent = await threadResp.text();

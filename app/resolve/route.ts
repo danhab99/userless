@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (hasThread > 0) {
-      return new NextResponse(`/t/${userlessPath[1]}`)
+      return new NextResponse(`/thread/${userlessPath[1]}`)
     } else {
       notFound();
     }
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (hasKey > 0) {
-      return new NextResponse(`/k/${userlessPath[1]}`)
+      return new NextResponse(`/key/${userlessPath[1]}`)
     } else {
       notFound();
     }
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
       },
     });
     if (hasFile > 0) {
-      return new NextResponse(`/f/${userlessPath[1]}`)
+      return new NextResponse(`/file/${userlessPath[1]}`)
     } else {
       notFound();
     }

@@ -25,7 +25,7 @@ const SigVerify = (props: SigVerifyProps) => {
     setStatus(VerifiedStatus.Working);
     (async () => {
       const getKey = async (keyId: string) => {
-        const resp = await fetch(`/k/${keyId}/armored`, {
+        const resp = await fetch(`/key/${keyId}/armored`, {
           cache: "force-cache",
         });
         if (!resp.ok) {
@@ -68,7 +68,7 @@ const SigVerify = (props: SigVerifyProps) => {
               ? props.content
               : Buffer.from(props.content),
           );
-          const resp = await fetch(`/f/${hash}/sig`, {
+          const resp = await fetch(`/file/${hash}/sig`, {
             cache: "force-cache",
           });
 

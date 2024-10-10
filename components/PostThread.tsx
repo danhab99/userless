@@ -138,7 +138,7 @@ export const PostThread = (props: PostThreadProps) => {
 
         if (resp.ok) {
           const hash = await resp.text();
-          router.push(`/t/${hash}`);
+          router.push(`/thread/${hash}`);
         } else {
           alert("Unable to post thread");
           console.error(resp);
