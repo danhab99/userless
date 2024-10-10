@@ -314,7 +314,7 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
       <span className="text-username">
         {isMaster ? "👑" : ""}
         {primaryUser.value?.user.userID?.name}
-        <Link href={`/k/${sk.getFingerprint()}`}>
+        <Link href={`/key/${sk.getFingerprint()}`}>
           {"("}
           <Hash content={sk.getFingerprint()} />
           {")"}

@@ -45,7 +45,7 @@ function AdminAction(props: AdminActionProps) {
         body: packet,
       });
 
-      await new Promise((r) => setTimeout(r, 100));
+      await new Promise((r) => setTimeout(r, 50));
 
       props.onClick();
 
@@ -142,7 +142,7 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
           </span>{" "}
           <span className="text-username">
             {thread.signedBy.name}
-            <Link href={`/k/${thread.signedBy.finger}`}>
+            <Link href={`/key/${thread.signedBy.finger}`}>
               {"("}
               <Hash content={thread.signedBy.finger} />
               {")"}
@@ -153,7 +153,7 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
               {">"}
             </a>
           </span>{" "}
-          <Link className="text-slate-600" href={`/t/${thread.hash}`}>
+          <Link className="text-slate-600" href={`/thread/${thread.hash}`}>
             <Hash content={thread.hash} />
           </Link>{" "}
           <SigVerify content={thread.body} />
