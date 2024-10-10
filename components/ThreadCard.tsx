@@ -10,9 +10,8 @@ import { ThreadForThreadCard } from "@/global";
 import { Hash } from "@/components/Hash";
 import { useMasterKey } from "./KeyContext";
 import ActionButton from "./ActionButton";
-import { useAsync, useAsyncFn, useAsyncRetry, useLogger } from "react-use";
+import { useAsync, useAsyncFn, useAsyncRetry } from "react-use";
 import * as openpgp from "openpgp";
-import { InfiniteScroll } from "./InfiniteScroll";
 import * as toml from "smol-toml";
 
 type ThreadCardProps = {
@@ -20,7 +19,7 @@ type ThreadCardProps = {
   enableReplies?: boolean;
 };
 
-const ThreadCard = ({ thread, enableReplies }: ThreadCardProps) => {
+const ThreadCard = ({ thread }: ThreadCardProps) => {
   const [ReplyTB, showReply] = useToggleButton(false);
   const [SourceTB, showSource] = useToggleButton(false);
   const [FullTB, showFull] = useToggleButton(false);
@@ -150,11 +149,6 @@ const ThreadCard = ({ thread, enableReplies }: ThreadCardProps) => {
           </pre>
         ) : null}
       </div>
-      {enableReplies ? (
-        <div className="pl-6">
-          <InfiniteScroll replyTo={thread.hash} start={0} />
-        </div>
-      ) : null}
     </>
   );
 };

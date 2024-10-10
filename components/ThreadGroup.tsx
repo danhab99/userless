@@ -2,7 +2,7 @@
 import type { ThreadForThreadGroup } from "@/lib/db";
 import { useToggleButton } from "./ToggleButton";
 import ThreadCard from "./ThreadCard";
-import { ThreadForThreadCard } from "@/global";
+import { InfiniteScroll } from "./InfiniteScroll";
 
 export function ThreadGroup({ thread }: { thread: ThreadForThreadGroup }) {
   const [ShowRepliesButton, showReplies] = useToggleButton(false);
@@ -21,11 +21,10 @@ export function ThreadGroup({ thread }: { thread: ThreadForThreadGroup }) {
             />
           ) : null}
         </span>
+
         {showReplies ? (
           <div className="pl-6">
-            {thread.replies.map((thread: ThreadForThreadCard, i: number) => (
-              <ThreadCard key={i} thread={thread} />
-            ))}
+            <InfiniteScroll replyTo={thread.hash} start={10} />
           </div>
         ) : null}
       </div>
