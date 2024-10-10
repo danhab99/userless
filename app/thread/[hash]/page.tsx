@@ -48,7 +48,7 @@ export async function generateMetadata({
   }
 
   return {
-    title: `${thread.hash} by ${thread.signedBy.name}`,
+    title: `${thread.hash.slice(0, 8)} by ${thread.signedBy.name}`,
     authors: [
       {
         name: thread.signedBy.name,
