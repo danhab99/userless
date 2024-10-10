@@ -156,3 +156,27 @@ input {
 .markdown img {
   @apply w-3/4;
 }
+
+.markdown td {
+  @apply py-1 px-2;
+}
+
+.markdown th {
+  @apply py-1 px-2;
+}
+
+tr:nth-child(even) {
+  @apply bg-stone-100;
+}
+
+tr:nth-child(odd) {
+  @apply bg-stone-200;
+}
+
+.markdown td {
+  @apply border border-solid border-stone-400;
+}
+
+.markdown th {
+  @apply border border-solid border-stone-400;
+}
