@@ -1,48 +1,99 @@
 "use client";
-import { useEffect, useState } from "react";
-import { ThreadCardFromHash } from "./ThreadCard";
+import { Suspense, useEffect } from "react";
 import ActionButton from "./ActionButton";
-import { useAsyncFn } from "react-use";
+import { createStateContext, useList } from "react-use";
+import { ReplyList } from "./ReplyList";
 
 export type InfiniteScrollProps = {
   replyTo: string;
   start: number;
+  init?: number;
 };
 
-export function InfiniteScroll(props: InfiniteScrollProps) {
-  const [hashes, setHashes] = useState<string[]>([]);
+const [useReplyHashes, ReplyHashesProvider] = createStateContext<Set<string>>(
+  new Set(),
+);
 
-  const [{ loading }, next] = useAsyncFn(async () => {
-    const u = new URL(window.location.href);
-    u.pathname = `/thread/${props.replyTo}/replies`;
-    u.searchParams.set("skip", `${hashes.length + props.start}`);
+const [useLoading, LoadingProvider] = createStateContext(false);
 
-    const resp = await fetch(u.toString());
-    const threadHashes = await resp.text();
-    const hs = threadHashes.split("\n");
-
-    setHashes((prev) => {
-      const h = hs.filter((x) => !prev.includes(x));
-      return prev.concat(h);
-    });
-  }, [setHashes, props.start, props.replyTo]);
+export function ReplyHashNotifier(props: { hash: string }) {
+  const setReplyHashes = useReplyHashes()[1];
 
   useEffect(() => {
-    next();
-  }, [next]);
+    setReplyHashes((prev) => {
+      const s = new Set(prev);
+      s.add(props.hash);
+      return s;
+    });
+
+    return () => {
+      setReplyHashes((prev) => {
+        const s = new Set(prev);
+        s.add(props.hash);
+        return s;
+      });
+    };
+  }, [props.hash]);
+
+  return <></>;
+}
+
+function LoadingWheel() {
+  const setLoading = useLoading()[1];
+
+  useEffect(() => {
+    setLoading(true);
+    return () => {
+      setLoading(false);
+    };
+  }, []);
 
   return (
     <>
-      {hashes
-        .filter((x) => x)
-        .map((hash) => (
-          <div key={hash} className="py-px">
-            <ThreadCardFromHash hash={hash} />
-          </div>
-        ))}
+      <p>Loading...</p>
+    </>
+  );
+}
+
+function InfiniteScrollComponent(props: InfiniteScrollProps) {
+  const [repliesStarts, { push }] = useList<number>([]);
+  const replyCount = useReplyHashes()[0].size;
+  const loading = useLoading()[0];
+
+  const next = () => {
+    if (!loading) {
+      push(replyCount + (props.init ?? 0));
+    }
+  };
+
+  return (
+    <>
+      {props.init ? (
+        <ReplyList replyTo={props.replyTo} start={0} max={props.init} />
+      ) : null}
+
+      {repliesStarts.map((start) => (
+        <Suspense fallback={<LoadingWheel />}>
+          <ReplyList replyTo={props.replyTo} start={start} />
+        </Suspense>
+      ))}
+
       <span className="text-sm">
-        <ActionButton label={loading ? "More..." : "More"} onClick={next} />
+        <ActionButton
+          label={loading ? "Loading More..." : "More"}
+          onClick={next}
+        />
       </span>
     </>
+  );
+}
+
+export function InfiniteScroll(props: InfiniteScrollProps) {
+  return (
+    <ReplyHashesProvider>
+      <LoadingProvider>
+        <InfiniteScrollComponent {...props} />
+      </LoadingProvider>
+    </ReplyHashesProvider>
   );
 }
