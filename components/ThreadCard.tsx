@@ -99,10 +99,10 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
           <AdminAction
             hash={thread.hash}
             newPolicy={{
-              acceptsReplies: !policy.value?.advertise
+              acceptsReplies: !policy.value?.acceptsReplies
             }}
             label={
-              policy.value?.advertise
+              policy.value?.acceptsReplies
                 ? "Disable replies"
                 : "Enable replies"
             }
