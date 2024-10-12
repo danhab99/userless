@@ -29,7 +29,7 @@ export function ReplyHashNotifier(props: { hash: string }) {
     return () => {
       setReplyHashes((prev) => {
         const s = new Set(prev);
-        s.add(props.hash);
+        s.delete(props.hash);
         return s;
       });
     };
@@ -56,7 +56,9 @@ function LoadingWheel() {
 }
 
 function InfiniteScrollComponent(props: InfiniteScrollProps) {
-  const [repliesStarts, { push }] = useList<number>([]);
+  const [repliesStarts, { push }] = useList<number>(
+    props.init ? [props.init] : [],
+  );
   const replyCount = useReplyHashes()[0].size;
   const loading = useLoading()[0];
 
@@ -68,10 +70,6 @@ function InfiniteScrollComponent(props: InfiniteScrollProps) {
 
   return (
     <>
-      {props.init ? (
-        <ReplyList replyTo={props.replyTo} start={0} max={props.init} />
-      ) : null}
-
       {repliesStarts.map((start) => (
         <Suspense fallback={<LoadingWheel />}>
           <ReplyList replyTo={props.replyTo} start={start} />

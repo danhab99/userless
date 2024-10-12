@@ -33,6 +33,10 @@ const ThreadPage = async ({ params }: ThreadPageProps) => {
       {parents.length > 0 ? <hr /> : null}
 
       <ThreadCard thread={thread} enableReplies />
+
+      <div className="pr-6">
+        <InfiniteScroll replyTo={thread.hash} start={0} />
+      </div>
     </>
   );
 };
