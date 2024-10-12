@@ -60,9 +60,7 @@ function MasterLoader() {
   const setMasters = useMasterKeysState()[1];
 
   const { value: testMessage } = useAsync(async () => {
-    const resp = await fetch("/admin", {
-      cache: "force-cache",
-    });
+    const resp = await fetch("/admin");
 
     const test = await resp.text();
 
