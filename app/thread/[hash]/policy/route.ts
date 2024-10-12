@@ -2,6 +2,7 @@ import { encryptForMasters, getMasters } from "@/lib/admin";
 import { PrismaClient } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import * as openpgp from "openpgp";
+import toml from "smol-toml";
 
 const db = new PrismaClient();
 
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  return new NextResponse(JSON.stringify(thread.policy));
+  return new NextResponse(toml.stringify(thread.policy));
 }
 
 export async function PATCH(req: NextRequest) {
@@ -58,7 +59,7 @@ export async function PATCH(req: NextRequest) {
     await db.thread.update({
       where: { hash: threadHash },
       data: {
-        policy: JSON.parse(actionPgp.getText()),
+        policy: toml.parse(actionPgp.getText()),
       },
     });
 

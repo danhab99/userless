@@ -12,7 +12,7 @@ import { useMasterKey } from "./KeyContext";
 import ActionButton from "./ActionButton";
 import { useAsync, useAsyncFn, useAsyncRetry } from "react-use";
 import * as openpgp from "openpgp";
-import * as toml from "smol-toml";
+import toml from "smol-toml";
 
 type ThreadCardProps = {
   thread: ThreadForThreadCard;
@@ -35,7 +35,7 @@ function AdminAction(props: AdminActionProps) {
     if (master) {
       const packet = await openpgp.sign({
         message: await openpgp.createCleartextMessage({
-          text: JSON.stringify(props.newPolicy),
+          text: toml.stringify(props.newPolicy),
         }),
         signingKeys: master,
       });
