@@ -57,15 +57,17 @@ const SigVerify = (props: SigVerifyProps) => {
       try {
         let verify: openpgp.VerificationResult[] = [];
         if (props.detatched) {
-          const msg = await (props.content instanceof ArrayBuffer
-            ? openpgp.createMessage({
-                format: "binary",
-                binary: Buffer.from(new Uint8Array(props.content)),
-              })
-            : openpgp.createMessage({
-                text: props.content,
-                format: "text",
-              }));
+          const msg = await openpgp.createMessage(
+            props.content instanceof ArrayBuffer
+              ? {
+                  format: "binary",
+                  binary: Buffer.from(new Uint8Array(props.content)),
+                }
+              : {
+                  text: props.content,
+                  format: "text",
+                },
+          );
 
           const hash = digestHash(
             typeof props.content === "string"
