@@ -20,7 +20,7 @@ export type PostThreadProps = {
   replyTo?: Pick<Thread, "hash">;
 };
 
-const MATCH_SHA256 = /[a-fA-F0-9]{64}/g;
+const MATCH_SHA256 = /[a-fA-F0-9]{64}/gm;
 
 export const PostThread = (props: PostThreadProps) => {
   const privateKeys = usePrivateKeys();
@@ -29,6 +29,14 @@ export const PostThread = (props: PostThreadProps) => {
   const [keyId, setKeyId] = useState<string>();
   const [files, filesControls] = useMap<Record<string, Blob>>();
   const [loading, setLoading] = useState(false);
+  const [steps, setSteps] = useState(0);
+  const [thisStep, setThisStep] = useState(0);
+
+  useEffect(() => {
+    if (!loading) {
+      setSteps(0);
+    }
+  }, [loading]);
 
   useEffect(() => {
     setKeyId(privateKeys[0]?.getFingerprint());
@@ -40,8 +48,11 @@ export const PostThread = (props: PostThreadProps) => {
     (e) => {
       e.preventDefault();
       e.stopPropagation();
+      setLoading(true);
+
+      const increment = () => setThisStep((x) => x + 1);
+
       (async () => {
-        setLoading(true);
         const skId =
           keyId?.length == 0 ? privateKeys[0].getFingerprint() : keyId;
 
@@ -74,40 +85,48 @@ export const PostThread = (props: PostThreadProps) => {
           }
         }
 
-        const fileHashes = Object.keys(files);
-        const fileContents = Object.values(files);
+        const allowHashs = Array.from(body.matchAll(MATCH_SHA256)).map((x) =>
+          x.toString(),
+        );
 
-        const allowHashs = MATCH_SHA256.exec(body);
-        const deleteHashes = fileHashes.filter((x) => !allowHashs?.includes(x));
+        setSteps(3 * allowHashs.length + 3);
 
-        deleteHashes?.forEach((hash) => {
-          delete files[hash];
-        });
+        const uploadPromises = Object.entries(files).map(
+          async ([hash, data]) => {
+            if (!allowHashs?.includes(hash)) {
+              return;
+            }
 
-        const uploadPromises = fileContents.map(async (data) => {
-          const msg = await openpgp.createMessage({
-            binary: new Uint8Array(await data.arrayBuffer()),
-          });
+            const msg = await openpgp.createMessage({
+              binary: new Uint8Array(await data.arrayBuffer()),
+            });
 
-          const sig = await openpgp.sign({
-            message: msg,
-            signingKeys: [pk as openpgp.PrivateKey],
-            detached: true,
-            format: "armored",
-          });
+            increment();
 
-          const f = new FormData();
-          f.append("document", data);
-          f.append("signature", sig.toString());
+            const sig = await openpgp.sign({
+              message: msg,
+              signingKeys: [pk as openpgp.PrivateKey],
+              detached: true,
+              format: "armored",
+            });
 
-          const resp = await fetch("/upload", {
-            method: "POST",
-            body: f,
-            redirect: "manual",
-          });
+            increment();
 
-          return resp.ok;
-        });
+            const f = new FormData();
+            f.append("document", data);
+            f.append("signature", sig.toString());
+
+            const resp = await fetch("/upload", {
+              method: "POST",
+              body: f,
+              redirect: "manual",
+            });
+
+            increment();
+
+            return resp.ok;
+          },
+        );
 
         let content = "";
 
@@ -124,14 +143,18 @@ export const PostThread = (props: PostThreadProps) => {
           text: content,
         });
 
+        increment();
+
         const signedMsg = await openpgp.sign({
           message: msg,
           signingKeys: [pk],
           format: "armored",
         });
 
+        increment();
         const succeses = await Promise.all(uploadPromises);
 
+        increment();
         if (!succeses.every((x) => x)) {
           return;
         }
@@ -141,6 +164,8 @@ export const PostThread = (props: PostThreadProps) => {
           body: signedMsg,
           redirect: "manual",
         });
+
+        increment();
 
         setLoading(false);
 
@@ -153,7 +178,7 @@ export const PostThread = (props: PostThreadProps) => {
         }
       })();
     },
-    [privateKeys, files],
+    [privateKeys, files, setSteps, setThisStep],
   );
 
   const textareaRef = useRef<HTMLTextAreaElement>();
@@ -163,25 +188,33 @@ export const PostThread = (props: PostThreadProps) => {
     async (e) => {
       const cur = textareaRef.current?.selectionEnd;
 
-      const file = e.target.files?.item(0);
-      if (!file) {
-        return;
+      if (!e.target.files) {
+        throw "requires files";
       }
 
-      const buff = await file.arrayBuffer();
-      const hasher = createHash("sha256");
-      hasher.write(Buffer.from(buff));
-      const hash = hasher.digest("hex");
-      filesControls.set(
-        hash,
-        new Blob([buff], {
-          type: file.type,
-        }),
-      );
+      let insert = "";
 
-      const insert = file.type.includes("image")
-        ? `![${file.name} ${hash.slice(0, 8)}](userless:///file/${hash})`
-        : `[Download ${file.name} ${hash.slice(0, 8)}](userless:///file/${hash})`;
+      for (let i = 0; i < e.target.files?.length; i++) {
+        const file = e.target.files?.item(i);
+        if (!file) {
+          return;
+        }
+
+        const buff = await file.arrayBuffer();
+        const hasher = createHash("sha256");
+        hasher.write(Buffer.from(buff));
+        const hash = hasher.digest("hex");
+        filesControls.set(
+          hash,
+          new Blob([buff], {
+            type: file.type,
+          }),
+        );
+
+        insert += file.type.includes("image")
+          ? `![${file.name} ${hash.slice(0, 8)}](userless:///file/${hash}) `
+          : `[Download ${file.name} ${hash.slice(0, 8)}](userless:///file/${hash}) `;
+      }
 
       setBody((prev) => prev.slice(0, cur) + insert + prev.slice(cur));
 
@@ -214,6 +247,7 @@ export const PostThread = (props: PostThreadProps) => {
         <div>
           <label>Add file</label>
           <input
+            multiple
             type="file"
             onChange={handleAddFile}
             ref={(ref) => {
@@ -242,6 +276,10 @@ export const PostThread = (props: PostThreadProps) => {
             {loading ? "Posting..." : "Post"}
           </button>
         </div>
+
+        {loading ? (
+          <progress className="w-full" max={steps} value={thisStep} />
+        ) : null}
       </form>
     </div>
   );
