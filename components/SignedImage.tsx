@@ -1,44 +1,56 @@
 "use client";
 import { Thread } from "@prisma/client";
-import { useAsync, useLogger } from "react-use";
+import { useAsync, useLogger, useStartTyping } from "react-use";
 import SigVerify from "./SigVerify";
 import { DELIMITER } from "@/constants";
+import { useInView } from "react-intersection-observer";
+import { useState } from "react";
 // import * as syntax_highlight from 'highlight.js/lib/languages/*';
-
-type ThreadBodyProps = {
-  thread: Thread;
-};
 
 const USERLESS_SCHEMA_NAME = "userless:";
 
 export function SignedImage(props: React.ImgHTMLAttributes<HTMLImageElement>) {
+  const [inView, setInView] = useState(false);
+  const [ref] = useInView({
+    triggerOnce: true,
+    onChange: (v) => setInView((x) => x || v),
+    delay: 500,
+  });
+
   const resolvedUrl = useAsync(async () => {
-    const srcUrl = new URL(props.src as string);
-    if (srcUrl.protocol === USERLESS_SCHEMA_NAME) {
-      const u = new URL(window.location.href);
-      u.pathname = "/resolve";
-      u.searchParams.set("u", props.src as string);
+    if (inView) {
+      const srcUrl = new URL(props.src as string);
+      if (srcUrl.protocol === USERLESS_SCHEMA_NAME) {
+        const u = new URL(window.location.href);
+        u.pathname = "/resolve";
+        u.searchParams.set("u", props.src as string);
 
-      const resp = await fetch(u.toString(), {
-        cache: "force-cache",
-      });
+        const resp = await fetch(u.toString(), {
+          cache: "force-cache",
+        });
 
-      return resp.text();
+        return resp.text();
+      }
     }
-  }, [props.src]);
+  }, [props.src, inView]);
 
   const content = useAsync(async () => {
-    const url = resolvedUrl.value;
-    if (url) {
-      const resp = await fetch(url);
-      return resp.arrayBuffer();
+    if (inView) {
+      const url = resolvedUrl.value;
+      if (url) {
+        const resp = await fetch(url);
+        return resp.arrayBuffer();
+      }
     }
-  }, [resolvedUrl.value]);
+  }, [resolvedUrl.value, inView]);
 
   const srcUrl = new URL(props.src as string);
+
+  let component;
+
   if (srcUrl.protocol === USERLESS_SCHEMA_NAME) {
     if (resolvedUrl.value) {
-      return (
+      component = (
         <>
           <img {...props} src={resolvedUrl.value} />
           {content.value ? (
@@ -49,9 +61,11 @@ export function SignedImage(props: React.ImgHTMLAttributes<HTMLImageElement>) {
         </>
       );
     } else {
-      return <i>resolving ${props.src}...</i>;
+      component = <i>resolving ${props.src}...</i>;
     }
   } else {
-    return <img {...props} />;
+    component = <img {...props} />;
   }
+
+  return <div ref={ref}>{component}</div>;
 }
