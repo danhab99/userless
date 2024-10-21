@@ -14,6 +14,7 @@ func main() {
 	threadGroup.GET("/", getThead(ctx))
 	threadGroup.GET("/replies", getThreadReplies(ctx))
 	threadGroup.GET("/policy", getThreadPolicy(ctx))
+	threadGroup.PATCH("/policy", patchThreadPolicy(ctx))
 
 	keyGroup := route.Group("/key/:id", keyMiddleware(ctx))
 	keyGroup.GET("/", getKey(ctx))

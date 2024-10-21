@@ -1,11 +1,13 @@
 package main
 
 import (
+	"io"
 	"log"
 	"os"
 	"userless/server/prisma/db"
 
 	"github.com/minio/minio-go"
+	"golang.org/x/crypto/openpgp"
 )
 
 type UserlessCtx struct {
@@ -35,4 +37,11 @@ func NewUserlessCtx() UserlessCtx {
 		minioClient: minioClient,
 		bucketName:  os.Getenv("S3_BUCKET"),
 	}
+}
+
+func (uc *UserlessCtx) VerifyCleartext(text io.Reader) {
+
+	openpgp.ReadArmoredKeyRing()
+
+	openpgp.ReadMessage(text, nil)
 }
