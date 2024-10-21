@@ -2,10 +2,10 @@ package main
 
 import (
 	"log"
+	"os"
 	"userless/server/prisma/db"
 
 	"github.com/minio/minio-go"
-	"github.com/minio/minio-go/pkg/credentials"
 )
 
 type UserlessCtx struct {
@@ -20,19 +20,19 @@ func NewUserlessCtx() UserlessCtx {
 		panic(err)
 	}
 
-	endpoint := "play.min.io"
-	accessKeyID := "Q3AM3UQ867SPQQA43P2F"
-	secretAccessKey := "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
-	useSSL := true
+	endpoint := os.Getenv("S3_ENDPOINT")
+	accessKeyID := os.Getenv("S3_ACCESSKEY")
+	secretAccessKey := os.Getenv("S3_SECRETKEY")
+	useSSL := os.Getenv("S3_SSL")
 
-	// Initialize minio client object.
-	minioClient, err := minio.New(endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(accessKeyID, secretAccessKey, ""),
-		Secure: useSSL,
-	})
+	minioClient, err := minio.New(endpoint, accessKeyID, secretAccessKey, useSSL == "1")
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	return UserlessCtx{client, minioClient}
+	return UserlessCtx{
+		client:      client,
+		minioClient: minioClient,
+		bucketName:  os.Getenv("S3_BUCKET"),
+	}
 }
