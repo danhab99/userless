@@ -6,6 +6,7 @@ import (
 	"userless/server/prisma/db"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pelletier/go-toml/v2"
 )
 
 func getThead(uc UserlessCtx) func(ctx *gin.Context) {
@@ -70,6 +71,21 @@ func getThreadReplies(uc UserlessCtx) func(ctx *gin.Context) {
 				panic(err)
 			}
 		}
+
+		ctx.Status(200)
+	}
+}
+
+func getThreadPolicy(uc UserlessCtx) func(ctx *gin.Context) {
+	return func(ctx *gin.Context) {
+		threadRaw, ok := ctx.Get("thread")
+		if !ok {
+			panic("thread not set")
+		}
+		thread := threadRaw.(*db.ThreadModel)
+
+		encoder := toml.NewEncoder(ctx.Writer)
+		encoder.Encode(thread.Policy)
 
 		ctx.Status(200)
 	}

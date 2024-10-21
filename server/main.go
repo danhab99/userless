@@ -13,6 +13,7 @@ func main() {
 	threadGroup := route.Group("/thread/:hash", threadMiddleware(ctx))
 	threadGroup.GET("/", getThead(ctx))
 	threadGroup.GET("/replies", getThreadReplies(ctx))
+	threadGroup.GET("/policy", getThreadPolicy(ctx))
 
 	keyGroup := route.Group("/key/:id", keyMiddleware(ctx))
 	keyGroup.GET("/", getKey(ctx))
