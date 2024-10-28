@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   const docFormData = data.get("document");
   if (!(docFormData instanceof File)) {
     return new NextResponse("document must be a file", {
-      status: 400
+      status: 400,
     });
   }
   const docArrBuffPromise = docFormData.arrayBuffer();
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   const sigArmored = data.get("signature");
   if (typeof sigArmored !== "string") {
     return new NextResponse("sig must be armored text", {
-      status: 400
+      status: 400,
     });
   }
 
@@ -89,27 +89,35 @@ export async function POST(req: NextRequest) {
   hasher.write(docBuff);
   const hash = hasher.digest("hex");
 
-  await Promise.all([
-    s3Client.putObject(BUCKET, `${hash}_sig`, sigArmored),
-    s3Client.putObject(BUCKET, hash, docBuff),
-    db.file.upsert({
-      where: {
-        hash
-      },
-      update: {},
-      create: {
-        hash,
-        size: docBuff.length,
-        timestamp: pgpSig.packets[0].created,
-        mimeType: docFormData.type,
-        signedBy: {
-          connect: {
-            keyId: pgpSig.getSigningKeyIDs()[0].toHex(),
+  const exists = await db.file.count({
+    where: {
+      hash,
+    },
+  });
+
+  if (exists === 0) {
+    await Promise.all([
+      s3Client.putObject(BUCKET, `${hash}_sig`, sigArmored, sigArmored.length, {
+        "Content-Type": "application/pgp-signature",
+      }),
+      s3Client.putObject(BUCKET, hash, docBuff, docBuff.length, {
+        "Content-Type": docFormData.type,
+      }),
+      db.file.create({
+        data: {
+          hash,
+          size: docBuff.length,
+          timestamp: pgpSig.packets[0].created,
+          mimeType: docFormData.type,
+          signedBy: {
+            connect: {
+              keyId: pgpSig.getSigningKeyIDs()[0].toHex(),
+            },
           },
         },
-      },
-    }),
-  ]);
+      }),
+    ]);
+  }
 
   return new NextResponse(hash, {
     status: 201,
