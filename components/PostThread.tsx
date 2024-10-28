@@ -181,8 +181,8 @@ export const PostThread = (props: PostThreadProps) => {
     [privateKeys, files, setSteps, setThisStep],
   );
 
-  const textareaRef = useRef<HTMLTextAreaElement>();
-  const fileinputRef = useRef<HTMLInputElement>();
+  const textareaRef = useRef<HTMLTextAreaElement>(undefined);
+  const fileinputRef = useRef<HTMLInputElement>(undefined);
 
   const handleAddFile: ChangeEventHandler<HTMLInputElement> = useCallback(
     async (e) => {

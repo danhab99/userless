@@ -7,12 +7,12 @@ export type ActionButtonProps = {
 
 const ActionButton = (props: ActionButtonProps) => {
   return (
-    <a
+    <span
       className={`${props.color ?? 'text-green-700'}`}
       onClick={props.onClick}
     >
       [{props.label}]
-    </a>
+    </span>
   )
 }
 

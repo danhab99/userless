@@ -6,12 +6,13 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 type ThreadPageProps = {
-  params: {
+  params: Promise<{
     hash: string;
-  };
+  }>;
 };
 
-const ThreadPage = async ({ params }: ThreadPageProps) => {
+const ThreadPage = async (props: ThreadPageProps) => {
+  const params = await props.params;
   const thread = await getThread(params.hash.toLowerCase());
   if (!thread) {
     notFound();
@@ -43,9 +44,8 @@ const ThreadPage = async ({ params }: ThreadPageProps) => {
 
 export default ThreadPage;
 
-export async function generateMetadata({
-  params,
-}: ThreadPageProps): Promise<Metadata> {
+export async function generateMetadata(props: ThreadPageProps): Promise<Metadata> {
+  const params = await props.params;
   const thread: ThreadForThreadCard | null = await getThread(params.hash);
   if (!thread) {
     notFound();

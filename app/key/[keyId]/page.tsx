@@ -10,12 +10,13 @@ import * as openpgp from "openpgp";
 const db = new PrismaClient();
 
 type KeyPageParams = {
-  params: {
+  params: Promise<{
     keyId: string;
-  };
+  }>;
 };
 
-const KeyPage = async ({ params }: KeyPageParams) => {
+const KeyPage = async (props: KeyPageParams) => {
+  const params = await props.params;
   const publicKey = await db.publicKey.findUnique({
     where: {
       finger: params.keyId.toLowerCase(),
@@ -71,9 +72,8 @@ const KeyPage = async ({ params }: KeyPageParams) => {
 
 export default KeyPage;
 
-export async function generateMetadata({
-  params,
-}: KeyPageParams): Promise<Metadata> {
+export async function generateMetadata(props: KeyPageParams): Promise<Metadata> {
+  const params = await props.params;
   const publicKey = await db.publicKey.findUnique({
     where: {
       finger: params.keyId,
