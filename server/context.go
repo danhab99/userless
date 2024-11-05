@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"io"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 	"userless/server/prisma/db"
 
 	"github.com/minio/minio-go"
@@ -39,9 +42,39 @@ func NewUserlessCtx() UserlessCtx {
 	}
 }
 
-func (uc *UserlessCtx) VerifyCleartext(text io.Reader) {
+func (uc *UserlessCtx) VerifyCleartext(text io.Reader) (body string, signedBy *openpgp.Key, signedByDb *db.PublicKeyModel) {
+	msg, err := openpgp.ReadMessage(text, nil, nil, nil)
+	if err != nil {
+		panic(err)
+	}
 
-	openpgp.ReadArmoredKeyRing()
+	id := strconv.FormatUint(msg.SignedByKeyId, 16)
 
-	openpgp.ReadMessage(text, nil)
+	dpk, err := uc.client.PublicKey.FindUnique(
+		db.PublicKey.KeyID.Equals(id),
+	).Exec(context.Background())
+	if err != nil {
+		panic(err)
+	}
+
+	key, err := openpgp.ReadArmoredKeyRing(strings.NewReader(dpk.ArmoredKey))
+	if err != nil {
+		panic(err)
+	}
+
+	msg, err = openpgp.ReadMessage(text, key, nil, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	bodyBytes, err := io.ReadAll(msg.UnverifiedBody)
+	if err != nil {
+		panic(err)
+	}
+	body = string(bodyBytes)
+
+	signedByDb = dpk
+	signedBy = msg.SignedBy
+
+	return
 }

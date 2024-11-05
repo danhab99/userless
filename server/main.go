@@ -20,7 +20,8 @@ func main() {
 	keyGroup.GET("/", getKey(ctx))
 
 	fileGroup := route.Group("/file/:hash", fileMiddleware(ctx))
-	fileGroup.GET("/", getFile(ctx))
+	fileGroup.GET("/", getFile(ctx, ""))
+	fileGroup.GET("/sig", getFile(ctx, "_sig"))
 
 	route.Run("0.0.0.0:9000")
 }

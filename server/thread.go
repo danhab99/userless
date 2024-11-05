@@ -90,3 +90,8 @@ func getThreadPolicy(uc UserlessCtx) func(ctx *gin.Context) {
 		ctx.Status(200)
 	}
 }
+
+func patchThreadPolicy(uc UserlessCtx) func(ctx *gin.Context) {
+	return func(ctx *gin.Context) {
+	}
+}

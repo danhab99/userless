@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func getFile(uc UserlessCtx) func(ctx *gin.Context) {
+func getFile(uc UserlessCtx, suffix string) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		fileRaw, ok := ctx.Get("file")
 		if !ok {
@@ -16,7 +16,7 @@ func getFile(uc UserlessCtx) func(ctx *gin.Context) {
 		}
 
 		file := fileRaw.(*db.FileModel)
-		url, err := uc.minioClient.PresignedGetObject(uc.bucketName, fmt.Sprintf("/file/%s", file.Hash), time.Hour*168, nil)
+		url, err := uc.minioClient.PresignedGetObject(uc.bucketName, fmt.Sprintf("/file/%s%s", file.Hash, suffix), time.Hour*168, nil)
 		if err != nil {
 			panic(err)
 		}
