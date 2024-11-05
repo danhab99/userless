@@ -1,5 +1,5 @@
 datasource db {
-  provider = "mongodb"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -11,7 +11,7 @@ generator client {
 model Thread {
   body           String
   hash           String       @unique
-  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  id             String       @id @default(uuid()) @map("_id")
   parent         Thread?      @relation(name: "ParentThread", fields: [replyTo], references: [hash], onDelete: NoAction, onUpdate: NoAction)
   replies        Thread[]     @relation(name: "ParentThread")
   replyTo        String?
@@ -20,14 +20,14 @@ model Thread {
   timestamp      DateTime
   policy         ThreadPolicy @relation(fields: [threadPolicyId], references: [id])
   info           Json?
-  threadPolicyId String       @db.ObjectId
+  threadPolicyId String
 
   @@index([replyTo])
   @@index([signedById])
 }
 
 model ThreadPolicy {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  id             String   @id @default(uuid()) @map("_id")
   visible        Boolean  @default(true)
   acceptsReplies Boolean  @default(true)
   encryptFor     String[]
@@ -41,20 +41,20 @@ model PublicKey {
   comment           String
   email             String
   finger            String          @unique
-  id                String          @id @default(auto()) @map("_id") @db.ObjectId
+  id                String          @id @default(uuid()) @map("_id")
   keyId             String          @unique
   name              String
   threads           Thread[]
   policy            PublicKeyPolicy @relation(fields: [publicKeyPolicyId], references: [id])
   files             File[]
-  publicKeyPolicyId String          @db.ObjectId
+  publicKeyPolicyId String
 
   @@index([email])
   @@index([name])
 }
 
 model PublicKeyPolicy {
-  id                   String      @id @default(auto()) @map("_id") @db.ObjectId
+  id                   String      @id @default(uuid()) @map("_id")
   revoked              Boolean     @default(false)
   allowedToPost        Boolean     @default(true)
   canStartThreads      Boolean     @default(true)
@@ -65,7 +65,7 @@ model PublicKeyPolicy {
 }
 
 model File {
-  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  id         String    @id @default(uuid()) @map("_id")
   signedBy   PublicKey @relation(fields: [signedById], references: [finger])
   signedById String
   hash       String    @unique
