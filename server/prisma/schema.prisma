@@ -4,58 +4,64 @@ datasource db {
 }
 
 generator client {
-  provider = "go run github.com/steebchen/prisma-client-go"
+  provider      = "go run github.com/steebchen/prisma-client-go"
   binaryTargets = "native"
 }
 
 model Thread {
-  body       String
-  hash       String       @unique
-  id         String       @id @default(auto()) @map("_id") @db.ObjectId
-  parent     Thread?      @relation(name: "ParentThread", fields: [replyTo], references: [hash], onDelete: NoAction, onUpdate: NoAction)
-  replies    Thread[]     @relation(name: "ParentThread")
-  replyTo    String?
-  signedBy   PublicKey    @relation(fields: [signedById], references: [keyId], onDelete: NoAction, onUpdate: NoAction)
-  signedById String
-  timestamp  DateTime
-  policy     ThreadPolicy
-  info       Json?
+  body           String
+  hash           String       @unique
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  parent         Thread?      @relation(name: "ParentThread", fields: [replyTo], references: [hash], onDelete: NoAction, onUpdate: NoAction)
+  replies        Thread[]     @relation(name: "ParentThread")
+  replyTo        String?
+  signedBy       PublicKey    @relation(fields: [signedById], references: [keyId], onDelete: NoAction, onUpdate: NoAction)
+  signedById     String
+  timestamp      DateTime
+  policy         ThreadPolicy @relation(fields: [threadPolicyId], references: [id])
+  info           Json?
+  threadPolicyId String       @db.ObjectId
 
   @@index([replyTo])
   @@index([signedById])
 }
 
-type ThreadPolicy {
+model ThreadPolicy {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
   visible        Boolean  @default(true)
   acceptsReplies Boolean  @default(true)
   encryptFor     String[]
   policyEditors  String[]
-  advertise      Boolean @default(false)
+  advertise      Boolean  @default(false)
+  Thread         Thread[]
 }
 
 model PublicKey {
-  armoredKey String          @unique
-  comment    String
-  email      String
-  finger     String          @unique
-  id         String          @id @default(auto()) @map("_id") @db.ObjectId
-  keyId      String          @unique
-  name       String
-  threads    Thread[]
-  policy     PublicKeyPolicy
-  files      File[]
+  armoredKey        String          @unique
+  comment           String
+  email             String
+  finger            String          @unique
+  id                String          @id @default(auto()) @map("_id") @db.ObjectId
+  keyId             String          @unique
+  name              String
+  threads           Thread[]
+  policy            PublicKeyPolicy @relation(fields: [publicKeyPolicyId], references: [id])
+  files             File[]
+  publicKeyPolicyId String          @db.ObjectId
 
   @@index([email])
   @@index([name])
 }
 
-type PublicKeyPolicy {
-  revoked              Boolean @default(false)
-  allowedToPost        Boolean @default(true)
-  canStartThreads      Boolean @default(true)
-  isMaster             Boolean @default(false)
-  allowedToUploadFiles Boolean @default(true)
-  maxFileSize          BigInt  @default(1000000)
+model PublicKeyPolicy {
+  id                   String      @id @default(auto()) @map("_id") @db.ObjectId
+  revoked              Boolean     @default(false)
+  allowedToPost        Boolean     @default(true)
+  canStartThreads      Boolean     @default(true)
+  isMaster             Boolean     @default(false)
+  allowedToUploadFiles Boolean     @default(true)
+  maxFileSize          BigInt      @default(1000000)
+  PublicKey            PublicKey[]
 }
 
 model File {
