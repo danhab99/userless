@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func getFile(uc UserlessCtx, suffix string) func(ctx *gin.Context) {
+func getFile(uc *UserlessCtx, suffix string) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		fileRaw, ok := ctx.Get("file")
 		if !ok {

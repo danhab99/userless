@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func threadMiddleware(uc UserlessCtx) func(ctx *gin.Context) {
+func threadMiddleware(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		hash := ctx.Params.ByName("hash")
 
@@ -24,7 +24,7 @@ func threadMiddleware(uc UserlessCtx) func(ctx *gin.Context) {
 	}
 }
 
-func keyMiddleware(uc UserlessCtx) func(ctx *gin.Context) {
+func keyMiddleware(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		id := ctx.Params.ByName("id")
 
@@ -41,7 +41,7 @@ func keyMiddleware(uc UserlessCtx) func(ctx *gin.Context) {
 	}
 }
 
-func fileMiddleware(uc UserlessCtx) func(ctx *gin.Context) {
+func fileMiddleware(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		hash := ctx.Params.ByName("hash")
 

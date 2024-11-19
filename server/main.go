@@ -18,6 +18,8 @@ func main() {
 
 	keyGroup := route.Group("/key/:id", keyMiddleware(ctx))
 	keyGroup.GET("/", getKey(ctx))
+	keyGroup.GET("/files", getKeyFiles(ctx))
+	keyGroup.GET("/threads", getKeyThreads(ctx))
 
 	fileGroup := route.Group("/file/:hash", fileMiddleware(ctx))
 	fileGroup.GET("/", getFile(ctx, ""))

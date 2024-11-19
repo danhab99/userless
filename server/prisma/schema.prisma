@@ -9,18 +9,17 @@ generator client {
 }
 
 model Thread {
-  body           String
-  hash           String       @unique
-  id             String       @id @default(uuid()) @map("_id")
-  parent         Thread?      @relation(name: "ParentThread", fields: [replyTo], references: [hash], onDelete: NoAction, onUpdate: NoAction)
-  replies        Thread[]     @relation(name: "ParentThread")
-  replyTo        String?
-  signedBy       PublicKey    @relation(fields: [signedById], references: [keyId], onDelete: NoAction, onUpdate: NoAction)
-  signedById     String
-  timestamp      DateTime
-  policy         ThreadPolicy @relation(fields: [threadPolicyId], references: [id])
-  info           Json?
-  threadPolicyId String
+  body         String
+  hash         String       @unique
+  id           String       @id @default(uuid()) @map("_id")
+  parent       Thread?      @relation(name: "ParentThread", fields: [replyTo], references: [hash], onDelete: NoAction, onUpdate: NoAction)
+  replies      Thread[]     @relation(name: "ParentThread")
+  replyTo      String?
+  signedBy     PublicKey    @relation(fields: [signedById], references: [keyId], onDelete: NoAction, onUpdate: NoAction)
+  signedById   String
+  timestamp    DateTime
+  info         Json?
+  threadPolicy ThreadPolicy @relation(fields: [hash], references: [owner], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([replyTo])
   @@index([signedById])
@@ -33,7 +32,8 @@ model ThreadPolicy {
   encryptFor     String[]
   policyEditors  String[]
   advertise      Boolean  @default(false)
-  Thread         Thread[]
+  thread         Thread?
+  owner          String   @unique
 }
 
 model PublicKey {
@@ -51,6 +51,7 @@ model PublicKey {
 
   @@index([email])
   @@index([name])
+  @@index([keyId])
 }
 
 model PublicKeyPolicy {

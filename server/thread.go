@@ -9,7 +9,7 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-func getThead(uc UserlessCtx) func(ctx *gin.Context) {
+func getThead(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		threadRaw, ok := ctx.Get("thread")
 		if !ok {
@@ -22,7 +22,7 @@ func getThead(uc UserlessCtx) func(ctx *gin.Context) {
 	}
 }
 
-func getThreadReplies(uc UserlessCtx) func(ctx *gin.Context) {
+func getThreadReplies(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		threadRaw, ok := ctx.Get("thread")
 		if !ok {
@@ -76,7 +76,7 @@ func getThreadReplies(uc UserlessCtx) func(ctx *gin.Context) {
 	}
 }
 
-func getThreadPolicy(uc UserlessCtx) func(ctx *gin.Context) {
+func getThreadPolicy(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		threadRaw, ok := ctx.Get("thread")
 		if !ok {
@@ -85,13 +85,60 @@ func getThreadPolicy(uc UserlessCtx) func(ctx *gin.Context) {
 		thread := threadRaw.(*db.ThreadModel)
 
 		encoder := toml.NewEncoder(ctx.Writer)
-		encoder.Encode(thread.Policy)
+		encoder.Encode(thread.ThreadPolicy)
 
 		ctx.Status(200)
 	}
 }
 
-func patchThreadPolicy(uc UserlessCtx) func(ctx *gin.Context) {
+func patchThreadPolicy(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
+		body, _, _ := uc.VerifyCleartext(ctx.Request.Body)
+
+		var info map[string]interface{}
+		err := toml.Unmarshal([]byte(body), &info)
+		if err != nil {
+			panic(err)
+		}
+
+		var changes []db.ThreadPolicySetParam
+
+		visible, ok := info["visible"].(bool)
+		if ok {
+			changes = append(changes, db.ThreadPolicy.Visible.Set(visible))
+		}
+
+		acceptsReplies, ok := info["acceptsReplies"].(bool)
+		if ok {
+			changes = append(changes, db.ThreadPolicy.AcceptsReplies.Set(acceptsReplies))
+		}
+
+		encryptFor, ok := info["encryptFor"].([]string)
+		if ok {
+			changes = append(changes, db.ThreadPolicy.EncryptFor.Set(encryptFor))
+		}
+
+		policyEditors, ok := info["policyEditors"].([]string)
+		if ok {
+			changes = append(changes, db.ThreadPolicy.PolicyEditors.Set(policyEditors))
+		}
+
+		advertise, ok := info["advertise"].(bool)
+		if ok {
+			changes = append(changes, db.ThreadPolicy.Advertise.Set(advertise))
+		}
+
+		hash := ctx.Param("hash")
+
+		client := uc.client
+
+		_, err = client.ThreadPolicy.FindUnique(
+			db.ThreadPolicy.Owner.Equals(hash),
+		).Update(changes...).Exec(context.Background())
+		if err != nil {
+			panic(err)
+		}
+
+		ctx.Status(203)
 	}
 }
