@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/pelletier/go-toml/v2"
+	"golang.org/x/crypto/openpgp"
 )
 
 func getThead(uc *UserlessCtx) func(ctx *gin.Context) {
@@ -93,10 +94,15 @@ func getThreadPolicy(uc *UserlessCtx) func(ctx *gin.Context) {
 
 func patchThreadPolicy(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
-		body, _, _ := uc.VerifyCleartext(ctx.Request.Body)
+		msg, err := openpgp.ReadMessage(ctx.Request.Body, nil, nil, nil)
+		if err != nil {
+			panic(err)
+		}
+
+		body, _, _ := uc.VerifyCleartext(msg)
 
 		var info map[string]interface{}
-		err := toml.Unmarshal([]byte(body), &info)
+		err = toml.Unmarshal([]byte(body), &info)
 		if err != nil {
 			panic(err)
 		}
@@ -133,7 +139,7 @@ func patchThreadPolicy(uc *UserlessCtx) func(ctx *gin.Context) {
 		client := uc.client
 
 		_, err = client.ThreadPolicy.FindUnique(
-			db.ThreadPolicy.Owner.Equals(hash),
+			db.ThreadPolicy.ThreadHash.Equals(hash),
 		).Update(changes...).Exec(context.Background())
 		if err != nil {
 			panic(err)

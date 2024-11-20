@@ -48,23 +48,8 @@ func NewUserlessCtx() *UserlessCtx {
 	}
 }
 
-func (uc *UserlessCtx) VerifyCleartext(text io.Reader) (body string, signedBy *openpgp.Key, signedByDb *db.PublicKeyModel) {
-	msg, err := openpgp.ReadMessage(text, nil, nil, nil)
-	if err != nil {
-		panic(err)
-	}
-
+func (uc *UserlessCtx) VerifyCleartext(msg *openpgp.MessageDetails) (body string, signedBy *openpgp.Key, signedByDb *db.PublicKeyModel) {
 	dpk, err := uc.getSigner(msg)
-	if err != nil {
-		panic(err)
-	}
-
-	key, err := openpgp.ReadArmoredKeyRing(strings.NewReader(dpk.ArmoredKey))
-	if err != nil {
-		panic(err)
-	}
-
-	msg, err = openpgp.ReadMessage(text, key, nil, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -104,11 +89,11 @@ func (uc *UserlessCtx) uploadThread(threadClearText io.Reader) *db.ThreadModel {
 		log.Fatal("cannot find owner key")
 	}
 
-	content, _, _ := uc.VerifyCleartext(threadClearText)
+	content, _, keyDb := uc.VerifyCleartext(msg)
 
 	timestamp := msg.Signature.CreationTime
 
-	delimiter := strings.Index(content, "()()()()()()()()()()")
+	delimiter := strings.Index(content, DELIMITER)
 	var info map[string]interface{}
 	if delimiter > 0 {
 		infoToml := content[:delimiter]
@@ -142,8 +127,10 @@ func (uc *UserlessCtx) uploadThread(threadClearText io.Reader) *db.ThreadModel {
 	threadDb, err := uc.client.Thread.CreateOne(
 		db.Thread.Body.Set(content),
 		db.Thread.Hash.Set(string(hash)),
+		db.Thread.SignedBy.Link(
+			db.PublicKey.KeyID.Equals(keyDb.KeyID),
+		),
 		db.Thread.Timestamp.Set(timestamp),
-		db.Thread.Policy.Link(nil),
 		params...,
 	).Exec(context.Background())
 
