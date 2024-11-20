@@ -10,16 +10,16 @@ generator client {
 
 model Thread {
   body         String
-  hash         String       @unique
-  id           String       @id @default(uuid()) @map("_id")
-  parent       Thread?      @relation(name: "ParentThread", fields: [replyTo], references: [hash], onDelete: NoAction, onUpdate: NoAction)
-  replies      Thread[]     @relation(name: "ParentThread")
+  hash         String        @unique
+  id           String        @id @default(uuid()) @map("_id")
+  parent       Thread?       @relation(name: "ParentThread", fields: [replyTo], references: [hash], onDelete: NoAction, onUpdate: NoAction)
+  replies      Thread[]      @relation(name: "ParentThread")
   replyTo      String?
-  signedBy     PublicKey    @relation(fields: [signedById], references: [keyId], onDelete: NoAction, onUpdate: NoAction)
+  signedBy     PublicKey     @relation(fields: [signedById], references: [keyId], onDelete: NoAction, onUpdate: NoAction)
   signedById   String
   timestamp    DateTime
   info         Json?
-  threadPolicy ThreadPolicy @relation(fields: [hash], references: [owner], onDelete: Cascade, onUpdate: NoAction)
+  threadPolicy ThreadPolicy?
 
   @@index([replyTo])
   @@index([signedById])
@@ -32,8 +32,8 @@ model ThreadPolicy {
   encryptFor     String[]
   policyEditors  String[]
   advertise      Boolean  @default(false)
-  thread         Thread?
-  owner          String   @unique
+  thread         Thread?  @relation(fields: [threadHash], references: [hash])
+  threadHash     String?  @unique
 }
 
 model PublicKey {
