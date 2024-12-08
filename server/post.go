@@ -51,7 +51,7 @@ func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 		var info map[string]interface{}
 		if delimiter > 0 {
 			infoToml := content[:delimiter]
-			err = toml.NewDecoder(bytes.NewBufferString(infoToml)).Decode(&info)
+			_, err = toml.NewDecoder(bytes.NewBufferString(infoToml)).Decode(&info)
 			if err != nil {
 				log.Fatal(err)
 			}

@@ -68,9 +68,6 @@ func (uc *UserlessCtx) getSigner(msg *openpgp.MessageDetails) (*db.PublicKeyMode
 	).Exec(context.Background())
 }
 
-func (uc *UserlessCtx) uploadThread(threadClearText io.Reader) *db.ThreadModel {
-}
-
 func spoofArmoredSignature(clearText string) string {
 	clearLine := strings.Split(clearText, "\n")
 	var armoredSignature string
