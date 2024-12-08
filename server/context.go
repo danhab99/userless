@@ -1,11 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -14,8 +10,6 @@ import (
 	"userless/server/prisma/db"
 
 	"github.com/minio/minio-go"
-	"github.com/pelletier/go-toml/v2"
-	"github.com/steebchen/prisma-client-go/runtime/types"
 	"golang.org/x/crypto/openpgp"
 )
 
@@ -75,66 +69,6 @@ func (uc *UserlessCtx) getSigner(msg *openpgp.MessageDetails) (*db.PublicKeyMode
 }
 
 func (uc *UserlessCtx) uploadThread(threadClearText io.Reader) *db.ThreadModel {
-	fmt.Println("Uploading thread", threadClearText)
-	msg, err := openpgp.ReadMessage(threadClearText, nil, nil, nil)
-	if err != nil {
-		panic(err)
-	}
-
-	ownerKeyDb, err := uc.getSigner(msg)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if ownerKeyDb == nil {
-		log.Fatal("cannot find owner key")
-	}
-
-	content, _, keyDb := uc.VerifyCleartext(msg)
-
-	timestamp := msg.Signature.CreationTime
-
-	delimiter := strings.Index(content, DELIMITER)
-	var info map[string]interface{}
-	if delimiter > 0 {
-		infoToml := content[:delimiter]
-		err = toml.NewDecoder(bytes.NewBufferString(infoToml)).Decode(&info)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	hasher := sha256.New()
-	hasher.Write([]byte(content))
-	hash := hasher.Sum(nil)
-
-	params := []db.ThreadSetParam{}
-	replyTo, hasReplyTo := info["replyTo"].(string)
-	if hasReplyTo {
-		params = append(params, db.Thread.ReplyTo.Set(replyTo))
-	}
-
-	infoBytes := bytes.NewBuffer([]byte{})
-	err = json.NewEncoder(infoBytes).Encode(info)
-	if err != nil {
-		panic(err)
-	}
-
-	x := json.RawMessage(infoBytes.Bytes())
-	xx := types.JSON(x)
-
-	params = append(params, db.Thread.Info.Set(xx))
-
-	threadDb, err := uc.client.Thread.CreateOne(
-		db.Thread.Body.Set(content),
-		db.Thread.Hash.Set(string(hash)),
-		db.Thread.SignedBy.Link(
-			db.PublicKey.KeyID.Equals(keyDb.KeyID),
-		),
-		db.Thread.Timestamp.Set(timestamp),
-		params...,
-	).Exec(context.Background())
-
-	return threadDb
 }
 
 func spoofArmoredSignature(clearText string) string {
