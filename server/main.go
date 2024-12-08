@@ -14,7 +14,7 @@ func main() {
 
 	route.POST("/post", postHandler(ctx))
 	route.POST("/register", register(ctx))
-	// route.POST("/upload", upload(ctx))
+	route.POST("/upload", upload(ctx))
 
 	threadGroup := route.Group("/thread/:hash", threadMiddleware(ctx))
 	threadGroup.GET("/", getThead(ctx))
