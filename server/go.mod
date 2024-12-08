@@ -3,6 +3,7 @@ module userless/server
 go 1.23.1
 
 require (
+	github.com/BurntSushi/toml v1.4.0
 	github.com/gin-gonic/gin v1.10.0
 	github.com/joho/godotenv v1.5.1
 	github.com/minio/minio-go v6.0.14+incompatible
