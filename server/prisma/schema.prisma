@@ -37,17 +37,17 @@ model ThreadPolicy {
 }
 
 model PublicKey {
-  armoredKey        String          @unique
-  comment           String
-  email             String
-  finger            String          @unique
-  id                String          @id @default(uuid()) @map("_id")
-  keyId             String          @unique
-  name              String
-  threads           Thread[]
-  policy            PublicKeyPolicy @relation(fields: [publicKeyPolicyId], references: [id])
-  files             File[]
-  publicKeyPolicyId String
+  armoredKey String           @unique
+  comment    String
+  email      String
+  finger     String           @unique
+  id         String           @id @default(uuid()) @map("_id")
+  keyId      String           @unique
+  name       String
+  threads    Thread[]
+  files      File[]
+  policy     PublicKeyPolicy? @relation(fields: [policyId], references: [id])
+  policyId   String?          @unique
 
   @@index([email])
   @@index([name])
@@ -55,14 +55,14 @@ model PublicKey {
 }
 
 model PublicKeyPolicy {
-  id                   String      @id @default(uuid()) @map("_id")
-  revoked              Boolean     @default(false)
-  allowedToPost        Boolean     @default(true)
-  canStartThreads      Boolean     @default(true)
-  isMaster             Boolean     @default(false)
-  allowedToUploadFiles Boolean     @default(true)
-  maxFileSize          BigInt      @default(1000000)
-  PublicKey            PublicKey[]
+  id                   String     @id @default(uuid()) @map("_id")
+  revoked              Boolean    @default(false)
+  allowedToPost        Boolean    @default(true)
+  canStartThreads      Boolean    @default(true)
+  isMaster             Boolean    @default(false)
+  allowedToUploadFiles Boolean    @default(true)
+  maxFileSize          BigInt     @default(1000000)
+  publicKey            PublicKey?
 }
 
 model File {

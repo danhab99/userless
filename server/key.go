@@ -5,6 +5,8 @@ import (
 	"userless/server/prisma/db"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pelletier/go-toml/v2"
+	"golang.org/x/crypto/openpgp"
 )
 
 func getKey(uc *UserlessCtx) func(ctx *gin.Context) {
@@ -70,5 +72,75 @@ func getKeyFiles(uc *UserlessCtx) func(ctx *gin.Context) {
 				panic(err)
 			}
 		}
+	}
+}
+
+func getKeyPolicy(uc *UserlessCtx) func(ctx *gin.Context) {
+	return func(ctx *gin.Context) {
+		p, ok := ctx.Get("key")
+		if !ok {
+			panic("no key")
+		}
+
+		pk := p.(db.PublicKeyModel)
+
+		err := toml.NewEncoder(ctx.Writer).Encode(pk.Policy)
+		if err != nil {
+			panic(err)
+		}
+
+	}
+}
+
+func patchKeyPolicy(uc *UserlessCtx) func(ctx *gin.Context) {
+	return func(ctx *gin.Context) {
+		msg, err := openpgp.ReadMessage(ctx.Request.Body, nil, nil, nil)
+		if err != nil {
+			panic(err)
+		}
+
+		body, _, _ := uc.VerifyCleartext(msg)
+
+		var info map[string]interface{}
+		err = toml.Unmarshal([]byte(body), &info)
+		if err != nil {
+			panic(err)
+		}
+
+		var changes []db.PublicKeyPolicySetParam
+
+		revoked, ok := info["revoked"].(bool)
+		if ok {
+			changes = append(changes, db.PublicKeyPolicy.Revoked.Set(revoked))
+		}
+		allowedToPost, ok := info["allowedToPost"].(bool)
+		if ok {
+			changes = append(changes, db.PublicKeyPolicy.AllowedToPost.Set(allowedToPost))
+		}
+		canStartThreads, ok := info["canStartThreads"].(bool)
+		if ok {
+			changes = append(changes, db.PublicKeyPolicy.CanStartThreads.Set(canStartThreads))
+		}
+		isMaster, ok := info["isMaster"].(bool)
+		if ok {
+			changes = append(changes, db.PublicKeyPolicy.IsMaster.Set(isMaster))
+		}
+		allowedToUploadFiles, ok := info["allowedToUploadFiles"].(bool)
+		if ok {
+			changes = append(changes, db.PublicKeyPolicy.AllowedToUploadFiles.Set(allowedToUploadFiles))
+		}
+
+		id := ctx.Param("id")
+
+		client := uc.client
+
+		_, err = client.PublicKeyPolicy.FindUnique(
+			db.PublicKeyPolicy.ID.Equals(id),
+		).Update(changes...).Exec(context.Background())
+		if err != nil {
+			panic(err)
+		}
+
+		ctx.Status(203)
 	}
 }
