@@ -1,15 +1,19 @@
 package main
 
 import (
+	"log"
+
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-
+	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
 	ctx := NewUserlessCtx()
 
 	route := gin.Default()
 
+	route.POST("/post", postHandler(ctx))
+	route.POST("/register", register(ctx))
 	threadGroup := route.Group("/thread/:hash", threadMiddleware(ctx))
 	threadGroup.GET("/", getThead(ctx))
 	threadGroup.GET("/replies", getThreadReplies(ctx))
