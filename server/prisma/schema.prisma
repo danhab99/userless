@@ -11,7 +11,7 @@ generator client {
 model Thread {
   body         String
   hash         String        @unique
-  id           String        @id @default(uuid()) @map("_id")
+  id           String        @id @default(uuid())
   parent       Thread?       @relation(name: "ParentThread", fields: [replyTo], references: [hash], onDelete: NoAction, onUpdate: NoAction)
   replies      Thread[]      @relation(name: "ParentThread")
   replyTo      String?
@@ -26,7 +26,7 @@ model Thread {
 }
 
 model ThreadPolicy {
-  id             String   @id @default(uuid()) @map("_id")
+  id             String   @id @default(uuid())
   visible        Boolean  @default(true)
   acceptsReplies Boolean  @default(true)
   encryptFor     String[]
@@ -41,7 +41,7 @@ model PublicKey {
   comment    String
   email      String
   finger     String           @unique
-  id         String           @id @default(uuid()) @map("_id")
+  id         String           @id @default(uuid())
   keyId      String           @unique
   name       String
   threads    Thread[]
@@ -55,7 +55,7 @@ model PublicKey {
 }
 
 model PublicKeyPolicy {
-  id                   String     @id @default(uuid()) @map("_id")
+  id                   String     @id @default(uuid())
   revoked              Boolean    @default(false)
   allowedToPost        Boolean    @default(true)
   canStartThreads      Boolean    @default(true)
@@ -66,7 +66,7 @@ model PublicKeyPolicy {
 }
 
 model File {
-  id         String    @id @default(uuid()) @map("_id")
+  id         String    @id @default(uuid())
   signedBy   PublicKey @relation(fields: [signedById], references: [finger])
   signedById String
   hash       String    @unique

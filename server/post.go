@@ -29,10 +29,6 @@ func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 			panic(err)
 		}
 
-		fmt.Println("Uploading thread", text)
-
-		// block, _ := clearsign.Decode([]byte(text))
-
 		msg, _ := clearsign.Decode(text)
 		sigPacket, err := packet.NewReader(msg.ArmoredSignature.Body).Next()
 		if err != nil {
@@ -77,9 +73,7 @@ func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 			}
 		}
 
-		hasher := sha256.New()
-		hasher.Write([]byte(content))
-		hash := hasher.Sum(nil)
+		hash := sha256.New().Sum([]byte(content))
 
 		params := []db.ThreadSetParam{}
 		replyTo, hasReplyTo := info["replyTo"].(string)
