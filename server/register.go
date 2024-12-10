@@ -8,10 +8,10 @@ import (
 	"sync"
 	"userless/server/prisma/db"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/armor"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/armor"
-	"golang.org/x/crypto/openpgp/packet"
 )
 
 func register(uc *UserlessCtx) func(ctx *gin.Context) {

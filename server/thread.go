@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"userless/server/prisma/db"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/gin-gonic/gin"
 	"github.com/pelletier/go-toml/v2"
-	"golang.org/x/crypto/openpgp"
 )
 
 func getThead(uc *UserlessCtx) func(ctx *gin.Context) {

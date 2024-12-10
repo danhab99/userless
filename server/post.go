@@ -12,9 +12,9 @@ import (
 	"userless/server/prisma/db"
 
 	"github.com/BurntSushi/toml"
+	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/gin-gonic/gin"
 	"github.com/steebchen/prisma-client-go/runtime/types"
-	"golang.org/x/crypto/openpgp"
 )
 
 func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"userless/server/prisma/db"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/minio/minio-go"
-	"golang.org/x/crypto/openpgp"
 )
 
 type UserlessCtx struct {
