@@ -15,6 +15,8 @@ require (
 
 require (
 	github.com/ProtonMail/go-crypto v1.1.3 // indirect
+	github.com/ProtonMail/go-mime v0.0.0-20230322103455-7d82a3887f2f // indirect
+	github.com/ProtonMail/gopenpgp/v2 v2.8.1 // indirect
 	github.com/bytedance/sonic v1.11.6 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
@@ -39,6 +41,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.12 // indirect

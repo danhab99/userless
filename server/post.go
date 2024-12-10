@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,6 +14,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/clearsign"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/gin-gonic/gin"
 	"github.com/steebchen/prisma-client-go/runtime/types"
 )
@@ -30,22 +33,39 @@ func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 
 		// block, _ := clearsign.Decode([]byte(text))
 
-		msg, err := openpgp.ReadMessage(bytes.NewBuffer(text), nil, nil, nil)
+		msg, _ := clearsign.Decode(text)
+		sigPacket, err := packet.NewReader(msg.ArmoredSignature.Body).Next()
 		if err != nil {
 			panic(err)
 		}
 
-		ownerKeyDb, err := uc.getSigner(msg)
+		sig := sigPacket.(*packet.Signature)
+		timestamp := sig.CreationTime
+		finger := hex.EncodeToString(sig.IssuerFingerprint)
+
+		client := uc.client
+
+		ownerKeyDb, err := client.PublicKey.FindUnique(
+			db.PublicKey.Finger.Equals(finger),
+		).Exec(context.Background())
 		if err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
 		if ownerKeyDb == nil {
 			log.Fatal("cannot find owner key")
 		}
 
-		content, _, keyDb := uc.VerifyCleartext(msg)
+		key, err := openpgp.ReadArmoredKeyRing(strings.NewReader(ownerKeyDb.ArmoredKey))
+		if err != nil {
+			panic(err)
+		}
 
-		timestamp := msg.Signature.CreationTime
+		_, err = msg.VerifySignature(key, nil)
+		if err != nil {
+			panic(err)
+		}
+
+		content := string(msg.Plaintext)
 
 		delimiter := strings.Index(content, DELIMITER)
 		var info map[string]interface{}
@@ -82,7 +102,7 @@ func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 			db.Thread.Body.Set(content),
 			db.Thread.Hash.Set(string(hash)),
 			db.Thread.SignedBy.Link(
-				db.PublicKey.KeyID.Equals(keyDb.KeyID),
+				db.PublicKey.KeyID.Equals(ownerKeyDb.KeyID),
 			),
 			db.Thread.Timestamp.Set(timestamp),
 			params...,

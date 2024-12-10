@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"io"
 	"log"
 	"sync"
 	"userless/server/prisma/db"
@@ -18,7 +19,12 @@ func register(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		defer ctx.Done()
 
-		keys, err := openpgp.ReadArmoredKeyRing(ctx.Request.Body)
+		armoredKey, err := io.ReadAll(ctx.Request.Body)
+		if err != nil {
+			panic(err)
+		}
+
+		keys, err := openpgp.ReadArmoredKeyRing(bytes.NewBuffer(armoredKey))
 		if err != nil {
 			panic(err)
 		}
@@ -30,8 +36,8 @@ func register(uc *UserlessCtx) func(ctx *gin.Context) {
 		errChan := make(chan any, 1)
 
 		for _, key := range keys {
-			if key.PrivateKey == nil {
-				log.Printf("Not a private key %+v \n", key)
+			if key.PrivateKey != nil {
+				log.Printf("Not a public key %+v \n", key)
 				continue
 			}
 
@@ -46,7 +52,7 @@ func register(uc *UserlessCtx) func(ctx *gin.Context) {
 				}()
 
 				var armored bytes.Buffer
-				armorWriter, err := armor.Encode(&armored, openpgp.PrivateKeyType, nil)
+				armorWriter, err := armor.Encode(&armored, openpgp.PublicKeyType, nil)
 				if err != nil {
 					panic(err)
 				}
@@ -79,7 +85,7 @@ func register(uc *UserlessCtx) func(ctx *gin.Context) {
 
 				log.Println("Saving private key", key)
 				_, err = uc.client.PublicKey.CreateOne(
-					db.PublicKey.ArmoredKey.Set(string(armored.Bytes())),
+					db.PublicKey.ArmoredKey.Set(string(armoredKey)),
 					db.PublicKey.Comment.Set(primaryUser.Comment),
 					db.PublicKey.Email.Set(primaryUser.Email),
 					db.PublicKey.Finger.Set(fingerprintBase16),
