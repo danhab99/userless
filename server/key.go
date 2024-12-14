@@ -82,13 +82,14 @@ func getKeyPolicy(uc *UserlessCtx) func(ctx *gin.Context) {
 			panic("no key")
 		}
 
-		pk := p.(db.PublicKeyModel)
-
-		err := toml.NewEncoder(ctx.Writer).Encode(pk.Policy)
-		if err != nil {
-			panic(err)
+		pk := p.(*db.PublicKeyModel)
+		policy, ok := pk.Policy()
+		if !ok {
+			ctx.Status(404)
+			return
 		}
 
+		ctx.TOML(200, policy)
 	}
 }
 

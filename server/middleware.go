@@ -13,6 +13,8 @@ func threadMiddleware(uc *UserlessCtx) func(ctx *gin.Context) {
 
 		thread, err := uc.client.Thread.FindFirst(
 			db.Thread.Hash.Equals(hash),
+		).With(
+			db.Thread.ThreadPolicy.Fetch(),
 		).Exec(context.Background())
 
 		if err != nil {
@@ -30,6 +32,8 @@ func keyMiddleware(uc *UserlessCtx) func(ctx *gin.Context) {
 
 		key, err := uc.client.PublicKey.FindFirst(
 			db.PublicKey.KeyID.Equals(id),
+		).With(
+			db.PublicKey.Policy.Fetch(),
 		).Exec(context.Background())
 
 		if err != nil {

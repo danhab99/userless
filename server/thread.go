@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"userless/server/prisma/db"
 
@@ -79,16 +80,21 @@ func getThreadReplies(uc *UserlessCtx) func(ctx *gin.Context) {
 
 func getThreadPolicy(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
+		defer ctx.Done()
 		threadRaw, ok := ctx.Get("thread")
 		if !ok {
 			panic("thread not set")
 		}
+
 		thread := threadRaw.(*db.ThreadModel)
+		policy, ok := thread.ThreadPolicy()
+		fmt.Println("Thread policy", policy, ok)
+		if !ok {
+			ctx.Status(404)
+			return
+		}
 
-		encoder := toml.NewEncoder(ctx.Writer)
-		encoder.Encode(thread.ThreadPolicy)
-
-		ctx.Status(200)
+		ctx.TOML(200, policy)
 	}
 }
 

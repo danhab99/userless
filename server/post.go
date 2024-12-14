@@ -102,7 +102,7 @@ func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 
 		params = append(params, db.Thread.Info.Set(xx))
 
-		threadTx := uc.client.Thread.CreateOne(
+		thread, err := uc.client.Thread.CreateOne(
 			db.Thread.Body.Set(string(text)),
 			db.Thread.Hash.Set(hashStr),
 			db.Thread.SignedBy.Link(
@@ -110,15 +110,16 @@ func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 			),
 			db.Thread.Timestamp.Set(timestamp),
 			params...,
-		).Tx()
+		).Exec(context.Background())
+		if err != nil {
+			panic(err)
+		}
 
-		policyTx := uc.client.ThreadPolicy.CreateOne(
+		_, err = uc.client.ThreadPolicy.CreateOne(
 			db.ThreadPolicy.Thread.Link(
-				db.Thread.ID.Equals(id.String()),
+				db.Thread.ID.Equals(thread.ID),
 			),
-		).Tx()
-
-		err = uc.client.Prisma.Transaction(threadTx, policyTx).Exec(context.Background())
+		).Exec(context.Background())
 		if err != nil {
 			panic(err)
 		}
