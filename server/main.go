@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -8,9 +9,17 @@ import (
 
 func main() {
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
+
+	host := flag.String("host", ":3000", "host:port for to listen to")
+	bannerFileName := flag.String("banner", "", "banner text file")
+
+	flag.Parse()
+
 	ctx := NewUserlessCtx()
 
 	route := gin.Default()
+
+	route.GET("/", banner(ctx, *bannerFileName))
 
 	route.POST("/post", postHandler(ctx))
 	route.POST("/register", register(ctx))
@@ -33,5 +42,9 @@ func main() {
 	fileGroup.GET("", getFile(ctx, ""))
 	fileGroup.GET("/sig", getFile(ctx, "_sig"))
 
-	route.Run("0.0.0.0:9000")
+	err := route.Run(*host)
+	if err != nil {
+		panic(err)
+	}
+
 }
