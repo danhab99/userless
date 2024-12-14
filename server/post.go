@@ -17,6 +17,7 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp/clearsign"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/steebchen/prisma-client-go/runtime/types"
 )
 
@@ -30,6 +31,7 @@ func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 		}
 
 		msg, _ := clearsign.Decode(text)
+
 		sigPacket, err := packet.NewReader(msg.ArmoredSignature.Body).Next()
 		if err != nil {
 			panic(err)
@@ -56,6 +58,7 @@ func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 			panic(err)
 		}
 
+		msg, _ = clearsign.Decode(text)
 		_, err = msg.VerifySignature(key, nil)
 		if err != nil {
 			panic(err)
@@ -73,9 +76,16 @@ func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 			}
 		}
 
-		hash := sha256.New().Sum([]byte(content))
+		hash := sha256.Sum256([]byte(content))
+		hashStr := hex.EncodeToString(hash[:])
 
-		params := []db.ThreadSetParam{}
+		log.Println("Saving thread", hashStr)
+
+		id := uuid.New()
+
+		params := []db.ThreadSetParam{
+			db.Thread.ID.Set(id.String()),
+		}
 		replyTo, hasReplyTo := info["replyTo"].(string)
 		if hasReplyTo {
 			params = append(params, db.Thread.ReplyTo.Set(replyTo))
@@ -92,16 +102,27 @@ func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 
 		params = append(params, db.Thread.Info.Set(xx))
 
-		thread, err := uc.client.Thread.CreateOne(
-			db.Thread.Body.Set(content),
-			db.Thread.Hash.Set(string(hash)),
+		threadTx := uc.client.Thread.CreateOne(
+			db.Thread.Body.Set(string(text)),
+			db.Thread.Hash.Set(hashStr),
 			db.Thread.SignedBy.Link(
 				db.PublicKey.KeyID.Equals(ownerKeyDb.KeyID),
 			),
 			db.Thread.Timestamp.Set(timestamp),
 			params...,
-		).Exec(context.Background())
+		).Tx()
 
-		ctx.Redirect(307, fmt.Sprintf("/thread/%s", thread.Hash))
+		policyTx := uc.client.ThreadPolicy.CreateOne(
+			db.ThreadPolicy.Thread.Link(
+				db.Thread.ID.Equals(id.String()),
+			),
+		).Tx()
+
+		err = uc.client.Prisma.Transaction(threadTx, policyTx).Exec(context.Background())
+		if err != nil {
+			panic(err)
+		}
+
+		ctx.Redirect(307, fmt.Sprintf("/thread/%s", hashStr))
 	}
 }
