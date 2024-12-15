@@ -53,6 +53,22 @@ func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 			log.Fatal("cannot find owner key")
 		}
 
+		policy, ok := ownerKeyDb.Policy()
+		if !ok {
+			ctx.String(404, "signer policy not found")
+			return
+		}
+
+		if policy.Revoked {
+			ctx.String(400, "this was signed by a revoked key")
+			return
+		}
+
+		if policy.AllowedToPost {
+			ctx.String(401, "not allowed to post")
+			return
+		}
+
 		key, err := openpgp.ReadArmoredKeyRing(strings.NewReader(ownerKeyDb.ArmoredKey))
 		if err != nil {
 			panic(err)
@@ -89,6 +105,9 @@ func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 		replyTo, hasReplyTo := info["replyTo"].(string)
 		if hasReplyTo {
 			params = append(params, db.Thread.ReplyTo.Set(replyTo))
+		} else if !policy.CanStartThreads {
+			ctx.String(401, "not allowed to start threads")
+			return
 		}
 
 		infoBytes := bytes.NewBuffer([]byte{})
