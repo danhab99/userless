@@ -104,14 +104,22 @@ func uploadHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 		var wg sync.WaitGroup
 		wg.Add(2)
 
+		hashStr := hex.EncodeToString(hash[:])
+
 		go func() {
 			defer wg.Done()
-			_, err = uc.minioClient.PutObject(uc.bucketName, string(hash[:]), bytes.NewBuffer(docBuff), int64(len(docBuff)), minio.PutObjectOptions{})
+			_, err = uc.minioClient.PutObject(uc.bucketName, hashStr, bytes.NewBuffer(docBuff), int64(len(docBuff)), minio.PutObjectOptions{})
+			if err != nil {
+				panic(err)
+			}
 		}()
 
 		go func() {
 			defer wg.Done()
-			_, err = uc.minioClient.PutObject(uc.bucketName, string(hash[:])+"_sig", strings.NewReader(sigArmored), int64(len(sigArmored)), minio.PutObjectOptions{})
+			_, err = uc.minioClient.PutObject(uc.bucketName, hashStr+"_sig", strings.NewReader(sigArmored), int64(len(sigArmored)), minio.PutObjectOptions{})
+			if err != nil {
+				panic(err)
+			}
 		}()
 
 		wg.Wait()
@@ -132,8 +140,6 @@ func uploadHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 			ctx.String(500, "error creating database record")
 			return
 		}
-
-		hashStr := hex.EncodeToString(hash[:])
 
 		ctx.String(201, hashStr)
 	}
