@@ -5,9 +5,15 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		panic(err)
+	}
+
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
 
 	host := flag.String("host", ":3000", "host:port for to listen to")
@@ -42,7 +48,7 @@ func main() {
 	fileGroup.GET("", getFile(ctx, ""))
 	fileGroup.GET("/sig", getFile(ctx, "_sig"))
 
-	err := route.Run(*host)
+	err = route.Run(*host)
 	if err != nil {
 		panic(err)
 	}
