@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 	"userless/server/prisma/db"
 
 	"github.com/gin-gonic/gin"
@@ -18,37 +19,47 @@ func banner(uc *UserlessCtx, bannerFile string) func(ctx *gin.Context) {
 		panic(err)
 	}
 
-	body, err := io.ReadAll(f)
+	banner, err := io.ReadAll(f)
 	if err != nil {
 		panic(err)
 	}
 
+	var body string
+
+	go func() {
+		for {
+			publicThreads, err := uc.client.Thread.FindMany(
+				db.Thread.ThreadPolicy.Where(
+					db.ThreadPolicy.Advertise.Equals(true),
+				),
+			).Exec(context.Background())
+			if err != nil {
+				panic(err)
+			}
+
+			pubThreadHashes := make([]string, len(publicThreads))
+			for i, tm := range publicThreads {
+				pubThreadHashes[i] = tm.Hash
+			}
+
+			info := map[string]any{
+				"threads": pubThreadHashes,
+			}
+
+			tomlBuf := bytes.NewBuffer([]byte{})
+			err = toml.NewEncoder(tomlBuf).Encode(info)
+			if err != nil {
+				panic(err)
+			}
+
+			body = fmt.Sprintf("%s\n\n%s\n\n%s", string(banner), DELIMITER, tomlBuf.String())
+
+			time.Sleep(10 * time.Second)
+		}
+	}()
+
 	return func(ctx *gin.Context) {
-
-		publicThreads, err := uc.client.Thread.FindMany(
-			db.Thread.ThreadPolicy.Where(
-				db.ThreadPolicy.Advertise.Equals(true),
-			),
-		).Exec(context.Background())
-		if err != nil {
-			panic(err)
-		}
-
-		pubThreadHashes := make([]string, len(publicThreads))
-		for i, tm := range publicThreads {
-			pubThreadHashes[i] = tm.Hash
-		}
-
-		info := map[string]any{
-			"threads": pubThreadHashes,
-		}
-
-		tomlBuf := bytes.NewBuffer([]byte{})
-		err = toml.NewEncoder(tomlBuf).Encode(info)
-		if err != nil {
-			panic(err)
-		}
-
-		ctx.String(200, fmt.Sprintf("%s\n\n%s\n\n%s", string(body), DELIMITER, tomlBuf.String()))
+		defer ctx.Done()
+		ctx.String(200, body)
 	}
 }
