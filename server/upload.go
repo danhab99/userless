@@ -20,6 +20,7 @@ import (
 
 func uploadHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
+		defer ctx.Done()
 		file, header, err := ctx.Request.FormFile("document")
 		if err != nil {
 			ctx.String(400, "document must be a file")
@@ -130,7 +131,7 @@ func uploadHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 			db.File.SignedBy.Link(
 				db.PublicKey.KeyID.Equals(keyID),
 			),
-			db.File.Hash.Set(string(hash[:])),
+			db.File.Hash.Set(hashStr),
 			db.File.Timestamp.Set(sigPacket.CreationTime),
 			db.File.Size.Set(db.BigInt(len(docBuff))),
 			db.File.MimeType.Set(header.Header.Get("Content-Type")),
