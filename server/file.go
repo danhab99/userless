@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"strconv"
 	"time"
 	"userless/server/prisma/db"
 
@@ -22,5 +24,73 @@ func getFile(uc *UserlessCtx, suffix string) func(ctx *gin.Context) {
 		}
 
 		ctx.Redirect(307, url.String())
+	}
+}
+
+func discoverFiles(uc *UserlessCtx) func(ctx *gin.Context) {
+	return func(ctx *gin.Context) {
+		query := uc.client.File.FindMany().Select(
+			db.File.Hash.Field(),
+		)
+
+		_, quiet := ctx.GetQuery("quiet")
+
+		if quiet {
+			query = query.Select(
+				db.File.Hash.Field(),
+			)
+		} else {
+			query = query.Select(
+				db.File.Hash.Field(),
+				db.File.MimeType.Field(),
+				db.File.Size.Field(),
+			)
+		}
+
+		skipStr, hasSkip := ctx.GetQuery("skip")
+		if hasSkip {
+			skip, err := strconv.Atoi(skipStr)
+			if err != nil {
+				panic(err)
+			}
+
+			query = query.Skip(skip)
+		}
+
+		takeStr, hasTake := ctx.GetQuery("take")
+		if hasTake {
+			take, err := strconv.Atoi(takeStr)
+			if err != nil {
+				panic(err)
+			}
+
+			query = query.Take(min(take, MAX))
+		} else {
+			query = query.Take(MAX)
+		}
+
+		files, err := query.Exec(context.Background())
+		if err != nil {
+			panic(err)
+		}
+
+		for _, file := range files {
+			if quiet {
+				_, err := ctx.Writer.WriteString(fmt.Sprintf("%s\n", file.Hash))
+				if err != nil {
+					panic(err)
+				}
+			} else {
+				mime, _ := file.MimeType()
+				_, err := ctx.Writer.WriteString(fmt.Sprintf("%s %s %d", file.Hash, mime, file.Size))
+				if err != nil {
+					panic(err)
+				}
+			}
+			if err != nil {
+				panic(err)
+			}
+		}
+
 	}
 }

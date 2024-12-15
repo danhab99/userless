@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -37,6 +38,9 @@ func main() {
 	threadGroup.GET("/policy", getThreadPolicy(ctx))
 	threadGroup.PATCH("/policy", patchThreadPolicy(ctx))
 
+	if os.Getenv("DISCOVER_KEYS") != "" {
+		route.GET("/keys", discoverKeys(ctx))
+	}
 	keyGroup := route.Group("/key/:id", keyMiddleware(ctx))
 	keyGroup.GET("", getKey(ctx))
 	keyGroup.GET("/files", getKeyFiles(ctx))
@@ -44,6 +48,9 @@ func main() {
 	keyGroup.GET("/policy", getKeyPolicy(ctx))
 	keyGroup.PATCH("/policy", patchKeyPolicy(ctx))
 
+	if os.Getenv("DISCOVER_FILES") != "" {
+		route.GET("/files", discoverFiles(ctx))
+	}
 	fileGroup := route.Group("/file/:hash", fileMiddleware(ctx))
 	fileGroup.GET("", getFile(ctx, ""))
 	fileGroup.GET("/sig", getFile(ctx, "_sig"))

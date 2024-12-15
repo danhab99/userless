@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 	"userless/server/prisma/db"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
@@ -143,5 +145,68 @@ func patchKeyPolicy(uc *UserlessCtx) func(ctx *gin.Context) {
 		}
 
 		ctx.Status(203)
+	}
+}
+
+func discoverKeys(uc *UserlessCtx) func(ctx *gin.Context) {
+	return func(ctx *gin.Context) {
+		query := uc.client.PublicKey.FindMany()
+		_, quiet := ctx.GetQuery("quiet")
+
+		if quiet {
+			query = query.Select(
+				db.PublicKey.KeyID.Field(),
+			)
+		} else {
+			query = query.Select(
+				db.PublicKey.KeyID.Field(),
+				db.PublicKey.Name.Field(),
+				db.PublicKey.Email.Field(),
+				db.PublicKey.Comment.Field(),
+			)
+		}
+
+		skipStr, hasSkip := ctx.GetQuery("skip")
+		if hasSkip {
+			skip, err := strconv.Atoi(skipStr)
+			if err != nil {
+				panic(err)
+			}
+
+			query = query.Skip(skip)
+		}
+
+		takeStr, hasTake := ctx.GetQuery("take")
+		if hasTake {
+			take, err := strconv.Atoi(takeStr)
+			if err != nil {
+				panic(err)
+			}
+
+			query = query.Take(min(take, MAX))
+		} else {
+			query = query.Take(MAX)
+		}
+
+		keys, err := query.Exec(context.Background())
+		if err != nil {
+			panic(err)
+		}
+
+		for _, key := range keys {
+			if quiet {
+				_, err := ctx.Writer.WriteString(fmt.Sprintf("%s\n", key.KeyID))
+				if err != nil {
+					panic(err)
+				}
+			} else {
+				_, err := ctx.Writer.WriteString(fmt.Sprintf("%s | %s <%s> (%s)", key.KeyID, key.Name, key.Email, key.Comment))
+				if err != nil {
+					panic(err)
+				}
+			}
+		}
+
+		ctx.Status(200)
 	}
 }

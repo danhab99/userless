@@ -44,6 +44,7 @@ func banner(uc *UserlessCtx, bannerFile string) func(ctx *gin.Context) {
 
 			info := map[string]any{
 				"threads": pubThreadHashes,
+				"bucket":  fmt.Sprintf("s3+https://%s/%s", os.Getenv("S3_ENDPOINT"), os.Getenv("S3_BUCKET")),
 			}
 
 			tomlBuf := bytes.NewBuffer([]byte{})
