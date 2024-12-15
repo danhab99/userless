@@ -4,17 +4,18 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"fmt"
+	"encoding/hex"
 	"io"
+	"strconv"
 	"strings"
 	"sync"
 	"userless/server/prisma/db"
 
+	openpgp "github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/armor"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio-go"
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/armor"
-	"golang.org/x/crypto/openpgp/packet"
 )
 
 func uploadHandler(uc *UserlessCtx) func(ctx *gin.Context) {
@@ -56,13 +57,12 @@ func uploadHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 			return
 		}
 
-		keyID := fmt.Sprintf("%X", sigPacket.IssuerKeyId)
+		keyID := strings.ToUpper(strconv.FormatUint(*sigPacket.IssuerKeyId, 16))
 		publicKey, err := uc.client.PublicKey.FindUnique(
 			db.PublicKey.KeyID.Equals(keyID),
 		).With(
 			db.PublicKey.Policy.Fetch(),
 		).Exec(context.Background())
-
 		if err != nil {
 			ctx.String(404, "public key not found")
 			return
@@ -95,7 +95,8 @@ func uploadHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 		}
 
 		hash := sha256.Sum256(docBuff)
-		if _, err := openpgp.CheckArmoredDetachedSignature(pgpKey, bytes.NewBuffer(docBuff), strings.NewReader(sigArmored)); err != nil {
+		_, err = openpgp.CheckArmoredDetachedSignature(pgpKey, bytes.NewBuffer(docBuff), strings.NewReader(sigArmored), nil)
+		if err != nil {
 			ctx.String(400, "signature not valid")
 			return
 		}
@@ -132,6 +133,8 @@ func uploadHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 			return
 		}
 
-		ctx.String(201, string(hash[:]))
+		hashStr := hex.EncodeToString(hash[:])
+
+		ctx.String(201, hashStr)
 	}
 }
