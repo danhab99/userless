@@ -1,3 +1,3 @@
 package main
 
-const DELIMITER = "()()()()()()()()()()"
+const DELIMITER = "=========="
