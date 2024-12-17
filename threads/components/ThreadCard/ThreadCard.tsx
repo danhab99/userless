@@ -4,24 +4,24 @@ import mailto from "mailto-link";
 import ThreadBody from "@/components/ThreadBody/ThreadBody";
 import { PostThread } from "@/components/PostThread/PostThread";
 import { useToggleButton } from "@/components/ToggleButton/ToggleButton";
-import { Thread, ThreadPolicy } from "@prisma/client";
 import Link from "next/link";
-import { ThreadForThreadCard } from "@/global";
 import { Hash } from "@/components/Hash/Hash";
 import { useMasterKey } from "../KeyContext/KeyContext";
 import ActionButton from "../ActionButton/ActionButton";
 import { useAsync, useAsyncFn, useAsyncRetry } from "react-use";
 import * as openpgp from "openpgp";
 import toml from "smol-toml";
+import { server } from "@/lib/userless";
+import { spoofArmoredSignature } from "@/lib/pgchan";
 
-type ThreadCardProps = {
-  thread: ThreadForThreadCard;
+export type ThreadCardProps = {
+  threadText: string;
   enableReplies?: boolean;
 };
 
 type AdminActionProps = {
   hash: string;
-  newPolicy: Partial<ThreadPolicy>;
+  newPolicy: Record<string, any>;
   label: string;
   loadingLabel: string;
   onClick: () => void;
@@ -63,23 +63,60 @@ function AdminAction(props: AdminActionProps) {
   );
 }
 
-const ThreadCard = ({ thread }: ThreadCardProps) => {
+export const ThreadCard = ({ threadText }: ThreadCardProps) => {
   const [ReplyTB, showReply] = useToggleButton(false);
   const [SourceTB, showSource] = useToggleButton(false);
   const [FullTB, showFull] = useToggleButton(false);
   const master = useMasterKey();
 
-  const policy = useAsyncRetry(async () => {
-    if (master) {
-      const resp = await fetch(`/thread/${thread.hash}/policy`);
+  const { value: thread } = useAsync(async () => {
+    const msg = await openpgp.readCleartextMessage({
+      cleartextMessage: threadText,
+    });
+
+    const hash = Array.from(
+      new Uint8Array(
+        await crypto.subtle.digest("sha-256", Buffer.from(threadText)),
+      ),
+    )
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    const keyResp = await server.getKey(msg.getSigningKeyIDs()[0].toHex());
+    const pk = await openpgp.readKey({
+      armoredKey: keyResp.armored,
+    });
+
+    const userId = (await pk.getPrimaryUser()).user.userID;
+
+    const sig = spoofArmoredSignature(threadText);
+
+    const signature = await openpgp.readSignature({
+      armoredSignature: sig,
+    });
+
+    return {
+      body: msg.getText(),
+      hash,
+      signedBy: {
+        ...userId,
+        finger: pk.getFingerprint(),
+      },
+      timestamp: signature.packets[0].created,
+    };
+  }, [threadText]);
+
+  const { value: policy } = useAsyncRetry(async () => {
+    if (master && thread?.hash) {
+      const resp = await fetch(`/thread/${thread?.hash}/policy`);
       const policyTxt = await resp.text();
-      return JSON.parse(policyTxt) as ThreadPolicy;
+      return JSON.parse(policyTxt);
     }
-  }, [master, thread]);
+  }, [master, thread?.hash]);
 
   const controls = (
     <div className="text-xs">
-      {thread.policy.acceptsReplies ? (
+      {policy.acceptsReplies ? (
         <ReplyTB trueLabel="Hide reply" falseLabel="Reply" />
       ) : null}
       <SourceTB trueLabel="Hide source" falseLabel="Source" />
@@ -87,7 +124,7 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
       {master.length > 0 ? (
         <>
           <AdminAction
-            hash={thread.hash}
+            hash={thread?.hash ?? ""}
             newPolicy={{
               visible: false,
             }}
@@ -97,9 +134,9 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
             color="red"
           />
           <AdminAction
-            hash={thread.hash}
+            hash={thread?.hash ?? ""}
             newPolicy={{
-              acceptsReplies: !policy.value?.acceptsReplies
+              acceptsReplies: !policy.value?.acceptsReplies,
             }}
             label={
               policy.value?.acceptsReplies
@@ -111,15 +148,11 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
             color="red"
           />
           <AdminAction
-            hash={thread.hash}
+            hash={thread?.hash ?? ""}
             newPolicy={{
-              advertise: !policy.value?.advertise
+              advertise: !policy.value?.advertise,
             }}
-            label={
-              policy.value?.advertise
-                ? "Unpublish"
-                : "Publish"
-            }
+            label={policy.value?.advertise ? "Unpublish" : "Publish"}
             loadingLabel="Changing..."
             onClick={policy.retry}
             color="blue"
@@ -130,7 +163,7 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
   );
 
   const mailtoLink = mailto({
-    to: thread.signedBy.email,
+    to: thread?.signedBy?.email,
   });
 
   return (
@@ -138,31 +171,31 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
       <div className="card my-2 max-w-4xl bg-card p-4">
         <p className="text-sm">
           <span className="text-green-700">
-            {new Date(thread.timestamp).toLocaleString()}
+            {new Date(thread?.timestamp ?? 0).toLocaleString()}
           </span>{" "}
           <span className="text-username">
-            {thread.signedBy.name}
-            <Link href={`/key/${thread.signedBy.finger}`}>
+            {thread?.signedBy?.name}
+            <Link href={`/key/${thread?.signedBy?.finger}`}>
               {"("}
-              <Hash content={thread.signedBy.finger} />
+              <Hash content={thread?.signedBy?.finger ?? ""} />
               {")"}
             </Link>
             <a href={mailtoLink} target="_blank">
               {"<"}
-              {thread.signedBy.email}
+              {thread?.signedBy?.email}
               {">"}
             </a>
           </span>{" "}
-          <Link className="text-slate-600" href={`/thread/${thread.hash}`}>
-            <Hash content={thread.hash} />
+          <Link className="text-slate-600" href={`/thread/${thread?.hash}`}>
+            <Hash content={thread?.hash ?? ""} />
           </Link>{" "}
-          <SigVerify content={thread.body} />
+          <SigVerify content={thread?.body ?? ""} />
         </p>
 
         {controls}
 
         <div className={showFull ? "h-full" : "max-h-96 overflow-y-auto"}>
-          <ThreadBody thread={thread as Thread} />
+          <ThreadBody thread={thread} />
         </div>
 
         {controls}
@@ -175,85 +208,10 @@ const ThreadCard = ({ thread }: ThreadCardProps) => {
 
         {showSource ? (
           <pre className="h-40 overflow-auto bg-slate-900 text-xs text-slate-100 p-1">
-            {thread.body}
+            {thread?.body}
           </pre>
         ) : null}
       </div>
     </>
   );
 };
-
-export default ThreadCard;
-
-type ThreadCardFromHashProps = {
-  hash: string;
-};
-
-export function ThreadCardFromHash(props: ThreadCardFromHashProps) {
-  const { value, loading } = useAsync(async () => {
-    if (!props.hash) {
-      return;
-    }
-
-    const [threadResp, policyResp] = await Promise.all([
-      fetch(`/thread/${props.hash}/txt`, {
-        cache: "force-cache",
-      }),
-      fetch(`/thread/${props.hash}/policy`),
-    ]);
-
-    const threadContent = await threadResp.text();
-
-    const msg = await openpgp.readCleartextMessage({
-      cleartextMessage: threadContent,
-    });
-
-    const publicKeyResp = await fetch(
-      `/k/${msg.getSigningKeyIDs()[0].toHex()}/armored`,
-      {
-        cache: "force-cache",
-      },
-    );
-
-    const pk = await openpgp.readKey({
-      armoredKey: await publicKeyResp.text(),
-    });
-
-    const primaryUser = await pk.getPrimaryUser();
-
-    const content = msg.getText();
-    var [infoContent, body] = content.split("\n---\n", 2);
-
-    var info: Record<string, toml.TomlPrimitive> | undefined;
-
-    if (!body) {
-      info = toml.parse(infoContent);
-    }
-
-    body = body || infoContent;
-
-    return {
-      body: threadContent,
-      hash: props.hash,
-      id: "",
-      policy: await policyResp.json(),
-      replyTo: info?.["replyTo"],
-      signedBy: {
-        email: primaryUser.user.userID?.email,
-        finger: pk.getFingerprint(),
-        name: primaryUser.user.userID?.name,
-      },
-      signedById: pk.getFingerprint(),
-    } as ThreadForThreadCard;
-  }, [props.hash]);
-
-  if (loading) {
-    return <h3>Loading...</h3>;
-  } else {
-    return value ? (
-      <ThreadCard thread={value} />
-    ) : (
-      <h3 className="font-bold text-xl text-red-500">404: thread not found</h3>
-    );
-  }
-}
