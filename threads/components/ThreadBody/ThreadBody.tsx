@@ -4,7 +4,7 @@ import remarkGfm from "remark-gfm";
 import { Thread } from "@prisma/client";
 import { useAsync } from "react-use";
 import { DELIMITER } from "@/constants";
-import { SignedImage } from "./SignedImage";
+import { SignedImage } from "../SignedImage/SignedImage";
 
 type ThreadBodyProps = {
   thread: Thread;

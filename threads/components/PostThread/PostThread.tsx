@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { usePrivateKeys } from "@/components/KeyContext";
+import { usePrivateKeys } from "@/components/KeyContext/KeyContext";
 import * as openpgp from "openpgp";
 import { Thread } from "@prisma/client";
 import { useRouter } from "next/navigation";

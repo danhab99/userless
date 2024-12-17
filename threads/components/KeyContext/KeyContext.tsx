@@ -1,7 +1,7 @@
 "use client";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import * as openpgp from "openpgp";
-import ActionButton from "./ActionButton";
+import ActionButton from "../ActionButton/ActionButton";
 import Link from "next/link";
 import {
   createStateContext,
@@ -12,7 +12,7 @@ import {
   useSessionStorage,
   useShallowCompareEffect,
 } from "react-use";
-import { Hash } from "./Hash";
+import { Hash } from "../Hash/Hash";
 
 const [usePrivateKeysState, PrivateKeysStateProvider] = createStateContext<
   openpgp.PrivateKey[]
