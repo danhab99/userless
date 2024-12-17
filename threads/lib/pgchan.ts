@@ -13,7 +13,7 @@ class PGChanError extends Error {
   }
 }
 
-function spoofArmoredSignature(clearText: string) {
+export function spoofArmoredSignature(clearText: string) {
   const clearLine = clearText.split("\n");
   var armoredSignature = "";
   var seenStart = false;
