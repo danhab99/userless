@@ -16,8 +16,8 @@ export class Thread extends BaseFetcher {
     return parse(await this.fetchFrom("policy"));
   }
 
-  public async populate() {
-    this.content = await this.fetchFrom("");
+  public async getPopulated(): Promise<Thread> {
+    return new Thread(this.url, this.hash, await this.fetchFrom(""));
   }
 
   public async getReplies(skip = 0, take?: number): Promise<Thread[]> {
