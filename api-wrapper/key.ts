@@ -3,11 +3,13 @@ import { Thread } from "./thread";
 import { parse } from "smol-toml";
 
 export class PublicKey extends BaseFetcher {
+  readonly armored: string;
   readonly keyId: string;
 
-  protected constructor(url: string, keyId: string) {
+  constructor(url: string, keyId: string, armored: string) {
     super(url, `key/${keyId}`);
     this.keyId = keyId;
+    this.armored = armored;
   }
 
   public async getArmored() {
