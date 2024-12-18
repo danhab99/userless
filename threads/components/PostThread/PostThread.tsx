@@ -9,15 +9,14 @@ import {
 } from "react";
 import { usePrivateKeys } from "@/components/KeyContext/KeyContext";
 import * as openpgp from "openpgp";
-import { Thread } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useMap } from "react-use";
 import { createHash } from "crypto";
 import * as toml from "smol-toml";
-import { DELIMITER } from "@/constants";
+import { DELIMITER } from "api-wrapper";
 
 export type PostThreadProps = {
-  replyTo?: Pick<Thread, "hash">;
+  replyTo?: string;
 };
 
 const MATCH_SHA256 = /[a-fA-F0-9]{64}/gm;
@@ -130,9 +129,9 @@ export const PostThread = (props: PostThreadProps) => {
 
         let content = "";
 
-        if (props.replyTo?.hash) {
+        if (props.replyTo) {
           const info = toml.stringify({
-            replyTo: props.replyTo?.hash,
+            replyTo: props.replyTo,
           });
           content += info.trim() + DELIMITER;
         }
@@ -230,7 +229,7 @@ export const PostThread = (props: PostThreadProps) => {
       <form onSubmit={onSubmit}>
         <div className="w-full flex">
           <label className="px-2 flex-1 truncate overflow-hidden text-ellipsis whitespace-nowrap">
-            {props.replyTo ? `Reply to ${props.replyTo.hash}` : "Body:"}
+            {props.replyTo ? `Reply to ${props.replyTo}` : "Body:"}
           </label>
         </div>
         <textarea

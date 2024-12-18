@@ -7,16 +7,15 @@ import { useToggleButton } from "@/components/ToggleButton/ToggleButton";
 import Link from "next/link";
 import { Hash } from "@/components/Hash/Hash";
 import { useMasterKey } from "../KeyContext/KeyContext";
-import ActionButton from "../ActionButton/ActionButton";
+import { ActionButton } from "../ActionButton/ActionButton";
 import { useAsync, useAsyncFn, useAsyncRetry } from "react-use";
 import * as openpgp from "openpgp";
 import toml from "smol-toml";
 import { server } from "@/lib/userless";
-import { spoofArmoredSignature } from "@/lib/pgchan";
+import { spoofArmoredSignature } from "@/lib/utils";
 
 export type ThreadCardProps = {
   threadText: string;
-  enableReplies?: boolean;
 };
 
 type AdminActionProps = {

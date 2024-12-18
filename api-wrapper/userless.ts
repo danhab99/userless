@@ -2,12 +2,19 @@ import { Fetcher } from "./fetch";
 import { Banner } from "./types";
 import { Content } from "./content";
 import { Thread } from "./thread";
-import {PublicKey} from "./key";
+import { PublicKey } from "./key";
+import { DELIMITER } from "./const";
+import { parse } from "smol-toml";
 
 export class UserlessServer extends Fetcher {
+  constructor(url: string) {
+    super(url);
+  }
+
   public async getBanner(): Promise<Banner> {
     const ret = await this.fetch("/");
-    return new Content(ret) as Banner;
+    const [body, info] = ret.split(DELIMITER, 2);
+    return { body, info: parse(info) };
   }
 
   public async getThread(hash: string): Promise<Thread> {
@@ -16,7 +23,7 @@ export class UserlessServer extends Fetcher {
   }
 
   public async getKey(keyId: string): Promise<PublicKey> {
-    const resp = await this.fetch(`/key/${keyId}`)
+    const resp = await this.fetch(`/key/${keyId}`);
     return new PublicKey(this.url, keyId, resp);
   }
 }

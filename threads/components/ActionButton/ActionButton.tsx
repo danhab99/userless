@@ -5,7 +5,7 @@ export type ActionButtonProps = {
   onClick?: () => void
 }
 
-const ActionButton = (props: ActionButtonProps) => {
+export const ActionButton = (props: ActionButtonProps) => {
   return (
     <span
       className={`${props.color ?? 'text-green-700'}`}
@@ -16,4 +16,3 @@ const ActionButton = (props: ActionButtonProps) => {
   )
 }
 
-export default ActionButton
