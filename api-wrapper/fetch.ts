@@ -1,4 +1,5 @@
-import {Content} from "./content";
+import { Content } from "./content";
+import { debug } from "./debug";
 
 export class Fetcher {
   protected url: string;
@@ -19,7 +20,14 @@ export class Fetcher {
       );
     }
 
+    debug("fetching", u.toString());
     const resp = await fetch(u.toString());
+    debug("fetched", u.toString(), resp.status);
+
+    if (process.env["USERLESS_TRACE_FETCHES"] != "") {
+      console.trace("USERLESS FETCHED", u.toString(), resp)
+    }
+
     if (resp.ok) {
       return resp.text();
     } else {
@@ -31,7 +39,7 @@ export class Fetcher {
     path: string,
     args?: Record<string, string>,
   ): Promise<Content> {
-    return new Content(await this.fetch(path, args))
+    return new Content(await this.fetch(path, args));
   }
 }
 
@@ -46,5 +54,4 @@ export class BaseFetcher extends Fetcher {
   public async fetchFrom(path: string, args?: Record<string, string>) {
     return this.fetch(`/${this.base}/${path}`, args);
   }
-
 }
