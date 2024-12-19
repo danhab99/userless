@@ -1,9 +1,6 @@
-import { InfiniteScroll } from "@/components/InfiniteScroll";
-import ThreadCard from "@/components/ThreadCard";
-import { ThreadForThreadCard } from "@/global";
-import { getParents, getReplies, getThread } from "@/lib/db";
-import { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { ThreadCardFromHash } from "@/components/ThreadCard/ThreadCardServer";
+import { server } from "@/lib/userless";
+import { Thread } from "api-wrapper";
 
 type ThreadPageProps = {
   params: Promise<{
@@ -26,17 +23,19 @@ const ThreadPage = async (props: ThreadPageProps) => {
   return (
     <>
       <div className="flex flex-col-reverse">
-        {parents.map((thread, i) => (
-          <ThreadCard key={i} thread={thread} />
+        {parents.map((hash, i) => (
+          <ThreadCardFromHash key={i} hash={hash} />
         ))}
       </div>
 
       {parents.length > 0 ? <hr /> : null}
 
-      <ThreadCard thread={thread} enableReplies />
+      <ThreadCardFromHash hash={params.hash} />
 
       <div className="pr-6">
-        <InfiniteScroll replyTo={thread.hash} start={0} />
+        {replies.map((hash, i) => (
+          <ThreadCardFromHash key={i} hash={hash} />
+        ))}
       </div>
     </>
   );
