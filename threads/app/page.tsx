@@ -5,7 +5,6 @@ import { ThreadCardFromHash } from "@/components/ThreadCard/ThreadCardServer";
 
 const WelcomePage = async () => {
   const banner = await server.getBanner();
-  console.log("#####", banner.info, `""${ banner.body }""`)
 
   return (
     <>
