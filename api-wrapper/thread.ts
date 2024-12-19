@@ -24,7 +24,7 @@ export class Thread extends BaseFetcher {
       take: `${take}`,
     });
 
-    const hashs = replies.split("\n");
+    const hashs = replies.split("\n").filter(x => x);
     return hashs.map((hash) => new Thread(this.url, hash));
   }
 }
