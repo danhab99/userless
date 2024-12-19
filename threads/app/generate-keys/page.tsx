@@ -1,6 +1,6 @@
 "use client";
 import * as openpgp from "openpgp";
-import { useAddPrivateKey } from "@/components/KeyContext";
+import { useAddPrivateKey } from "@/components/KeyContext/KeyContext";
 import { useForm } from "react-hook-form";
 import { CenteredLayout } from "@/layouts/centered";
 

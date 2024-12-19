@@ -1,6 +1,7 @@
 import { BaseFetcher } from "./fetch";
 import { parse } from "smol-toml";
 import { Info } from "./types";
+import { Content } from "./content";
 
 export class Thread extends BaseFetcher {
   readonly hash: string;
@@ -14,8 +15,9 @@ export class Thread extends BaseFetcher {
     return parse(await this.fetchFrom("policy"));
   }
 
-  public async getContent(): Promise<string> {
-    return this.fetchFrom("");
+  public async getContent(): Promise<Content> {
+    const c = await this.fetchFrom("");
+    return new Content(c);
   }
 
   public async getReplies(skip = 0, take?: number): Promise<Thread[]> {
@@ -24,7 +26,7 @@ export class Thread extends BaseFetcher {
       take: `${take}`,
     });
 
-    const hashs = replies.split("\n").filter(x => x);
+    const hashs = replies.split("\n").filter((x) => x);
     return hashs.map((hash) => new Thread(this.url, hash));
   }
 }
