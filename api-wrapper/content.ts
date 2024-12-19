@@ -1,17 +1,20 @@
 import { DELIMITER } from "./const";
 import { parse } from "smol-toml";
 
-export class Content {
+export interface Content {
   readonly info?: Record<string, any>;
   readonly body: string;
+}
 
-  constructor(content: string) {
-    let [info, body] = content.split(DELIMITER, 2);
-    if (body) {
-      this.info = parse(info);
-      this.body = body
-    } else {
-      this.body = info;
-    }
+export function createContent(content: string): Content {
+  let [info, body] = content.split(DELIMITER, 2);
+  if (body) {
+    return {
+      info: parse(info),
+      body
+    };
   }
+  return {
+    body: info
+  };
 }

@@ -1,29 +1,35 @@
-import { Fetcher } from "./fetch";
+import { createFetcher } from "./fetch";
 import { Banner } from "./types";
-import { Thread } from "./thread";
-import { PublicKey } from "./key";
+import { createThread } from "./thread";
+import { createPublicKey } from "./key";
 import { DELIMITER } from "./const";
 import { parse } from "smol-toml";
 import { debug } from "./debug";
 
-export class UserlessServer extends Fetcher {
-  constructor(url: string) {
-    super(url);
-    debug("new server", url);
-  }
+export interface UserlessServer {
+  getBanner: () => Promise<Banner>;
+  getThread: (hash: string) => any;
+  getKey: (keyId: string) => any;
+}
 
-  public async getBanner(): Promise<Banner> {
-    const ret = await this.fetch("/");
-    debug("get banner");
-    const [body, info] = ret.split(DELIMITER, 2);
-    return { body, info: parse(info) };
-  }
+export function createUserlessServer(url: string): UserlessServer {
+  const fetcher = createFetcher(url);
+  debug("new server", url);
 
-  public getThread(hash: string): Thread {
-    return new Thread(this.url, hash);
-  }
+  return {
+    async getBanner(): Promise<Banner> {
+      const ret = await fetcher.fetch("/");
+      debug("get banner");
+      const [body, info] = ret.split(DELIMITER, 2);
+      return { body, info: parse(info) };
+    },
 
-  public getKey(keyId: string): PublicKey {
-    return new PublicKey(this.url, keyId);
-  }
+    getThread(hash: string) {
+      return createThread(url, hash);
+    },
+
+    getKey(keyId: string) {
+      return createPublicKey(url, keyId);
+    }
+  };
 }

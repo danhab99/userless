@@ -1,32 +1,37 @@
-import { BaseFetcher } from "./fetch";
+import { createBaseFetcher } from "./fetch";
 import { parse } from "smol-toml";
 import { Info } from "./types";
-import { Content } from "./content";
+import { createContent, Content } from "./content";
 
-export class Thread extends BaseFetcher {
-  readonly hash: string;
+export interface Thread {
+  hash: string;
+  getPolicy: () => Promise<Info>;
+  getContent: () => Promise<Content>;
+  getReplies: (skip?: number, take?: number) => Promise<Thread[]>;
+}
 
-  public constructor(url: string, hash: string) {
-    super(url, `thread/${hash}`);
-    this.hash = hash;
-  }
+export function createThread(url: string, hash: string): Thread {
+  const baseFetcher = createBaseFetcher(url, `thread/${hash}`);
 
-  public async getPolicy(): Promise<Info> {
-    return parse(await this.fetchFrom("policy"));
-  }
+  return {
+    hash,
+    async getPolicy(): Promise<Info> {
+      return parse(await baseFetcher.fetchFrom("policy"));
+    },
 
-  public async getContent(): Promise<Content> {
-    const c = await this.fetchFrom("");
-    return new Content(c);
-  }
+    async getContent(): Promise<Content> {
+      const c = await baseFetcher.fetchFrom("");
+      return createContent(c);
+    },
 
-  public async getReplies(skip = 0, take?: number): Promise<Thread[]> {
-    const replies = await this.fetchFrom("replies", {
-      skip: `${skip}`,
-      take: `${take}`,
-    });
+    async getReplies(skip = 0, take?: number): Promise<Thread[]> {
+      const replies = await baseFetcher.fetchFrom("replies", {
+        skip: `${skip}`,
+        take: `${take}`,
+      });
 
-    const hashs = replies.split("\n").filter((x) => x);
-    return hashs.map((hash) => new Thread(this.url, hash));
-  }
+      const hashs = replies.split("\n").filter((x) => x);
+      return hashs.map((hash) => createThread(url, hash));
+    }
+  };
 }

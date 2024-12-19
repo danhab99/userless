@@ -1,34 +1,42 @@
-import { BaseFetcher } from "./fetch";
-import { Thread } from "./thread";
+import { createBaseFetcher } from "./fetch";
+import { createThread } from "./thread";
 import { parse } from "smol-toml";
 
-export class PublicKey extends BaseFetcher {
-  readonly keyId: string;
+export interface PublicKey {
+  keyId: string;
+  url: string;
+  getArmored: () => Promise<string>;
+  getThreads: (skip?: number, take?: number) => Promise<any[]>;
+  getFiles: () => Promise<string[]>;
+  getPolicy: () => Promise<any>;
+}
 
-  constructor(url: string, keyId: string) {
-    super(url, `key/${keyId}`);
-    this.keyId = keyId;
-  }
+export function createPublicKey(url: string, keyId: string): PublicKey {
+  const baseFetcher = createBaseFetcher(url, `key/${keyId}`);
+  
+  return {
+    keyId,
+    url,
+    async getArmored() {
+      return baseFetcher.fetchFrom("");
+    },
 
-  public async getArmored() {
-    return this.fetchFrom("");
-  }
+    async getThreads(skip?: number, take?: number) {
+      const threadHashes = await baseFetcher.fetchFrom("threads", {
+        skip: `${skip}`,
+        take: `${take}`,
+      });
+      const hashs = threadHashes.split("\n").filter((x) => x);
+      return hashs.map((hash) => createThread(url, hash));
+    },
 
-  public async getThreads(skip?: number, take?: number) {
-    const threaHashes = await this.fetchFrom("threads", {
-      skip: `${skip}`,
-      take: `${take}`,
-    });
-    const hashs = threaHashes.split("\n").filter((x) => x);
-    return hashs.map((hash) => new Thread(this.url, hash));
-  }
+    async getFiles(): Promise<string[]> {
+      const resp = await baseFetcher.fetchFrom("files");
+      return resp.split("\n");
+    },
 
-  public async getFiles(): Promise<string[]> {
-    const resp = await this.fetchFrom("files");
-    return resp.split("\n");
-  }
-
-  public async getPolicy() {
-    return parse(await this.fetchFrom("policy"));
-  }
+    async getPolicy() {
+      return parse(await baseFetcher.fetchFrom("policy"));
+    }
+  };
 }
