@@ -12,6 +12,10 @@ export class Fetcher {
     path: string,
     args?: Record<string, string>,
   ): Promise<string> {
+    if (path[path.length-1] === '/') {
+      path = path.slice(0, path.length - 1)
+    }
+
     const u = new URL(this.url);
     u.pathname = path;
     if (args) {
