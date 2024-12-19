@@ -28,9 +28,9 @@ export class Fetcher {
     const resp = await fetch(u.toString());
     debug("fetched", u.toString(), resp.status);
 
-    if (process.env["USERLESS_TRACE_FETCHES"] != "") {
-      console.trace("USERLESS FETCHED", u.toString(), resp)
-    }
+    // if (process.env["USERLESS_TRACE_FETCHES"] != "") {
+    //   console.trace("USERLESS FETCHED", u.toString(), resp)
+    // }
 
     if (resp.ok) {
       return resp.text();

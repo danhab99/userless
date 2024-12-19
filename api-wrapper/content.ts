@@ -7,7 +7,6 @@ export class Content {
 
   constructor(content: string) {
     let [info, body] = content.split(DELIMITER, 2);
-    console.log("NEW CONTENT", {content, info, body});
     if (body) {
       this.info = parse(info);
       this.body = body
