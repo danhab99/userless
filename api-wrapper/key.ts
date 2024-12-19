@@ -19,13 +19,13 @@ export class PublicKey extends BaseFetcher {
       skip: `${skip}`,
       take: `${take}`,
     });
-    const hashs = threaHashes.split("\n");
+    const hashs = threaHashes.split("\n").filter((x) => x);
     return hashs.map((hash) => new Thread(this.url, hash));
   }
 
   public async getFiles(): Promise<string[]> {
     const resp = await this.fetchFrom("files");
-    return resp.split("\n")
+    return resp.split("\n");
   }
 
   public async getPolicy() {
