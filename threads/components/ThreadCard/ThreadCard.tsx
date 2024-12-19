@@ -211,7 +211,7 @@ export const ThreadCard = ({ threadText }: ThreadCardProps) => {
 
         {showSource ? (
           <pre className="h-40 overflow-auto bg-slate-900 text-xs text-slate-100 p-1">
-            {thread?.body}
+            {threadText}
           </pre>
         ) : null}
       </div>

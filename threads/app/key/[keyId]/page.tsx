@@ -2,12 +2,10 @@ import { PrismaClient } from "@prisma/client";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Markdown from "react-markdown";
-import { getThreadsForThreadGroup } from "@/lib/db";
-import { ThreadGroup } from "@/components/ThreadGroup";
-import Centered from "@/components/Centered";
+import Centered from "@/components/Centered/Centered";
 import * as openpgp from "openpgp";
-
-const db = new PrismaClient();
+import { ThreadCardFromHash } from "@/components/ThreadCard/ThreadCardServer";
+import { server } from "@/lib/userless";
 
 type KeyPageParams = {
   params: Promise<{
@@ -30,12 +28,17 @@ const KeyPage = async (props: KeyPageParams) => {
   const threadsPromise = getThreadsForThreadGroup(params.keyId);
 
   const pk = await openpgp.readKey({
-    armoredKey: publicKey.armoredKey,
+    armoredKey: armored,
   });
 
   const timestamp = pk.getCreationTime();
-  const threads = await threadsPromise;
 
+  const user = (await pk.getPrimaryUser()).user.userID;
+  return { user, timestamp, pk, armored, threads };
+}
+
+const KeyPage = async ({ params }: KeyPageParams) => {
+  const { user, timestamp, armored, threads } = await collectInfo(params);
   return (
     <>
       <Centered>
@@ -43,8 +46,8 @@ const KeyPage = async (props: KeyPageParams) => {
           <div className="bg-yellow-100 shadow-lg w-full">
             <div className="p-2 text-center">
               <h3 className="">
-                {publicKey.name} {"<"}
-                {publicKey.email}
+                {user?.name} {"<"}
+                {user?.email}
                 {">"}
               </h3>
               <p className="text-sm text-slate-700">
@@ -53,18 +56,18 @@ const KeyPage = async (props: KeyPageParams) => {
             </div>
             <div className="pt-2 w-full">
               <div className="markdown no-scrollbar">
-                <Markdown>{publicKey.comment}</Markdown>
+                <Markdown>{user?.comment}</Markdown>
               </div>
             </div>
             <pre className="h-40 w-full overflow-auto bg-slate-300 p-1 text-xs w-full">
-              {publicKey.armoredKey}
+              {armored}
             </pre>
           </div>
         </div>
       </Centered>
 
       {threads.map((thread, i) => (
-        <ThreadGroup thread={thread} key={i} />
+        <ThreadCardFromHash key={i} hash={thread.hash} />
       ))}
     </>
   );
@@ -85,7 +88,7 @@ export async function generateMetadata(props: KeyPageParams): Promise<Metadata> 
   }
 
   return {
-    title: `${publicKey.name}<${publicKey.email}>`,
+    title: `${user?.name}<${user?.email}>`,
     robots: "index, follow",
   };
 }
