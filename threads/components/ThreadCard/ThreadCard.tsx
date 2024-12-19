@@ -8,7 +8,7 @@ import Link from "next/link";
 import { Hash } from "@/components/Hash/Hash";
 import { useMasterKey } from "../KeyContext/KeyContext";
 import { ActionButton } from "../ActionButton/ActionButton";
-import { useAsync, useAsyncFn, useAsyncRetry } from "react-use";
+import { useAsync, useAsyncFn, useAsyncRetry, useMount } from "react-use";
 import * as openpgp from "openpgp";
 import toml from "smol-toml";
 import { server } from "@/lib/userless";
@@ -68,7 +68,11 @@ export const ThreadCard = ({ threadText }: ThreadCardProps) => {
   const [FullTB, showFull] = useToggleButton(false);
   const master = useMasterKey();
 
-  const { value: thread } = useAsync(async () => {
+  const { value: thread, error } = useAsync(async () => {
+    if (threadText.length === 0) {
+      return undefined
+    }
+
     const msg = await openpgp.readCleartextMessage({
       cleartextMessage: threadText,
     });
@@ -81,9 +85,10 @@ export const ThreadCard = ({ threadText }: ThreadCardProps) => {
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
 
-    const keyResp = await server.getKey(msg.getSigningKeyIDs()[0].toHex());
+    const keyResp = await server.getKey(msg.getSigningKeyIDs()[0].toHex()).getArmored();
+
     const pk = await openpgp.readKey({
-      armoredKey: keyResp.armored,
+      armoredKey: keyResp,
     });
 
     const userId = (await pk.getPrimaryUser()).user.userID;
@@ -94,7 +99,7 @@ export const ThreadCard = ({ threadText }: ThreadCardProps) => {
       armoredSignature: sig,
     });
 
-    return {
+    const r = {
       body: msg.getText(),
       hash,
       signedBy: {
@@ -103,19 +108,18 @@ export const ThreadCard = ({ threadText }: ThreadCardProps) => {
       },
       timestamp: signature.packets[0].created,
     };
+    return r;
   }, [threadText]);
 
   const { value: policy } = useAsyncRetry(async () => {
     if (master && thread?.hash) {
-      const resp = await fetch(`/thread/${thread?.hash}/policy`);
-      const policyTxt = await resp.text();
-      return JSON.parse(policyTxt);
+      return server.getThread(thread.hash).getPolicy();
     }
   }, [master, thread?.hash]);
 
   const controls = (
     <div className="text-xs">
-      {policy.acceptsReplies ? (
+      {policy?.acceptsReplies ? (
         <ReplyTB trueLabel="Hide reply" falseLabel="Reply" />
       ) : null}
       <SourceTB trueLabel="Hide source" falseLabel="Source" />
@@ -129,31 +133,31 @@ export const ThreadCard = ({ threadText }: ThreadCardProps) => {
             }}
             label="Delete"
             loadingLabel="Deleting"
-            onClick={policy.retry}
+            onClick={policy?.retry}
             color="red"
           />
           <AdminAction
             hash={thread?.hash ?? ""}
             newPolicy={{
-              acceptsReplies: !policy.value?.acceptsReplies,
+              acceptsReplies: !policy?.value?.acceptsReplies,
             }}
             label={
-              policy.value?.acceptsReplies
+              policy?.value?.acceptsReplies
                 ? "Disable replies"
                 : "Enable replies"
             }
             loadingLabel="Changing..."
-            onClick={policy.retry}
+            onClick={policy?.retry}
             color="red"
           />
           <AdminAction
             hash={thread?.hash ?? ""}
             newPolicy={{
-              advertise: !policy.value?.advertise,
+              advertise: !policy?.value?.advertise,
             }}
-            label={policy.value?.advertise ? "Unpublish" : "Publish"}
+            label={policy?.value?.advertise ? "Unpublish" : "Publish"}
             loadingLabel="Changing..."
-            onClick={policy.retry}
+            onClick={policy?.retry}
             color="blue"
           />
         </>
@@ -188,20 +192,20 @@ export const ThreadCard = ({ threadText }: ThreadCardProps) => {
           <Link className="text-slate-600" href={`/thread/${thread?.hash}`}>
             <Hash content={thread?.hash ?? ""} />
           </Link>{" "}
-          <SigVerify content={thread?.body ?? ""} />
+          {thread?.body ? <SigVerify content={thread.body} /> : null}
         </p>
 
         {controls}
 
         <div className={showFull ? "h-full" : "max-h-96 overflow-y-auto"}>
-          <ThreadBody thread={thread} />
+          <ThreadBody body={thread?.body ?? ""} />
         </div>
 
         {controls}
 
         {showReply ? (
           <div className="pt-4">
-            <PostThread replyTo={thread} />
+            <PostThread replyTo={thread?.hash} />
           </div>
         ) : null}
 

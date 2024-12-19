@@ -4,6 +4,7 @@ import * as openpgp from "openpgp";
 import { useState } from "react";
 import { useShallowCompareEffect } from "react-use";
 import dynamic from "next/dynamic";
+import { server } from "@/lib/userless";
 
 type SigVerifyProps = {
   content: string | ArrayBuffer;
@@ -29,29 +30,26 @@ const SigVerify = (props: SigVerifyProps) => {
     setStatus(VerifiedStatus.Working);
     (async () => {
       const getKey = async (keyId: string) => {
-        const resp = await fetch(`/key/${keyId}/armored`, {
-          cache: "force-cache",
-        });
-        if (!resp.ok) {
+        try {
+          const armored = await server.getKey(keyId).getArmored()
+          const keys = await openpgp.readKeys({
+            armoredKeys: armored,
+          });
+
+          const allRevoked = await Promise.all(keys.map((x) => x.isRevoked()));
+          const revoked = allRevoked.some((x) => x);
+          if (revoked) {
+            setStatus(VerifiedStatus.Revoked);
+            return;
+          }
+
+          return keys[0];
+        } catch (e: any) {
           setStatus(VerifiedStatus.Error);
-          setError(
-            `status code ${[resp.status, await resp.text()].filter((x) => x).join(" ")}`,
-          );
-          return;
+          setError(`${e}`);
         }
 
-        const keys = await openpgp.readKeys({
-          armoredKeys: await resp.text(),
-        });
-
-        const allRevoked = await Promise.all(keys.map((x) => x.isRevoked()));
-        const revoked = allRevoked.some((x) => x);
-        if (revoked) {
-          setStatus(VerifiedStatus.Revoked);
-          return;
-        }
-
-        return keys[0];
+        return server.getKey(keyId).getArmored();
       };
 
       try {
@@ -74,6 +72,7 @@ const SigVerify = (props: SigVerifyProps) => {
               ? props.content
               : Buffer.from(props.content),
           );
+
           const resp = await fetch(`/file/${hash}/sig`, {
             cache: "force-cache",
           });

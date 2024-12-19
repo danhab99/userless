@@ -1,13 +1,9 @@
-"use client";
-import * as openpgp from "openpgp";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { useAsync } from "react-use";
-import { DELIMITER } from "api-wrapper";
 import { SignedImage } from "../SignedImage/SignedImage";
 
 type ThreadBodyProps = {
-  body: string
+  body: string;
 };
 
 const START_MARKER = "-----BEGIN PGP SIGNED MESSAGE-----";

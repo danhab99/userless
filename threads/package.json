@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@prisma/client": "5.18.0",
-    "api-wrapper": "link:../api-wrapper",
+    "api-wrapper": "file:../api-wrapper",
     "mailto-link": "^2.0.0",
     "minio": "^8.0.1",
     "next": "15.0.1",
@@ -23,7 +23,7 @@
     "react-hook-form": "^7.52.2",
     "react-intersection-observer": "^9.13.1",
     "react-markdown": "^9.0.1",
-    "react-use": "^17.5.1",
+    "react-use": "^17.6.0",
     "rehype-highlight": "^7.0.0",
     "remark-gfm": "^4.0.0",
     "smol-toml": "^1.3.0"

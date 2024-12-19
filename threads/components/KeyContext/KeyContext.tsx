@@ -13,6 +13,7 @@ import {
   useShallowCompareEffect,
 } from "react-use";
 import { Hash } from "../Hash/Hash";
+import { server } from "@/lib/userless";
 
 const [usePrivateKeysState, PrivateKeysStateProvider] = createStateContext<
   openpgp.PrivateKey[]
@@ -60,9 +61,9 @@ function MasterLoader() {
   const setMasters = useMasterKeysState()[1];
 
   const { value: testMessage } = useAsync(async () => {
-    const resp = await fetch("/admin");
+    const banner = await server.getBanner();
 
-    const test = await resp.text();
+    const test = banner.info.challenge;
 
     const msg = await openpgp.readMessage({
       armoredMessage: test,
@@ -281,11 +282,12 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
   }, [setDecryptedKeys]);
 
   const registered = useAsyncRetry(async () => {
-    const resp = await fetch(`/key/${keyId}/armored`, {
-      method: "HEAD",
-      cache: "no-cache",
-    });
-    return resp.ok;
+    try {
+      await server.getKey(keyId).getArmored()
+      return true;
+    } catch(e) {
+      return false;
+    }
   }, [keyId]);
 
   const register = useCallback(async () => {

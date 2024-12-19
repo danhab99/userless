@@ -8,21 +8,27 @@ type ThreadCardFromHashProps = Omit<ThreadCardProps, "threadText"> & {
 };
 
 export async function ThreadCardFromHash(props: ThreadCardFromHashProps) {
-  const thread = await (await server.getThread(props.hash)).getPopulated();
+  if (!props.hash) {
+    return <h1>Missing hash</h1>;
+  }
+
+  const thread = server.getThread(props.hash);
   const replies = props.replies
     ? await thread.getReplies(0, props.replies)
     : [];
 
-  console.log("ThreadCardFromHash", { thread, replies });
+  const content = await thread.getContent();
 
   return (
     <>
-      <ThreadCard threadText={thread.content} {...props} />
+      <ThreadCard threadText={content} {...props} />
       {replies ? (
         <div className="pr-6 pt-3">
-          {replies.map((thread, i) => (
-            <ThreadCardFromHash hash={thread.hash} key={i} />
-          ))}
+          {replies
+            .filter((x) => x)
+            .map((thread, i) => (
+              <ThreadCardFromHash hash={thread.hash} key={i} />
+            ))}
         </div>
       ) : null}
     </>
