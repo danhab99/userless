@@ -51,7 +51,7 @@ export class BaseFetcher extends Fetcher {
     this.base = base;
   }
 
-  public async fetchFrom(path: string, args?: Record<string, string>) {
+  protected async fetchFrom(path: string, args?: Record<string, string>) {
     return this.fetch(`/${this.base}/${path}`, args);
   }
 }

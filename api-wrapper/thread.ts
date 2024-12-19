@@ -4,20 +4,18 @@ import { Info } from "./types";
 
 export class Thread extends BaseFetcher {
   readonly hash: string;
-  public content: string;
 
-  public constructor(url: string, hash: string, content: string) {
+  public constructor(url: string, hash: string) {
     super(url, `thread/${hash}`);
     this.hash = hash;
-    this.content = content;
   }
 
   public async getPolicy(): Promise<Info> {
     return parse(await this.fetchFrom("policy"));
   }
 
-  public async getPopulated(): Promise<Thread> {
-    return new Thread(this.url, this.hash, await this.fetchFrom(""));
+  public async getContent(): Promise<string> {
+    return this.fetchFrom("");
   }
 
   public async getReplies(skip = 0, take?: number): Promise<Thread[]> {
@@ -27,6 +25,6 @@ export class Thread extends BaseFetcher {
     });
 
     const hashs = replies.split("\n");
-    return hashs.map((hash) => new Thread(this.url, hash, ""));
+    return hashs.map((hash) => new Thread(this.url, hash));
   }
 }

@@ -19,15 +19,11 @@ export class UserlessServer extends Fetcher {
     return { body, info: parse(info) };
   }
 
-  public async getThread(hash: string): Promise<Thread> {
-    debug("get thread", hash);
-    const resp = await this.fetch(`/thread/${hash}`);
-    return new Thread(this.url, hash, resp);
+  public getThread(hash: string): Thread {
+    return new Thread(this.url, hash);
   }
 
-  public async getKey(keyId: string): Promise<PublicKey> {
-    debug("get publickey", keyId);
-    const resp = await this.fetch(`/key/${keyId}`);
-    return new PublicKey(this.url, keyId, resp);
+  public getKey(keyId: string): PublicKey {
+    return new PublicKey(this.url, keyId);
   }
 }
