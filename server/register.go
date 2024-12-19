@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"io"
 	"log"
+	"strings"
 	"userless/server/prisma/db"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
@@ -52,8 +53,8 @@ func register(uc *UserlessCtx) func(ctx *gin.Context) {
 			db.PublicKey.ArmoredKey.Set(string(armoredKey)),
 			db.PublicKey.Comment.Set(primaryUser.Comment),
 			db.PublicKey.Email.Set(primaryUser.Email),
-			db.PublicKey.Finger.Set(fingerprintBase16),
-			db.PublicKey.KeyID.Set(key.PrimaryKey.KeyIdString()),
+			db.PublicKey.Finger.Set(strings.ToLower(fingerprintBase16)),
+			db.PublicKey.KeyID.Set(strings.ToLower(key.PrimaryKey.KeyIdString())),
 			db.PublicKey.Name.Set(primaryUser.Name),
 			db.PublicKey.Policy.Link(db.PublicKeyPolicy.ID.Equals(policy.ID)),
 		).Exec(context.Background())

@@ -44,7 +44,9 @@ func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 		client := uc.client
 
 		ownerKeyDb, err := client.PublicKey.FindUnique(
-			db.PublicKey.Finger.Equals(finger),
+			db.PublicKey.Finger.Equals(strings.ToLower(finger)),
+		).With(
+			db.PublicKey.Policy.Fetch(),
 		).Exec(context.Background())
 		if err != nil {
 			panic(err)
@@ -64,7 +66,7 @@ func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 			return
 		}
 
-		if policy.AllowedToPost {
+		if !policy.AllowedToPost {
 			ctx.String(401, "not allowed to post")
 			return
 		}
@@ -125,7 +127,7 @@ func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 			db.Thread.Body.Set(string(text)),
 			db.Thread.Hash.Set(hashStr),
 			db.Thread.SignedBy.Link(
-				db.PublicKey.KeyID.Equals(ownerKeyDb.KeyID),
+				db.PublicKey.KeyID.Equals(strings.ToLower(ownerKeyDb.KeyID)),
 			),
 			db.Thread.Timestamp.Set(timestamp),
 			params...,
