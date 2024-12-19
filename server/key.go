@@ -28,10 +28,15 @@ func getKey(uc *UserlessCtx) func(ctx *gin.Context) {
 func getKeyThreads(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		defer ctx.Done()
-		keyid := ctx.Param("id")
+		keyRaw, ok := ctx.Get("key")
+		if !ok {
+			panic("key not set")
+		}
+		key := keyRaw.(*db.PublicKeyModel)
+
 		threads, err := uc.client.Thread.FindMany(
 			db.Thread.SignedBy.Where(
-				db.PublicKey.KeyID.Equals(keyid),
+				db.PublicKey.ID.Equals(key.ID),
 			),
 		).Select(
 			db.Thread.Hash.Field(),
@@ -54,10 +59,15 @@ func getKeyThreads(uc *UserlessCtx) func(ctx *gin.Context) {
 func getKeyFiles(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		defer ctx.Done()
-		keyid := ctx.Param("id")
+		keyRaw, ok := ctx.Get("key")
+		if !ok {
+			panic("key not set")
+		}
+		key := keyRaw.(*db.PublicKeyModel)
+
 		files, err := uc.client.File.FindMany(
 			db.File.SignedBy.Where(
-				db.PublicKey.KeyID.Equals(keyid),
+				db.PublicKey.ID.Equals(key.ID),
 			),
 		).Select(
 			db.File.Hash.Field(),

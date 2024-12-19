@@ -64,7 +64,7 @@ func (uc *UserlessCtx) getSigner(msg *openpgp.MessageDetails) (*db.PublicKeyMode
 	id := strconv.FormatUint(msg.SignedByKeyId, 16)
 
 	return uc.client.PublicKey.FindUnique(
-		db.PublicKey.KeyID.Equals(id),
+		db.PublicKey.KeyID.Equals(strings.ToLower(id)),
 	).Exec(context.Background())
 }
 

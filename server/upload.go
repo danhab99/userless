@@ -60,7 +60,7 @@ func uploadHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 
 		keyID := strings.ToUpper(strconv.FormatUint(*sigPacket.IssuerKeyId, 16))
 		publicKey, err := uc.client.PublicKey.FindUnique(
-			db.PublicKey.KeyID.Equals(keyID),
+			db.PublicKey.KeyID.Equals(strings.ToLower(keyID)),
 		).With(
 			db.PublicKey.Policy.Fetch(),
 		).Exec(context.Background())
@@ -129,7 +129,7 @@ func uploadHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 			db.File.Hash.Equals(string(hash[:])),
 		).Create(
 			db.File.SignedBy.Link(
-				db.PublicKey.KeyID.Equals(keyID),
+				db.PublicKey.KeyID.Equals(strings.ToLower(keyID)),
 			),
 			db.File.Hash.Set(hashStr),
 			db.File.Timestamp.Set(sigPacket.CreationTime),
