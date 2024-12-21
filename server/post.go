@@ -21,7 +21,9 @@ import (
 	"github.com/steebchen/prisma-client-go/runtime/types"
 )
 
-func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {
+func postHandler(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
+	client := uc.client
+
 	return func(ctx *gin.Context) {
 		defer ctx.Done()
 
@@ -41,8 +43,6 @@ func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 		timestamp := sig.CreationTime
 		finger := hex.EncodeToString(sig.IssuerFingerprint)
 
-		client := uc.client
-
 		ownerKeyDb, err := client.PublicKey.FindUnique(
 			db.PublicKey.Finger.Equals(strings.ToLower(finger)),
 		).With(
@@ -55,22 +55,6 @@ func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 			log.Fatal("cannot find owner key")
 		}
 
-		policy, ok := ownerKeyDb.Policy()
-		if !ok {
-			ctx.String(404, "signer policy not found")
-			return
-		}
-
-		if policy.Revoked {
-			ctx.String(400, "this was signed by a revoked key")
-			return
-		}
-
-		if !policy.AllowedToPost {
-			ctx.String(401, "not allowed to post")
-			return
-		}
-
 		key, err := openpgp.ReadArmoredKeyRing(strings.NewReader(ownerKeyDb.ArmoredKey))
 		if err != nil {
 			panic(err)
@@ -80,6 +64,38 @@ func postHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 		_, err = msg.VerifySignature(key, nil)
 		if err != nil {
 			panic(err)
+		}
+
+		policy, ok := ownerKeyDb.Policy()
+		if !ok {
+			ctx.String(404, "signer policy not found")
+			return
+		}
+
+		var threadPolicy db.RawThreadPolicyModel
+
+		err = InspectPolicy(
+			text,
+			config.ThreadsConfig.ExecOnNewThread,
+			config.ThreadsConfig.WebHookUrl,
+			config.ThreadsConfig.Mode,
+			&threadPolicy,
+			func() error {
+				if policy.Revoked {
+					ctx.String(400, "this was signed by a revoked key")
+					return nil
+				}
+
+				if !policy.AllowedToPost {
+					ctx.String(401, "not allowed to post")
+					return nil
+				}
+				return nil
+			},
+		)
+		if err != nil {
+			ctx.String(400, "rejected thread %+v", err)
+			return
 		}
 
 		content := string(msg.Plaintext)

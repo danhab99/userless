@@ -13,7 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func register(uc *UserlessCtx) func(ctx *gin.Context) {
+func register(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		defer ctx.Done()
 
