@@ -1,0 +1,28 @@
+banner = "./example_config/banner"
+port = 4444
+host = "0.0.0.0"
+                                            
+[public_keys]
+enable = true
+mode = "basic"
+enable_discovery = true
+enable_register = true
+allowed_to_post = true
+can_start_threads = true
+allowed_to_upload_files = true
+max_file_size = true
+                                                
+[threads]
+enable = true
+mode = "basic"
+enable_discovery = true                   
+enable_post = true
+visible_by_default = true
+allow_replies = true     
+can_edit_own_policy = true
+                                                   
+[files]
+enable = true
+mode = "basic"
+enable_discovery = true
+enable_upload = true   

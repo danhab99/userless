@@ -1,0 +1,20 @@
+banner = "./example_config/banner"
+port = 4444
+host = "0.0.0.0"
+                                            
+[public_keys]
+enable = true
+mode = "shell"
+on_new_key = "/path/to/script.sh"
+                                                
+[threads]
+enable = true
+mode = "shell"
+on_new_thread = "/path/to/script.sh"
+                                                   
+[files]
+enable = true
+mode = "shell"
+enable_discovery = true
+enable_upload = true   
+on_new_thread = "/path/to/script.sh"

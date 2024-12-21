@@ -1,0 +1,20 @@
+banner = "./example_config/banner"
+port = 4444
+host = "0.0.0.0"
+                                            
+[public_keys]
+enable = true
+mode = "webhook"
+webhook_url = "http://localhost:3333/check_key"
+                                                
+[threads]
+enable = true
+mode = "webhook"
+webhook_url = "http://localhost:3333/check_thread"
+                                                   
+[files]
+enable = true
+mode = "webhook"
+enable_discovery = true
+enable_upload = true   
+webhook_url = "http://localhost:3333/check_file"

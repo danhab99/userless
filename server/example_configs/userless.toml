@@ -1,0 +1,34 @@
+banner = "./example_config/banner"
+port = 65535  # Maximum valid port number
+host = "0.0.0.0"  # Listen on all interfaces
+                                            
+[public_keys]
+enable = true
+mode = "webhook"  # Most feature-rich mode
+enable_discovery = true
+enable_register = true
+allowed_to_post = true
+can_start_threads = true
+allowed_to_upload_files = true
+max_file_size = true
+on_new_key = "/path/to/script.sh"
+webhook_url = "https://webhook.example.com/keys"
+                                                
+[threads]
+enable = true
+mode = "webhook"  # Most feature-rich mode
+enable_discovery = true                   
+enable_post = true
+visible_by_default = true
+allow_replies = true     
+can_edit_own_policy = true
+on_new_thread = "/path/to/script.sh"
+webhook_url = "https://webhook.example.com/threads"
+                                                   
+[files]
+enable = true
+mode = "webhook"  # Most feature-rich mode
+enable_discovery = true
+enable_upload = true   
+on_new_thread = "/path/to/script.sh"
+webhook_url = "https://webhook.example.com/files"
