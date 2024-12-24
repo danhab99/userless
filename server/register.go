@@ -11,6 +11,7 @@ import (
 
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func register(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
@@ -42,29 +43,31 @@ func register(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 		fingerprintBytes := key.PrimaryKey.Fingerprint[:]
 		fingerprintBase16 := hex.EncodeToString(fingerprintBytes)
 
-		policy, err := uc.client.PublicKeyPolicy.CreateOne().Exec(context.Background())
+		policyUid := uuid.New()
+		policyTx := uc.client.PublicKeyPolicy.CreateOne(
+			db.PublicKeyPolicy.ID.Set(policyUid.String()),
+		).Tx()
 
 		if err != nil {
 			panic(err)
 		}
 
-		log.Println("Saving private key", key)
-		_, err = uc.client.PublicKey.CreateOne(
+		pkTx := uc.client.PublicKey.CreateOne(
 			db.PublicKey.ArmoredKey.Set(string(armoredKey)),
 			db.PublicKey.Comment.Set(primaryUser.Comment),
 			db.PublicKey.Email.Set(primaryUser.Email),
 			db.PublicKey.Finger.Set(strings.ToLower(fingerprintBase16)),
 			db.PublicKey.KeyID.Set(strings.ToLower(key.PrimaryKey.KeyIdString())),
 			db.PublicKey.Name.Set(primaryUser.Name),
-			db.PublicKey.Policy.Link(db.PublicKeyPolicy.ID.Equals(policy.ID)),
-		).Exec(context.Background())
-		log.Println("Saved", err)
+			db.PublicKey.Policy.Link(db.PublicKeyPolicy.ID.Equals(policyUid.String())),
+		).Tx()
+
+		log.Println("Saving private key", key)
+		err = uc.client.Prisma.Transaction(pkTx, policyTx).Exec(context.Background())
 		if err != nil {
-			uc.client.PublicKeyPolicy.FindUnique(
-				db.PublicKeyPolicy.ID.Equals(policy.ID),
-			).Delete().Exec(context.Background())
 			panic(err)
 		}
+		log.Println("Saved")
 
 		log.Println("Done")
 

@@ -68,7 +68,8 @@ func main() {
 		route.POST("/upload", uploadHandler(ctx))
 	}
 	if config.SearchConfig.Enable {
-		route.GET("/search/threads", searchThreadsHandler(ctx, context))
+		route.GET("/search/threads", searchThreadsHandler(ctx, config))
+		route.GET("/search/keys", searchPublicKeysHandler(ctx, config))
 	}
 
 	if config.ThreadsConfig.Enable {

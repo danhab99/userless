@@ -82,19 +82,18 @@ func postHandler(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 			&threadPolicy,
 			func() error {
 				if policy.Revoked {
-					ctx.String(400, "this was signed by a revoked key")
-					return nil
+					return fmt.Errorf("this was signed by a revoked key")
 				}
 
 				if !policy.AllowedToPost {
-					ctx.String(401, "not allowed to post")
-					return nil
+					return fmt.Errorf("this publickey is not allowed to post")
 				}
+
 				return nil
 			},
 		)
 		if err != nil {
-			ctx.String(400, "rejected thread %+v", err)
+			ctx.String(400, "rejected thread: %+v", err)
 			return
 		}
 
@@ -134,12 +133,9 @@ func postHandler(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 			panic(err)
 		}
 
-		x := json.RawMessage(infoBytes.Bytes())
-		xx := types.JSON(x)
+		params = append(params, db.Thread.Info.Set(types.JSON(json.RawMessage(infoBytes.Bytes()))))
 
-		params = append(params, db.Thread.Info.Set(xx))
-
-		thread, err := uc.client.Thread.CreateOne(
+		threadTx := uc.client.Thread.CreateOne(
 			db.Thread.Body.Set(string(text)),
 			db.Thread.Hash.Set(hashStr),
 			db.Thread.SignedBy.Link(
@@ -147,16 +143,15 @@ func postHandler(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 			),
 			db.Thread.Timestamp.Set(timestamp),
 			params...,
-		).Exec(context.Background())
-		if err != nil {
-			panic(err)
-		}
+		).Tx()
 
-		_, err = uc.client.ThreadPolicy.CreateOne(
+		policyTx := uc.client.ThreadPolicy.CreateOne(
 			db.ThreadPolicy.Thread.Link(
-				db.Thread.ID.Equals(thread.ID),
+				db.Thread.ID.Equals(id.String()),
 			),
-		).Exec(context.Background())
+		).Tx()
+
+		err = uc.client.Prisma.Transaction(threadTx, policyTx).Exec(context.Background())
 		if err != nil {
 			panic(err)
 		}
