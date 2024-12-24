@@ -59,13 +59,16 @@ func main() {
 	}
 
 	if config.ThreadsConfig.EnablePost {
-		route.POST("/post", postHandler(ctx))
+		route.POST("/post", postHandler(ctx, config))
 	}
 	if config.KeyConfig.EnableRegister {
-		route.POST("/register", register(ctx))
+		route.POST("/register", register(ctx, config))
 	}
 	if config.FileConfig.EnableUpload {
 		route.POST("/upload", uploadHandler(ctx))
+	}
+	if config.SearchConfig.Enable {
+		route.GET("/search/threads", searchThreadsHandler(ctx, context))
 	}
 
 	if config.ThreadsConfig.Enable {

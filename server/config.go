@@ -8,6 +8,7 @@ type Config struct {
 	KeyConfig     KeyConfig    `toml:"public_keys"`
 	ThreadsConfig ThreadConfig `toml:"threads"`
 	FileConfig    FileConfig   `toml:"files"`
+	SearchConfig  SearchConfig `toml:"search"`
 }
 
 type SecurityConfigMode string
@@ -56,4 +57,15 @@ type FileConfig struct {
 	ExecOnNewFile string `toml:"on_new_thread"`
 
 	WebHookUrl string `toml:"webhook_url"`
+}
+
+type SearchConfig struct {
+	Enable bool `toml:"enable"`
+
+	FullTextSearch bool `toml:"full_text_search"`
+	EmailSearch    bool `toml:"email"`
+	KeyId          bool `toml:"key_id"`
+	SearchThreads  bool `toml:"search_threads"`
+	SearchKeys     bool `toml:"search_keys"`
+	RegexSearch    bool `toml:"regex"`
 }
