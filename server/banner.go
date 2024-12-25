@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"time"
 	"userless/server/prisma/db"
@@ -13,8 +14,8 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-func banner(uc *UserlessCtx, bannerFile string) func(ctx *gin.Context) {
-	f, err := os.Open(bannerFile)
+func banner(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
+	f, err := os.Open(config.BannerPath)
 	if err != nil {
 		panic(err)
 	}
@@ -42,18 +43,60 @@ func banner(uc *UserlessCtx, bannerFile string) func(ctx *gin.Context) {
 				pubThreadHashes[i] = tm.Hash
 			}
 
+			var u url.URL
+			if config.FileConfig.S3Config.SSL {
+				u.Scheme = "https"
+			} else {
+				u.Scheme = "http"
+			}
+			u.Host = fmt.Sprintf("%s:%d", config.FileConfig.S3Config.Host, config.FileConfig.S3Config.Port)
+			u.Path = config.FileConfig.S3Config.Bucket
+
+			var searchArgs []string
+			if config.SearchConfig.FullTextSearch {
+				searchArgs = append(searchArgs, "body")
+			}
+			if config.SearchConfig.EmailSearch {
+				searchArgs = append(searchArgs, "email")
+			}
+			if config.SearchConfig.KeyId {
+				searchArgs = append(searchArgs, "keyId")
+			}
+			if config.SearchConfig.RegexSearch {
+				searchArgs = append(searchArgs, "regex")
+			}
+
 			info := map[string]any{
 				"threads": pubThreadHashes,
-				"bucket":  fmt.Sprintf("s3+https://%s/%s", os.Getenv("S3_ENDPOINT"), os.Getenv("S3_BUCKET")),
+				// "bucket":  fmt.Sprintf("s3+https://%s/%s", os.Getenv("S3_ENDPOINT"), os.Getenv("S3_BUCKET")),
+				"feature.keys": map[string]any{
+					"enabled":   config.KeyConfig.Enable,
+					"discovery": config.KeyConfig.EnableDiscovery,
+				},
+				"feature.threads": map[string]any{
+					"enabled":   config.ThreadsConfig.Enable,
+					"discovery": config.ThreadsConfig.EnableDiscovery,
+				},
+				"feature.files": map[string]any{
+					"enabled":   config.ThreadsConfig.Enable,
+					"discovery": config.ThreadsConfig.EnableDiscovery,
+					"bucket":    u.String(),
+				},
+				"search": map[string]any{
+					"enabled_threads": config.SearchConfig.SearchThreads,
+					"enabled_keys":    config.SearchConfig.SearchKeys,
+					"search_by":       searchArgs,
+				},
 			}
 
 			tomlBuf := bytes.NewBuffer([]byte{})
-			err = toml.NewEncoder(tomlBuf).Encode(info)
+			t := toml.NewEncoder(tomlBuf).SetArraysMultiline(true).SetIndentSymbol("\t").SetIndentTables(false)
+			err = t.Encode(info)
 			if err != nil {
 				panic(err)
 			}
 
-			body = fmt.Sprintf("%s\n\n%s\n\n%s", string(banner), DELIMITER, tomlBuf.String())
+			body = fmt.Sprintf("%s\n\n%s\n\n%s", tomlBuf.String(), DELIMITER, string(banner))
 
 			time.Sleep(10 * time.Second)
 		}

@@ -57,11 +57,18 @@ type FileConfig struct {
 	ExecOnNewFile string `toml:"on_new_thread"`
 
 	WebHookUrl string `toml:"webhook_url"`
+
+	S3Config S3Config `toml:"s3"`
+}
+
+type S3Config struct {
+	Host   string `toml:"host"`
+	Port   int    `toml:"port"`
+	SSL    bool   `toml:"ssl"`
+	Bucket string `toml:"bucket"`
 }
 
 type SearchConfig struct {
-	Enable bool `toml:"enable"`
-
 	FullTextSearch bool `toml:"full_text_search"`
 	EmailSearch    bool `toml:"email"`
 	KeyId          bool `toml:"key_id"`

@@ -25,16 +25,16 @@ func main() {
 
 	flag.Parse()
 
-	configFile, err := os.Open(*configPath)
+	configContent, err := os.ReadFile(*configPath)
+
+	var config Config
+	err = toml.Unmarshal(configContent, &config)
 	if err != nil {
 		panic(err)
 	}
 
-	var config Config
-	err = toml.NewDecoder(configFile).Decode(&config)
-	if err != nil {
-		panic(err)
-	}
+	log.Printf("Starting...\n%s\n\n", string(configContent))
+	log.Printf("%#v\n", config)
 
 	ctx := NewUserlessCtx()
 
@@ -52,11 +52,7 @@ func main() {
 		MaxAge: 12 * time.Hour,
 	}))
 
-	route.GET("/", banner(ctx, config.BannerPath))
-
-	if config.FileConfig.Enable && config.KeyConfig.Enable && config.ThreadsConfig.Enable && config.FileConfig.EnableUpload && config.KeyConfig.EnableRegister && config.ThreadsConfig.EnablePost {
-		log.Fatalln("No endpoints enabled")
-	}
+	route.GET("/", banner(ctx, config))
 
 	if config.ThreadsConfig.EnablePost {
 		route.POST("/post", postHandler(ctx, config))
@@ -67,8 +63,10 @@ func main() {
 	if config.FileConfig.EnableUpload {
 		route.POST("/upload", uploadHandler(ctx))
 	}
-	if config.SearchConfig.Enable {
+	if config.SearchConfig.SearchThreads {
 		route.GET("/search/threads", searchThreadsHandler(ctx, config))
+	}
+	if config.SearchConfig.SearchKeys {
 		route.GET("/search/keys", searchPublicKeysHandler(ctx, config))
 	}
 
@@ -116,5 +114,4 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 }

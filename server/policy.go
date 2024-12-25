@@ -1,11 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os/exec"
-	"strings"
 )
 
 func InspectPolicy(content []byte, commandStr, webhook string, mode SecurityConfigMode, policy interface{}, basicMode func() error) error {
@@ -40,7 +40,7 @@ func InspectPolicy(content []byte, commandStr, webhook string, mode SecurityConf
 		}
 		break
 	case HttpMode:
-		req, err := http.NewRequest("POST", webhook, strings.NewReader(content))
+		req, err := http.NewRequest("POST", webhook, bytes.NewBuffer(content))
 		if err != nil {
 			return err
 		}

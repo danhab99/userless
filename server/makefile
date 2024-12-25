@@ -8,4 +8,4 @@ db: generate
 	go run github.com/steebchen/prisma-client-go db push
 
 run:
-	go run . -banner ./notes/banner -host 127.0.0.1:4000
+	go run . -config-path ./example_configs/basic.toml

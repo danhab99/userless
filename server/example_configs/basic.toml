@@ -1,7 +1,7 @@
-banner = "./example_config/banner"
+banner = "example_configs/banner.md"
 port = 4444
 host = "0.0.0.0"
-                                            
+
 [public_keys]
 enable = true
 mode = "basic"
@@ -11,18 +11,32 @@ allowed_to_post = true
 can_start_threads = true
 allowed_to_upload_files = true
 max_file_size = true
-                                                
+
 [threads]
 enable = true
 mode = "basic"
-enable_discovery = true                   
+enable_discovery = true
 enable_post = true
 visible_by_default = true
-allow_replies = true     
+allow_replies = true
 can_edit_own_policy = true
-                                                   
+
 [files]
 enable = true
 mode = "basic"
 enable_discovery = true
-enable_upload = true   
+enable_upload = true
+
+[files.s3]
+host = "localhost"
+port = 9000
+ssl = false
+bucket = "userless"
+
+[search]
+full_text_search = true
+email = true
+key_id = true
+search_threads = true
+search_keys = true
+regex = true
