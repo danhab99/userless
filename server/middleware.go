@@ -15,7 +15,7 @@ func threadMiddleware(uc *UserlessCtx) func(ctx *gin.Context) {
 		hash := ctx.Params.ByName("hash")
 
 		thread, err := uc.client.Thread.FindFirst(
-			db.Thread.Hash.Equals(hash),
+			db.Thread.Hash.Equals(strings.ToLower(hash)),
 		).With(
 			db.Thread.ThreadPolicy.Fetch(),
 		).Exec(context.Background())
@@ -41,7 +41,7 @@ func keyMiddleware(uc *UserlessCtx) func(ctx *gin.Context) {
 		key, err := uc.client.PublicKey.FindFirst(
 			db.PublicKey.Or(
 				db.PublicKey.KeyID.Equals(strings.ToLower(id)),
-				db.PublicKey.Finger.Equals(id),
+				db.PublicKey.Finger.Equals(strings.ToLower(id)),
 			),
 		).With(
 			db.PublicKey.Policy.Fetch(),
