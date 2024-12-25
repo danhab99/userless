@@ -29,7 +29,9 @@ func getFile(uc *UserlessCtx, suffix string) func(ctx *gin.Context) {
 
 func discoverFiles(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
-		query := uc.client.File.FindMany()
+		query := uc.client.File.FindMany().Select(
+			db.File.Hash.Field(),
+		)
 
 		_, quiet := ctx.GetQuery("quiet")
 
@@ -73,12 +75,17 @@ func discoverFiles(uc *UserlessCtx) func(ctx *gin.Context) {
 		}
 
 		for _, file := range files {
-			var err error
 			if quiet {
-				_, err = ctx.Writer.WriteString(fmt.Sprintf("%s\n", file.Hash))
+				_, err := ctx.Writer.WriteString(fmt.Sprintf("%s\n", file.Hash))
+				if err != nil {
+					panic(err)
+				}
 			} else {
 				mime, _ := file.MimeType()
-				_, err = ctx.Writer.WriteString(fmt.Sprintf("%s %s %d", file.Hash, mime, file.Size))
+				_, err := ctx.Writer.WriteString(fmt.Sprintf("%s %s %d", file.Hash, mime, file.Size))
+				if err != nil {
+					panic(err)
+				}
 			}
 			if err != nil {
 				panic(err)
