@@ -34,13 +34,35 @@ func getKeyThreads(uc *UserlessCtx) func(ctx *gin.Context) {
 		}
 		key := keyRaw.(*db.PublicKeyModel)
 
-		threads, err := uc.client.Thread.FindMany(
+		query := uc.client.Thread.FindMany(
 			db.Thread.SignedBy.Where(
 				db.PublicKey.ID.Equals(key.ID),
 			),
 		).Select(
 			db.Thread.Hash.Field(),
-		).Exec(context.Background())
+		)
+
+		skipStr, ok := ctx.GetQuery("skip")
+		if ok {
+			s, err := strconv.Atoi(skipStr)
+			if err != nil {
+				panic(err)
+			}
+			query = query.Skip(s)
+		}
+
+		takeStr, ok := ctx.GetQuery("take")
+		if ok {
+			s, err := strconv.Atoi(takeStr)
+			if err != nil {
+				panic(err)
+			}
+			query = query.Take(min(100, s))
+		} else {
+			query = query.Take(100)
+		}
+
+		threads, err := query.Exec(context.Background())
 		if err != nil {
 			panic(err)
 		}
