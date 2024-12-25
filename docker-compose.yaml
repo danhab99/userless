@@ -1,15 +1,4 @@
-services: 
-  mongo:
-    image: ghcr.io/danhab99/prisma-mongo-example:5.0.3
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: example
-    restart: always
-    ports:
-      - 27017:27017
-    volumes:
-      - ./notes/data:/data/db
-
+services:
   minio:
     image: minio/minio
     ports:
@@ -17,7 +6,21 @@ services:
       - 9001:9001
     command: server --console-address ":9001" /data
     volumes:
-      - ~/minio:/data
-    environment: 
+      - ./notes/minio:/data
+    environment:
       MINIO_ROOT_USER: root
       MINIO_ROOT_PASSWORD: password
+
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./notes/postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
