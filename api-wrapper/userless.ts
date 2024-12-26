@@ -20,7 +20,7 @@ export function createUserlessServer(url: string): UserlessServer {
     async getBanner(): Promise<Banner> {
       const ret = await fetcher.fetch("/");
       debug("get banner");
-      const [body, info] = ret.split(DELIMITER, 2);
+      const [info, body] = ret.split(DELIMITER, 2);
       return { body, info: parse(info) };
     },
 

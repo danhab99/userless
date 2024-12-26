@@ -1,4 +1,4 @@
-import { Content } from "./content";
+import { Content, createContent } from "./content";
 import { debug } from "./debug";
 
 export interface Fetcher {

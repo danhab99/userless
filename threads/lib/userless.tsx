@@ -1,3 +1,3 @@
-import { UserlessServer } from "api-wrapper";
+import { createUserlessServer } from "api-wrapper";
 
-export const server = new UserlessServer(process.env["NEXT_PUBLIC_USERLESS_URL"] as string);
+export const server = createUserlessServer(process.env["NEXT_PUBLIC_USERLESS_URL"] as string)
