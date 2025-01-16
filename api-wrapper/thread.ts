@@ -25,13 +25,10 @@ export function createThread(url: string, hash: string): Thread {
     },
 
     async getReplies(skip = 0, take?: number): Promise<Thread[]> {
-      const replies = await baseFetcher.fetchFrom("replies", {
-        skip: `${skip}`,
-        take: `${take}`,
-      });
+      const replies = await baseFetcher.fetchFrom("replies", { skip, take });
 
       const hashs = replies.split("\n").filter((x) => x);
       return hashs.map((hash) => createThread(url, hash));
-    }
+    },
   };
 }

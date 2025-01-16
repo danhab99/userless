@@ -13,7 +13,7 @@ export interface PublicKey {
 
 export function createPublicKey(url: string, keyId: string): PublicKey {
   const baseFetcher = createBaseFetcher(url, `key/${keyId}`);
-  
+
   return {
     keyId,
     url,
@@ -23,8 +23,8 @@ export function createPublicKey(url: string, keyId: string): PublicKey {
 
     async getThreads(skip?: number, take?: number) {
       const threadHashes = await baseFetcher.fetchFrom("threads", {
-        skip: `${skip}`,
-        take: `${take}`,
+        skip,
+        take,
       });
       const hashs = threadHashes.split("\n").filter((x) => x);
       return hashs.map((hash) => createThread(url, hash));
@@ -37,6 +37,6 @@ export function createPublicKey(url: string, keyId: string): PublicKey {
 
     async getPolicy() {
       return parse(await baseFetcher.fetchFrom("policy"));
-    }
+    },
   };
 }
