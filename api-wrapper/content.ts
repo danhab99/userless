@@ -4,6 +4,7 @@ import { parse } from "smol-toml";
 export interface Content {
   readonly info?: Record<string, any>;
   readonly body: string;
+  readonly original: string;
 }
 
 export function createContent(content: string): Content {
@@ -11,10 +12,12 @@ export function createContent(content: string): Content {
   if (body) {
     return {
       info: parse(info),
-      body
+      body,
+      original: content,
     };
   }
   return {
-    body: info
+    body: info,
+    original: content,
   };
 }

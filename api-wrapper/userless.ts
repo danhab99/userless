@@ -1,15 +1,15 @@
 import { createFetcher } from "./fetch";
 import { Banner } from "./types";
-import { createThread } from "./thread";
-import { createPublicKey } from "./key";
+import { createThread, Thread } from "./thread";
+import { createPublicKey, PublicKey } from "./key";
 import { DELIMITER } from "./const";
 import { parse } from "smol-toml";
 import { debug } from "./debug";
 
 export interface UserlessServer {
   getBanner: () => Promise<Banner>;
-  getThread: (hash: string) => any;
-  getKey: (keyId: string) => any;
+  getThread: (hash: string) => Thread;
+  getKey: (keyId: string) => PublicKey;
 }
 
 export function createUserlessServer(url: string): UserlessServer {
