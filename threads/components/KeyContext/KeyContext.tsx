@@ -291,7 +291,8 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
   }, [keyId]);
 
   const register = useCallback(async () => {
-    const resp = await fetch(`${process.env["NEXT_PUBLIC_USERLESS_URL"]}/register`, {
+    const u = process.env["NEXT_PUBLIC_USERLESS_URL"];
+    const resp = await fetch(`${u}/register`, {
       method: "POST",
       body: sk.toPublic().armor(),
     });

@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@prisma/client": "5.18.0",
-    "api-wrapper": "file:../api-wrapper",
+    "api-wrapper": "link:../api-wrapper",
     "mailto-link": "^2.0.0",
     "minio": "^8.0.1",
     "next": "15.0.1",
