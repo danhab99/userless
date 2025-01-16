@@ -83,9 +83,9 @@ func banner(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 					"bucket":    u.String(),
 				},
 				"search": map[string]any{
-					"enabled_threads": config.SearchConfig.SearchThreads,
-					"enabled_keys":    config.SearchConfig.SearchKeys,
-					"search_by":       searchArgs,
+					"threads": config.SearchConfig.SearchThreads,
+					"keys":    config.SearchConfig.SearchKeys,
+					"args":    searchArgs,
 				},
 			}
 
