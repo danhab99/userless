@@ -73,7 +73,7 @@ const SigVerify = (props: SigVerifyProps) => {
               : Buffer.from(props.content),
           );
 
-          const resp = await fetch(`/file/${hash}/sig`, {
+          const resp = await fetch(`${process.env["NEXT_PUBLIC_USERLESS_URL"]}/file/${hash}/sig`, {
             cache: "force-cache",
           });
 

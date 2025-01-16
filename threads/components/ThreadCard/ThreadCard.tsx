@@ -8,14 +8,17 @@ import Link from "next/link";
 import { Hash } from "@/components/Hash/Hash";
 import { useMasterKey } from "../KeyContext/KeyContext";
 import { ActionButton } from "../ActionButton/ActionButton";
-import { useAsync, useAsyncFn, useAsyncRetry, useMount } from "react-use";
+import { useAsyncFn, useAsyncRetry } from "react-use";
 import * as openpgp from "openpgp";
 import toml from "smol-toml";
 import { server } from "@/lib/userless";
-import { spoofArmoredSignature } from "@/lib/utils";
 
 export type ThreadCardProps = {
   threadText: string;
+  body: string;
+  hash: string;
+  signedBy: Partial<openpgp.UserIDPacket & { finger: string }>;
+  timestamp: Date | null;
 };
 
 type AdminActionProps = {
@@ -62,60 +65,23 @@ function AdminAction(props: AdminActionProps) {
   );
 }
 
-export const ThreadCard = ({ threadText }: ThreadCardProps) => {
+export const ThreadCard = ({
+  threadText,
+  body,
+  hash,
+  signedBy,
+  timestamp,
+}: ThreadCardProps) => {
   const [ReplyTB, showReply] = useToggleButton(false);
   const [SourceTB, showSource] = useToggleButton(false);
   const [FullTB, showFull] = useToggleButton(false);
   const master = useMasterKey();
 
-  const { value: thread, error } = useAsync(async () => {
-    if (threadText.length === 0) {
-      return undefined
-    }
-
-    const msg = await openpgp.readCleartextMessage({
-      cleartextMessage: threadText,
-    });
-
-    const hash = Array.from(
-      new Uint8Array(
-        await crypto.subtle.digest("sha-256", Buffer.from(threadText)),
-      ),
-    )
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-
-    const keyResp = await server.getKey(msg.getSigningKeyIDs()[0].toHex()).getArmored();
-
-    const pk = await openpgp.readKey({
-      armoredKey: keyResp,
-    });
-
-    const userId = (await pk.getPrimaryUser()).user.userID;
-
-    const sig = spoofArmoredSignature(threadText);
-
-    const signature = await openpgp.readSignature({
-      armoredSignature: sig,
-    });
-
-    const r = {
-      body: msg.getText(),
-      hash,
-      signedBy: {
-        ...userId,
-        finger: pk.getFingerprint(),
-      },
-      timestamp: signature.packets[0].created,
-    };
-    return r;
-  }, [threadText]);
-
   const { value: policy } = useAsyncRetry(async () => {
-    if (master && thread?.hash) {
-      return server.getThread(thread.hash).getPolicy();
+    if (master && hash) {
+      return server.getThread(hash).getPolicy();
     }
-  }, [master, thread?.hash]);
+  }, [master, hash]);
 
   const controls = (
     <div className="text-xs">
@@ -127,7 +93,7 @@ export const ThreadCard = ({ threadText }: ThreadCardProps) => {
       {master.length > 0 ? (
         <>
           <AdminAction
-            hash={thread?.hash ?? ""}
+            hash={hash ?? ""}
             newPolicy={{
               visible: false,
             }}
@@ -137,7 +103,7 @@ export const ThreadCard = ({ threadText }: ThreadCardProps) => {
             color="red"
           />
           <AdminAction
-            hash={thread?.hash ?? ""}
+            hash={hash ?? ""}
             newPolicy={{
               acceptsReplies: !policy?.value?.acceptsReplies,
             }}
@@ -151,7 +117,7 @@ export const ThreadCard = ({ threadText }: ThreadCardProps) => {
             color="red"
           />
           <AdminAction
-            hash={thread?.hash ?? ""}
+            hash={hash ?? ""}
             newPolicy={{
               advertise: !policy?.value?.advertise,
             }}
@@ -166,7 +132,7 @@ export const ThreadCard = ({ threadText }: ThreadCardProps) => {
   );
 
   const mailtoLink = mailto({
-    to: thread?.signedBy?.email,
+    to: signedBy?.email,
   });
 
   return (
@@ -174,38 +140,38 @@ export const ThreadCard = ({ threadText }: ThreadCardProps) => {
       <div className="card my-2 max-w-4xl bg-card p-4">
         <p className="text-sm">
           <span className="text-green-700">
-            {new Date(thread?.timestamp ?? 0).toLocaleString()}
+            {new Date(timestamp ?? 0).toLocaleString()}
           </span>{" "}
           <span className="text-username">
-            {thread?.signedBy?.name}
-            <Link href={`/key/${thread?.signedBy?.finger}`}>
+            {signedBy?.name}
+            <Link href={`/key/${signedBy?.finger}`}>
               {"("}
-              <Hash content={thread?.signedBy?.finger ?? ""} />
+              <Hash content={signedBy?.finger ?? ""} />
               {")"}
             </Link>
             <a href={mailtoLink} target="_blank">
               {"<"}
-              {thread?.signedBy?.email}
+              {signedBy?.email}
               {">"}
             </a>
           </span>{" "}
-          <Link className="text-slate-600" href={`/thread/${thread?.hash}`}>
-            <Hash content={thread?.hash ?? ""} />
+          <Link className="text-slate-600" href={`/thread/${hash}`}>
+            <Hash content={hash ?? ""} />
           </Link>{" "}
-          {thread?.body ? <SigVerify content={thread.body} /> : null}
+          {body ? <SigVerify content={body} /> : null}
         </p>
 
         {controls}
 
         <div className={showFull ? "h-full" : "max-h-96 overflow-y-auto"}>
-          <ThreadBody body={thread?.body ?? ""} />
+          <ThreadBody body={body ?? ""} />
         </div>
 
         {controls}
 
         {showReply ? (
           <div className="pt-4">
-            <PostThread replyTo={thread?.hash} />
+            <PostThread replyTo={hash} />
           </div>
         ) : null}
 

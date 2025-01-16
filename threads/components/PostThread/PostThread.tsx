@@ -115,11 +115,14 @@ export const PostThread = (props: PostThreadProps) => {
             f.append("document", data);
             f.append("signature", sig.toString());
 
-            const resp = await fetch("/upload", {
-              method: "POST",
-              body: f,
-              redirect: "manual",
-            });
+            const resp = await fetch(
+              `${process.env["NEXT_PUBLIC_USERLESS_URL"]}/upload`,
+              {
+                method: "POST",
+                body: f,
+                redirect: "manual",
+              },
+            );
 
             increment();
 
@@ -158,7 +161,7 @@ export const PostThread = (props: PostThreadProps) => {
           return;
         }
 
-        const resp = await fetch("/post", {
+        const resp = await fetch(`${process.env["NEXT_PUBLIC_USERLESS_URL"]}/post`, {
           method: "POST",
           body: signedMsg,
           redirect: "manual",
