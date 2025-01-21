@@ -1,12 +1,11 @@
 import { createBaseFetcher } from "./fetch";
 import { parse } from "smol-toml";
 import { Info } from "./types";
-import { createContent, Content } from "./content";
 
 export interface Thread {
   hash: string;
   getPolicy: () => Promise<Info>;
-  getContent: () => Promise<Content>;
+  getContent: () => Promise<string>;
   getReplies: (skip?: number, take?: number) => Promise<Thread[]>;
 }
 
@@ -19,9 +18,8 @@ export function createThread(url: string, hash: string): Thread {
       return parse(await baseFetcher.fetchFrom("policy"));
     },
 
-    async getContent(): Promise<Content> {
-      const c = await baseFetcher.fetchFrom("");
-      return createContent(c);
+    async getContent(): Promise<string> {
+      return baseFetcher.fetchFrom("");
     },
 
     async getReplies(skip = 0, take?: number): Promise<Thread[]> {

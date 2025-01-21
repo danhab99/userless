@@ -1,5 +1,5 @@
 export * from "./userless";
-export * from "./types";
+export * from "./types.d";
 export * from "./thread";
 export * from "./key";
 export * from "./const";
