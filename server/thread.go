@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"userless/server/prisma/db"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
@@ -40,27 +39,8 @@ func getThreadReplies(uc *UserlessCtx) func(ctx *gin.Context) {
 			db.Thread.Timestamp.Order(db.DESC),
 		)
 
-		skipStr, hasSkip := ctx.GetQuery("skip")
-		if hasSkip {
-			skip, err := strconv.Atoi(skipStr)
-			if err != nil {
-				panic(err)
-			}
-
-			query = query.Skip(skip)
-		}
-
-		takeStr, hasTake := ctx.GetQuery("take")
-		if hasTake {
-			take, err := strconv.Atoi(takeStr)
-			if err != nil {
-				panic(err)
-			}
-
-			query = query.Take(take)
-		} else {
-			query = query.Take(100)
-		}
+		skip, take := getLimits(ctx)
+		query = query.Skip(skip).Take(take)
 
 		threads, err := query.Exec(context.Background())
 		if err != nil {

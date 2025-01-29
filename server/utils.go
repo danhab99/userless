@@ -3,7 +3,10 @@ package main
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"unicode"
+
+	"github.com/gin-gonic/gin"
 )
 
 func toCamelCase(s string) string {
@@ -92,4 +95,30 @@ func StructToMap(obj interface{}) map[string]interface{} {
 	}
 
 	return result
+}
+
+func getLimits(ctx *gin.Context) (skip int, take int) {
+	var err error
+
+	skipStr, hasSkip := ctx.GetQuery("skip")
+	if hasSkip {
+		skip, err = strconv.Atoi(skipStr)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	takeStr, hasTake := ctx.GetQuery("take")
+	if hasTake {
+		take, err = strconv.Atoi(takeStr)
+		if err != nil {
+			panic(err)
+		}
+
+		take = min(take, MAX)
+	} else {
+		take = MAX
+	}
+
+	return
 }

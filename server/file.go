@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 	"userless/server/prisma/db"
 
@@ -47,27 +46,8 @@ func discoverFiles(uc *UserlessCtx) func(ctx *gin.Context) {
 			)
 		}
 
-		skipStr, hasSkip := ctx.GetQuery("skip")
-		if hasSkip {
-			skip, err := strconv.Atoi(skipStr)
-			if err != nil {
-				panic(err)
-			}
-
-			query = query.Skip(skip)
-		}
-
-		takeStr, hasTake := ctx.GetQuery("take")
-		if hasTake {
-			take, err := strconv.Atoi(takeStr)
-			if err != nil {
-				panic(err)
-			}
-
-			query = query.Take(min(take, MAX))
-		} else {
-			query = query.Take(MAX)
-		}
+		skip, take := getLimits(ctx)
+		query = query.Skip(skip).Take(take)
 
 		files, err := query.Exec(context.Background())
 		if err != nil {
@@ -91,6 +71,5 @@ func discoverFiles(uc *UserlessCtx) func(ctx *gin.Context) {
 				panic(err)
 			}
 		}
-
 	}
 }

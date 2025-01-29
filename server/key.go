@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"userless/server/prisma/db"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
@@ -42,25 +41,8 @@ func getKeyThreads(uc *UserlessCtx) func(ctx *gin.Context) {
 			db.Thread.Hash.Field(),
 		)
 
-		skipStr, ok := ctx.GetQuery("skip")
-		if ok {
-			s, err := strconv.Atoi(skipStr)
-			if err != nil {
-				panic(err)
-			}
-			query = query.Skip(s)
-		}
-
-		takeStr, ok := ctx.GetQuery("take")
-		if ok {
-			s, err := strconv.Atoi(takeStr)
-			if err != nil {
-				panic(err)
-			}
-			query = query.Take(min(100, s))
-		} else {
-			query = query.Take(100)
-		}
+		skip, take := getLimits(ctx)
+		query = query.Skip(skip).Take(take)
 
 		threads, err := query.Exec(context.Background())
 		if err != nil {
@@ -198,27 +180,8 @@ func discoverKeys(uc *UserlessCtx) func(ctx *gin.Context) {
 			)
 		}
 
-		skipStr, hasSkip := ctx.GetQuery("skip")
-		if hasSkip {
-			skip, err := strconv.Atoi(skipStr)
-			if err != nil {
-				panic(err)
-			}
-
-			query = query.Skip(skip)
-		}
-
-		takeStr, hasTake := ctx.GetQuery("take")
-		if hasTake {
-			take, err := strconv.Atoi(takeStr)
-			if err != nil {
-				panic(err)
-			}
-
-			query = query.Take(min(take, MAX))
-		} else {
-			query = query.Take(MAX)
-		}
+		skip, limit := getLimits(ctx)
+		query = query.Skip(skip).Take(limit)
 
 		keys, err := query.Exec(context.Background())
 		if err != nil {
