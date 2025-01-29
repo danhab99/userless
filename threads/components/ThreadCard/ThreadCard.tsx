@@ -77,8 +77,8 @@ export const ThreadCard = ({
   const [FullTB, showFull] = useToggleButton(false);
   const master = useMasterKey();
 
-  const { value: policy } = useAsyncRetry(async () => {
-    if (master && hash) {
+  const { value: policy, retry } = useAsyncRetry(async () => {
+    if (hash) {
       return server.getThread(hash).getPolicy();
     }
   }, [master, hash]);
@@ -113,7 +113,7 @@ export const ThreadCard = ({
                 : "Enable replies"
             }
             loadingLabel="Changing..."
-            onClick={policy?.retry}
+            onClick={retry}
             color="red"
           />
           <AdminAction
@@ -123,7 +123,7 @@ export const ThreadCard = ({
             }}
             label={policy?.value?.advertise ? "Unpublish" : "Publish"}
             loadingLabel="Changing..."
-            onClick={policy?.retry}
+            onClick={retry}
             color="blue"
           />
         </>

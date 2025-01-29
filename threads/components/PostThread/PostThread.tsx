@@ -88,7 +88,7 @@ export const PostThread = (props: PostThreadProps) => {
           x.toString(),
         );
 
-        setSteps(3 * allowHashs.length + 3);
+        setSteps(3 * allowHashs.length + 4);
 
         const uploadPromises = Object.entries(files).map(
           async ([hash, data]) => {
@@ -136,7 +136,7 @@ export const PostThread = (props: PostThreadProps) => {
           const info = toml.stringify({
             replyTo: props.replyTo,
           });
-          content += info.trim() + DELIMITER;
+          content += info.trim() + "\n\n==========\n\n";
         }
 
         content += body.trim();
@@ -161,11 +161,13 @@ export const PostThread = (props: PostThreadProps) => {
           return;
         }
 
-        const resp = await fetch(`${process.env["NEXT_PUBLIC_USERLESS_URL"]}/post`, {
-          method: "POST",
-          body: signedMsg,
-          redirect: "manual",
-        });
+        const resp = await fetch(
+          `${process.env["NEXT_PUBLIC_USERLESS_URL"]}/post`,
+          {
+            method: "POST",
+            body: signedMsg,
+          },
+        );
 
         increment();
 

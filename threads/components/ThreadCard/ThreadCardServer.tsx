@@ -25,14 +25,6 @@ export async function ThreadCardFromHash(props: ThreadCardFromHashProps) {
     cleartextMessage: threadText.original,
   });
 
-  const hash = Array.from(
-    new Uint8Array(
-      await crypto.subtle.digest("sha-256", Buffer.from(threadText.original)),
-    ),
-  )
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-
   const keyResp = await server
     .getKey(msg.getSigningKeyIDs()[0].toHex())
     .getArmored();
@@ -62,7 +54,7 @@ export async function ThreadCardFromHash(props: ThreadCardFromHashProps) {
         {...props}
         threadText={threadText.original}
         body={body}
-        hash={hash}
+        hash={props.hash}
         signedBy={signedBy}
         timestamp={timestamp}
       />

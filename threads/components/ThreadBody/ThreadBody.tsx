@@ -1,6 +1,7 @@
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { SignedImage } from "../SignedImage/SignedImage";
+import { DELIMITER } from "api-wrapper";
 
 type ThreadBodyProps = {
   body: string;
