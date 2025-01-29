@@ -9,3 +9,6 @@ db: generate
 
 run:
 	go run . -config-path ./example_configs/basic.toml
+
+debug:
+	dlv debug . -- -config-path ./example_configs/basic.toml

@@ -44,7 +44,7 @@ func main() {
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PATCH"},
 		AllowHeaders:     []string{"Origin"},
-		ExposeHeaders:    []string{"Content-Length"},
+		ExposeHeaders:    []string{"Content-Length", "Location"},
 		AllowCredentials: true,
 		AllowOriginFunc: func(origin string) bool {
 			return true

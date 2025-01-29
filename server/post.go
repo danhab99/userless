@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"strings"
@@ -17,7 +16,6 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp/clearsign"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/steebchen/prisma-client-go/runtime/types"
 )
 
@@ -115,14 +113,12 @@ func postHandler(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 
 		log.Println("Saving thread", hashStr)
 
-		id := uuid.New()
-
-		params := []db.ThreadSetParam{
-			db.Thread.ID.Set(id.String()),
-		}
+		params := []db.ThreadSetParam{}
 		replyTo, hasReplyTo := info["replyTo"].(string)
 		if hasReplyTo {
-			params = append(params, db.Thread.ReplyTo.Set(replyTo))
+			params = append(params, db.Thread.Parent.Link(
+				db.Thread.Hash.Equals(replyTo),
+			))
 		} else if !policy.CanStartThreads {
 			ctx.String(401, "not allowed to start threads")
 			return
@@ -161,6 +157,8 @@ func postHandler(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 			panic(err)
 		}
 
-		ctx.Redirect(307, fmt.Sprintf("/thread/%s", hashStr))
+		// ctx.Redirect(307, fmt.Sprintf("/thread/%s", hashStr))
+		ctx.Status(201)
+		ctx.Writer.Write([]byte(thread.Hash))
 	}
 }
