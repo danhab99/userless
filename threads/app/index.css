@@ -180,3 +180,8 @@ tr:nth-child(odd) {
 .markdown th {
   @apply border border-solid border-stone-400;
 }
+
+header.markdown * {
+  text-align: center;
+}
+

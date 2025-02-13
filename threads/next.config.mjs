@@ -1,13 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['api-wrapper'],
-  webpack: (config, { isServer }) => {
+  transpilePackages: ["api-wrapper"],
+  webpack: (config, { isServer, dev }) => {
     config.resolve.extensionAlias = {
-      '.js': ['.js', '.ts'],
-      '.jsx': ['.jsx', '.tsx'],
+      ".js": [".js", ".ts"],
+      ".jsx": [".jsx", ".tsx"],
+    };
+    if (dev) {
+      config.devtool = "eval-source-map";
     }
-    return config
+    return config;
   },
-}
+};
 
-export default nextConfig
+export default nextConfig;

@@ -19,9 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <KeyContextProvider>
-          <Header>{children}</Header>
-        </KeyContextProvider>
+        <KeyContextProvider>{children}</KeyContextProvider>
       </body>
     </html>
   );
