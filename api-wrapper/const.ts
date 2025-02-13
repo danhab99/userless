@@ -1,1 +1,1 @@
-export const DELIMITER = "\n\n==========\n\n";
+export const DELIMITER = "==========";
