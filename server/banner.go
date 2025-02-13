@@ -67,17 +67,17 @@ func banner(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 			}
 
 			info := map[string]any{
-				"threads": pubThreadHashes,
 				// "bucket":  fmt.Sprintf("s3+https://%s/%s", os.Getenv("S3_ENDPOINT"), os.Getenv("S3_BUCKET")),
-				"feature.keys": map[string]any{
+				"keys": map[string]any{
 					"enabled":   config.KeyConfig.Enable,
 					"discovery": config.KeyConfig.EnableDiscovery,
 				},
-				"feature.threads": map[string]any{
+				"threads": map[string]any{
 					"enabled":   config.ThreadsConfig.Enable,
 					"discovery": config.ThreadsConfig.EnableDiscovery,
+					"frontpage": pubThreadHashes,
 				},
-				"feature.files": map[string]any{
+				"files": map[string]any{
 					"enabled":   config.ThreadsConfig.Enable,
 					"discovery": config.ThreadsConfig.EnableDiscovery,
 					"bucket":    u.String(),

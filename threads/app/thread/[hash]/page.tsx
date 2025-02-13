@@ -22,7 +22,7 @@ const ThreadPage = async (props: ThreadPageProps) => {
 
   return (
     <>
-      <div className="flex flex-col-reverse">
+      <div className="flex flex-col">
         {parents.map((hash, i) => (
           <ThreadCardFromHash key={i} hash={hash} />
         ))}
@@ -32,7 +32,7 @@ const ThreadPage = async (props: ThreadPageProps) => {
 
       <ThreadCardFromHash hash={params.hash} />
 
-      <div className="pr-6">
+      <div className="md:pl-6 md:border-0 border-t border-gray-100">
         {replies.map((hash, i) => (
           <ThreadCardFromHash key={i} hash={hash} />
         ))}

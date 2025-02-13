@@ -33,6 +33,11 @@ ms@^2.1.3:
   resolved "https://registry.yarnpkg.com/ms/-/ms-2.1.3.tgz#574c8138ce1d2b5861f0b44579dbadd60c6615b2"
   integrity sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==
 
+openpgp@^6.1.0:
+  version "6.1.0"
+  resolved "https://registry.yarnpkg.com/openpgp/-/openpgp-6.1.0.tgz#69210cf80f845eb52cde76ecdd82769d2632880c"
+  integrity sha512-fRTeitP+hoGJD3kbdUlAI++wE6MvfvXw1rBqHwmBMxIpLjowatJ2zb5ThkORpIkSz5F12wO+xCYRSTbT7M4qKA==
+
 smol-toml@^1.3.1:
   version "1.3.1"
   resolved "https://registry.yarnpkg.com/smol-toml/-/smol-toml-1.3.1.tgz#d9084a9e212142e3cab27ef4e2b8e8ba620bfe15"
