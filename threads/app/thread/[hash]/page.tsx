@@ -1,6 +1,7 @@
 import { ThreadCardFromHash } from "@/components/ThreadCard/ThreadCardServer";
-import { server } from "@/lib/userless";
-import { Thread } from "api-wrapper";
+import { server, Thread } from "@/lib/userless";
+import { Metadata } from "next";
+// import { Thread, getThread } from "api-wrapper";
 
 type ThreadPageProps = {
   params: Promise<{
@@ -10,20 +11,18 @@ type ThreadPageProps = {
 
 const ThreadPage = async (props: ThreadPageProps) => {
   const params = await props.params;
-  const thread = await getThread(params.hash.toLowerCase());
-  if (!thread) {
-    notFound();
-  }
+
+  const thread = await Thread.fetch(params.hash.toLowerCase())
 
   const [replies, parents] = await Promise.all([
-    getReplies(params.hash.toLowerCase()),
-    getParents(params.hash.toLowerCase()),
+    thread.getReplies(),
+    thread.getParents(),
   ]);
 
   return (
     <>
       <div className="flex flex-col">
-        {parents.map((hash, i) => (
+        {parents.map(({ hash }, i) => (
           <ThreadCardFromHash key={i} hash={hash} />
         ))}
       </div>
@@ -33,7 +32,7 @@ const ThreadPage = async (props: ThreadPageProps) => {
       <ThreadCardFromHash hash={params.hash} />
 
       <div className="md:pl-6 md:border-0 border-t border-gray-100">
-        {replies.map((hash, i) => (
+        {replies.map(({ hash }, i) => (
           <ThreadCardFromHash key={i} hash={hash} />
         ))}
       </div>
@@ -45,10 +44,7 @@ export default ThreadPage;
 
 export async function generateMetadata(props: ThreadPageProps): Promise<Metadata> {
   const params = await props.params;
-  const thread: ThreadForThreadCard | null = await getThread(params.hash);
-  if (!thread) {
-    notFound();
-  }
+  const thread = server.getThread(params.hash);
 
   return {
     title: `${thread.hash.slice(0, 8)} by ${thread.signedBy.name}`,
