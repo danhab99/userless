@@ -20,9 +20,17 @@ model Thread {
   timestamp    DateTime
   info         Json?
   threadPolicy ThreadPolicy?
+  ThreadRef    ThreadRef[]
 
   @@index([replyTo])
   @@index([signedById])
+}
+
+model ThreadRef {
+  id         String @id @default(uuid())
+  name       String @unique
+  thread     Thread @relation(fields: [threadHash], references: [hash])
+  threadHash String
 }
 
 model ThreadPolicy {

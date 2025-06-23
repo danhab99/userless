@@ -4,32 +4,61 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"userless/server/prisma/db"
 
 	"github.com/gin-gonic/gin"
 )
 
+func isHash(t string) bool {
+	m, err := regexp.Match("\b[a-fA-F0-9]{64}\b", []byte(t))
+	if err != nil {
+		panic(err)
+	}
+
+	return m
+}
+
 func threadMiddleware(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		hash := ctx.Params.ByName("hash")
 
-		thread, err := uc.client.Thread.FindFirst(
-			db.Thread.Hash.Equals(strings.ToLower(hash)),
-		).With(
-			db.Thread.ThreadPolicy.Fetch(),
-		).Exec(context.Background())
+		if isHash(hash) {
+			thread, err := uc.client.Thread.FindFirst(
+				db.Thread.Hash.Equals(strings.ToLower(hash)),
+			).With(
+				db.Thread.ThreadPolicy.Fetch(),
+			).Exec(context.Background())
 
-		if err != nil {
-			if errors.Is(err, db.ErrNotFound) {
-				ctx.String(404, "thread not found")
-				ctx.Abort()
-				return
+			if err != nil {
+				if errors.Is(err, db.ErrNotFound) {
+					ctx.String(404, "thread not found")
+					ctx.Abort()
+					return
+				}
+				panic(err)
 			}
-			panic(err)
+
+			ctx.Set("thread", thread)
+		} else {
+			ref, err := uc.client.ThreadRef.FindFirst(
+				db.ThreadRef.Name.Equals(hash),
+			).With(
+				db.ThreadRef.Thread.Fetch(),
+			).Exec(context.Background())
+			if err != nil {
+				if errors.Is(err, db.ErrNotFound) {
+					ctx.String(404, "thread not found")
+					ctx.Abort()
+					return
+				}
+				panic(err)
+			}
+
+			ctx.Set("thread", ref.Thread)
 		}
 
-		ctx.Set("thread", thread)
 		ctx.Next()
 	}
 }
