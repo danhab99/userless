@@ -8,6 +8,7 @@ export interface Thread {
   getPolicy: () => Promise<Info>;
   getContent: () => Promise<Content>;
   getReplies: (skip?: number, take?: number) => Promise<Thread[]>;
+  getParents: (count?: number) => Promise<Thread[]>;
 }
 
 export function createThread(url: string, hash: string): Thread {
@@ -25,7 +26,12 @@ export function createThread(url: string, hash: string): Thread {
 
     async getReplies(skip = 0, take?: number): Promise<Thread[]> {
       const replies = await baseFetcher.fetchFrom("replies", { skip, take });
+      const hashs = replies.split("\n").filter((x) => x);
+      return hashs.map((hash) => createThread(url, hash));
+    },
 
+    async getParents(count?: number): Promise<Thread[]> {
+      const replies = await baseFetcher.fetchFrom("parents", { count });
       const hashs = replies.split("\n").filter((x) => x);
       return hashs.map((hash) => createThread(url, hash));
     },

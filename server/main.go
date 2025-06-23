@@ -74,6 +74,7 @@ func main() {
 		threadGroup := route.Group("/thread/:hash", threadMiddleware(ctx))
 		threadGroup.GET("", getThead(ctx))
 		threadGroup.GET("/replies", getThreadReplies(ctx))
+		threadGroup.GET("/parents", getThreadParents(ctx))
 		threadGroup.GET("/policy", getThreadPolicy(ctx))
 		threadGroup.PATCH("/policy", patchThreadPolicy(ctx))
 	}

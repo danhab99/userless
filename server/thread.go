@@ -10,7 +10,7 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-func getThead(uc *UserlessCtx) func(ctx *gin.Context) {
+func getThead(_ *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		threadRaw, ok := ctx.Get("thread")
 		if !ok {
@@ -20,6 +20,25 @@ func getThead(uc *UserlessCtx) func(ctx *gin.Context) {
 		thread := threadRaw.(*db.ThreadModel)
 		ctx.Writer.WriteString(thread.Body)
 		ctx.Status(200)
+	}
+}
+
+func getThreadParents(_ *UserlessCtx) func(ctx *gin.Context) {
+	return func(ctx *gin.Context) {
+		defer ctx.Done()
+
+		threadRaw, ok := ctx.Get("thread")
+		if !ok {
+			panic("thread not set")
+		}
+		thread := threadRaw.(*db.ThreadModel)
+		parentCount := ctx.GetInt("count")
+
+		for i := 1; i < parentCount && ok; i++ {
+			s := fmt.Sprintf("%s\n", thread.Hash)
+			ctx.Writer.WriteString(s)
+			thread, ok = thread.Parent()
+		}
 	}
 }
 
@@ -58,7 +77,7 @@ func getThreadReplies(uc *UserlessCtx) func(ctx *gin.Context) {
 	}
 }
 
-func getThreadPolicy(uc *UserlessCtx) func(ctx *gin.Context) {
+func getThreadPolicy(_ *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		defer ctx.Done()
 		threadRaw, ok := ctx.Get("thread")
@@ -91,7 +110,7 @@ func patchThreadPolicy(uc *UserlessCtx) func(ctx *gin.Context) {
 
 		body, _, _ := uc.VerifyCleartext(msg)
 
-		var info map[string]interface{}
+		var info map[string]any
 		err = toml.Unmarshal([]byte(body), &info)
 		if err != nil {
 			panic(err)
