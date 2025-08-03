@@ -1,3 +1,8 @@
+ifneq ("$(wildcard .env)","")
+  include .env
+  export
+endif
+
 format:
 	go run github.com/steebchen/prisma-client-go format
 
