@@ -1,9 +1,10 @@
+"use server";
 import { Metadata } from "next";
 import Markdown from "react-markdown";
 import Centered from "@/components/Centered/Centered";
 import * as openpgp from "openpgp";
 import { ThreadCardFromHash } from "@/components/ThreadCard/ThreadCardServer";
-import { server } from "@/lib/userless";
+import { getServer } from "@/lib/userless";
 import { Thread } from "api-wrapper";
 
 type KeyPageParams = {
@@ -19,6 +20,8 @@ const collectInfo = async (params: Awaited<KeyPageParams["params"]>): Promise<{
   armored: string,
   threads: Thread[],
 }> => {
+  const server = await getServer();
+
   const publickey = server.getKey(params.keyId.toLowerCase());
 
   const armored = await publickey.getArmored()

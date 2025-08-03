@@ -1,5 +1,5 @@
 import { ThreadCardFromHash } from "@/components/ThreadCard/ThreadCardServer";
-import { server } from "@/lib/userless";
+import { getServer } from "@/lib/userless";
 import { Metadata } from "next";
 import * as openpgp from "openpgp";
 
@@ -11,7 +11,7 @@ type ThreadPageProps = {
 
 const ThreadPage = async (props: ThreadPageProps) => {
   const params = await props.params;
-
+  const server = await getServer();
   const thread = server.getThread(params.hash.toLowerCase())
 
   const [replies, parents] = await Promise.all([
@@ -44,6 +44,7 @@ export default ThreadPage;
 
 export async function generateMetadata(props: ThreadPageProps): Promise<Metadata> {
   const params = await props.params;
+  const server = await getServer();
   const thread = server.getThread(params.hash);
   const owner = await thread.getOwner()
   const armored = await owner.getArmored()
