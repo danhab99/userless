@@ -28,7 +28,7 @@ input:not([type='checkbox']):not([type='submit']), textarea {
 
 body {
   /* @apply bg-gradient-to-br from-sky-100 to-sky-200; */
-  @apply background px-3 bg-cover min-h-screen;
+  @apply background px-3 bg-cover min-h-screen pb-10;
 }
 
 /* Customize scrollbar for WebKit browsers (Chrome, Safari) */
