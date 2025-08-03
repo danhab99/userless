@@ -12,11 +12,10 @@ import (
 )
 
 func isHash(t string) bool {
-	m, err := regexp.Match("\b[a-fA-F0-9]{64}\b", []byte(t))
+	m, err := regexp.Match("\\b[a-fA-F0-9]{64}\\b", []byte(t))
 	if err != nil {
 		panic(err)
 	}
-
 	return m
 }
 
