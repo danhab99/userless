@@ -38,9 +38,18 @@ func banner(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 				panic(err)
 			}
 
-			pubThreadHashes := make([]string, len(publicThreads))
+			publicThreadRefs, err := uc.client.ThreadRef.FindMany(
+				db.ThreadRef.Advertise.Equals(true),
+			).With(
+				db.ThreadRef.Thread.Fetch(),
+			).Exec(context.Background())
+
+			pubThreadHashes := make([]string, len(publicThreads) + len(publicThreadRefs))
 			for i, tm := range publicThreads {
 				pubThreadHashes[i] = tm.Hash
+			}
+			for i, tm := range publicThreadRefs {
+				pubThreadHashes[i+len(publicThreads)] = tm.Name
 			}
 
 			var u url.URL
