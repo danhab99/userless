@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback } from "react";
 import * as openpgp from "openpgp";
 import { ActionButton } from "../ActionButton/ActionButton";
 import Link from "next/link";
@@ -13,7 +13,7 @@ import {
   useShallowCompareEffect,
 } from "react-use";
 import { Hash } from "../Hash/Hash";
-import { server } from "@/lib/userless";
+import { getServer } from "@/lib/userless";
 
 const [usePrivateKeysState, PrivateKeysStateProvider] = createStateContext<
   openpgp.PrivateKey[]
@@ -61,6 +61,7 @@ function MasterLoader() {
   const setMasters = useMasterKeysState()[1];
 
   const { value: testMessage } = useAsync(async () => {
+    const server = await getServer();
     const banner = await server.getBanner();
 
     const test = banner.info.challenge;
@@ -283,6 +284,7 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
 
   const registered = useAsyncRetry(async () => {
     try {
+      const server = await getServer();
       await server.getKey(keyId).getArmored()
       return true;
     } catch(e) {

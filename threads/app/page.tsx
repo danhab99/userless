@@ -1,11 +1,12 @@
 import { PostThread } from "@/components/PostThread/PostThread";
-import { server } from "@/lib/userless";
+import { getServer } from "@/lib/userless";
 import ThreadBody from "@/components/ThreadBody/ThreadBody";
 import { ThreadCardFromHash } from "@/components/ThreadCard/ThreadCardServer";
 
 import { CenteredLayout } from "@/layouts/centered";
 
 const WelcomePage = async () => {
+  const server = await getServer();
   const banner = await server.getBanner();
 
   return (
@@ -17,7 +18,7 @@ const WelcomePage = async () => {
         <PostThread />
       </CenteredLayout>
 
-      {banner.info["threads"].map((hash: string, i: number) => (
+      {(banner.info["threads"].frontpage ?? []).map((hash: string, i: number) => (
         <ThreadCardFromHash key={i} hash={hash} replies={3} />
       ))}
     </>

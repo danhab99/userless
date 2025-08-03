@@ -1,31 +1,27 @@
-import { PrismaClient } from "@prisma/client";
 import { Metadata } from "next";
-import { notFound } from "next/navigation";
 import Markdown from "react-markdown";
 import Centered from "@/components/Centered/Centered";
 import * as openpgp from "openpgp";
 import { ThreadCardFromHash } from "@/components/ThreadCard/ThreadCardServer";
 import { server } from "@/lib/userless";
+import { Thread } from "api-wrapper";
 
 type KeyPageParams = {
   params: Promise<{
     keyId: string;
+    page: number
   }>;
 };
 
-const KeyPage = async (props: KeyPageParams) => {
-  const params = await props.params;
-  const publicKey = await db.publicKey.findUnique({
-    where: {
-      finger: params.keyId.toLowerCase(),
-    },
-  });
+const collectInfo = async (params: Awaited<KeyPageParams["params"]>): Promise<{
+  user: openpgp.UserIDPacket,
+  timestamp: Date,
+  armored: string,
+  threads: Thread[],
+}> => {
+  const publickey = server.getKey(params.keyId.toLowerCase());
 
-  if (!publicKey) {
-    notFound();
-  }
-
-  const threadsPromise = getThreadsForThreadGroup(params.keyId);
+  const armored = await publickey.getArmored()
 
   const pk = await openpgp.readKey({
     armoredKey: armored,
@@ -33,12 +29,14 @@ const KeyPage = async (props: KeyPageParams) => {
 
   const timestamp = pk.getCreationTime();
 
-  const user = (await pk.getPrimaryUser()).user.userID;
-  return { user, timestamp, pk, armored, threads };
+  const threads = await publickey.getThreads();
+
+  const user = (await pk.getPrimaryUser()).user.userID!;
+  return { user, timestamp, armored, threads };
 }
 
 const KeyPage = async ({ params }: KeyPageParams) => {
-  const { user, timestamp, armored, threads } = await collectInfo(params);
+  const { user, timestamp, armored, threads } = await collectInfo(await params);
   return (
     <>
       <Centered>
@@ -76,17 +74,7 @@ const KeyPage = async ({ params }: KeyPageParams) => {
 export default KeyPage;
 
 export async function generateMetadata(props: KeyPageParams): Promise<Metadata> {
-  const params = await props.params;
-  const publicKey = await db.publicKey.findUnique({
-    where: {
-      finger: params.keyId,
-    },
-  });
-
-  if (!publicKey) {
-    notFound();
-  }
-
+  const { user } = await collectInfo(await props.params);
   return {
     title: `${user?.name}<${user?.email}>`,
     robots: "index, follow",

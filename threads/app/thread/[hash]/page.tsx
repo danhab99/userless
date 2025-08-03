@@ -1,7 +1,7 @@
 import { ThreadCardFromHash } from "@/components/ThreadCard/ThreadCardServer";
-import { server, Thread } from "@/lib/userless";
+import { server } from "@/lib/userless";
 import { Metadata } from "next";
-// import { Thread, getThread } from "api-wrapper";
+import * as openpgp from "openpgp";
 
 type ThreadPageProps = {
   params: Promise<{
@@ -12,7 +12,7 @@ type ThreadPageProps = {
 const ThreadPage = async (props: ThreadPageProps) => {
   const params = await props.params;
 
-  const thread = await Thread.fetch(params.hash.toLowerCase())
+  const thread = server.getThread(params.hash.toLowerCase())
 
   const [replies, parents] = await Promise.all([
     thread.getReplies(),
@@ -45,13 +45,21 @@ export default ThreadPage;
 export async function generateMetadata(props: ThreadPageProps): Promise<Metadata> {
   const params = await props.params;
   const thread = server.getThread(params.hash);
+  const owner = await thread.getOwner()
+  const armored = await owner.getArmored()
+
+  const pk = await openpgp.readKey({
+    armoredKey: armored,
+  })
+
+  const { user } = await pk.getPrimaryUser()
 
   return {
-    title: `${thread.hash.slice(0, 8)} by ${thread.signedBy.name}`,
+    title: `${thread.hash.slice(0, 8)} by ${user.userID?.name}`,
     authors: [
       {
-        name: thread.signedBy.name,
-        url: `/k/${thread.signedBy.finger}`,
+        name: user.userID?.name,
+        url: `/k/${pk.getFingerprint()}`,
       },
     ],
     robots: "index, follow",

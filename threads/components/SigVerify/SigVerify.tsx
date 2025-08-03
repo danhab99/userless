@@ -4,7 +4,7 @@ import * as openpgp from "openpgp";
 import { useState } from "react";
 import { useShallowCompareEffect } from "react-use";
 import dynamic from "next/dynamic";
-import { server } from "@/lib/userless";
+import { getServer } from "@/lib/userless";
 
 type SigVerifyProps = {
   content: string | ArrayBuffer;
@@ -29,6 +29,7 @@ const SigVerify = (props: SigVerifyProps) => {
   useShallowCompareEffect(() => {
     setStatus(VerifiedStatus.Working);
     (async () => {
+      const server = await getServer();
       const getKey = async (keyId: string) => {
         try {
           const armored = await server.getKey(keyId).getArmored()

@@ -11,7 +11,7 @@ import { ActionButton } from "../ActionButton/ActionButton";
 import { useAsyncFn, useAsyncRetry } from "react-use";
 import * as openpgp from "openpgp";
 import toml from "smol-toml";
-import { server } from "@/lib/userless";
+import { getServer } from "@/lib/userless";
 
 export type ThreadCardProps = {
   threadText: string;
@@ -77,8 +77,10 @@ export const ThreadCard = ({
   const [FullTB, showFull] = useToggleButton(false);
   const master = useMasterKey();
 
+
   const { value: policy, retry } = useAsyncRetry(async () => {
     if (hash) {
+      const server = await getServer()
       return server.getThread(hash).getPolicy();
     }
   }, [master, hash]);

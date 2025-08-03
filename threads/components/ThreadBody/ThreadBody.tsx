@@ -4,7 +4,6 @@ import { SignedImage } from "../SignedImage/SignedImage";
 import { Thread } from "api-wrapper";
 
 type ThreadBodyProps = {
-  thread: Thread,
   body: string;
 };
 

@@ -1,5 +1,5 @@
 "use server";
-import { server } from "@/lib/userless";
+import { getServer } from "@/lib/userless";
 import { ThreadCard } from "./ThreadCard";
 import * as openpgp from "openpgp";
 import { spoofArmoredSignature } from "@/lib/utils";
@@ -13,6 +13,8 @@ export async function ThreadCardFromHash(props: ThreadCardFromHashProps) {
   if (!props.hash) {
     return <h1>Missing hash</h1>;
   }
+
+  const server = await getServer();
 
   const thread = server.getThread(props.hash);
   const replies = props.replies

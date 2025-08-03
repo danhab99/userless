@@ -1,5 +1,6 @@
-"use server";
 import { createUserlessServer } from "api-wrapper";
 
-export const server = createUserlessServer(process.env["NEXT_PUBLIC_USERLESS_URL"] as string)
+export async function getServer() {
+  return createUserlessServer(process.env["NEXT_PUBLIC_USERLESS_URL"] as string)
+}
 
