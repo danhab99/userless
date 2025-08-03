@@ -1,8 +1,7 @@
 "use client";
 import { useAsync } from "react-use";
-import SigVerify from "./SigVerify";
+import SigVerify from "../SigVerify/SigVerify";
 import { useInView } from "react-intersection-observer";
-import { useState } from "react";
 import dynamic from "next/dynamic";
 // import * as syntax_highlight from 'highlight.js/lib/languages/*';
 
