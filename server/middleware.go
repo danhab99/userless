@@ -22,9 +22,11 @@ func isHash(t string) bool {
 func threadMiddleware(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		hash := ctx.Params.ByName("hash")
+		var thread *db.ThreadModel
+		var err error
 
 		if isHash(hash) {
-			thread, err := uc.client.Thread.FindFirst(
+			thread, err = uc.client.Thread.FindFirst(
 				db.Thread.Hash.Equals(strings.ToLower(hash)),
 			).With(
 				db.Thread.ThreadPolicy.Fetch(),
@@ -55,9 +57,10 @@ func threadMiddleware(uc *UserlessCtx) func(ctx *gin.Context) {
 				panic(err)
 			}
 
-			ctx.Set("thread", ref.Thread)
+			thread = ref.Thread()
 		}
 
+		ctx.Set("thread", thread)
 		ctx.Next()
 	}
 }
