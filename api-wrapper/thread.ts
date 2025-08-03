@@ -2,6 +2,8 @@ import { createBaseFetcher } from "./fetch";
 import { parse } from "smol-toml";
 import { Info } from "./types";
 import { createContent, Content } from "./content"
+import { createPublicKey, PublicKey } from "./key";
+import * as openpgp from "openpgp";
 
 export interface Thread {
   hash: string;
@@ -9,6 +11,7 @@ export interface Thread {
   getContent: () => Promise<Content>;
   getReplies: (skip?: number, take?: number) => Promise<Thread[]>;
   getParents: (count?: number) => Promise<Thread[]>;
+  getOwner: () => Promise<PublicKey>
 }
 
 export function createThread(url: string, hash: string): Thread {
@@ -35,5 +38,15 @@ export function createThread(url: string, hash: string): Thread {
       const hashs = replies.split("\n").filter((x) => x);
       return hashs.map((hash) => createThread(url, hash));
     },
+
+    async getOwner(): Promise<PublicKey> {
+      const content = await this.getContent()
+      const msg = await openpgp.readMessage({
+        armoredMessage: content.original,
+      })
+
+      const owner = msg.getSigningKeyIDs()[0].toHex()
+      return createPublicKey(url, owner)
+    }
   };
 }
