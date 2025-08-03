@@ -1,12 +1,12 @@
 import { createBaseFetcher } from "./fetch";
-import { createThread } from "./thread";
+import { createThread, Thread } from "./thread";
 import { parse } from "smol-toml";
 
 export interface PublicKey {
   keyId: string;
   url: string;
   getArmored: () => Promise<string>;
-  getThreads: (skip?: number, take?: number) => Promise<any[]>;
+  getThreads: (skip?: number, take?: number) => Promise<Thread[]>;
   getFiles: () => Promise<string[]>;
   getPolicy: () => Promise<any>;
 }
