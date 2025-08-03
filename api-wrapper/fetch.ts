@@ -30,14 +30,19 @@ export function createFetcher(url: string): Fetcher {
         });
       }
 
-      debug("fetching", u.toString());
-      const resp = await fetch(u.toString());
-      debug("fetched", u.toString(), resp.status);
+      try {
+        debug("fetching", u.toString());
+        const resp = await fetch(u.toString());
+        debug("fetched", u.toString(), resp.status);
 
-      if (resp.ok) {
-        return resp.text();
-      } else {
-        throw await resp.text();
+        if (resp.ok) {
+          return resp.text();
+        } else {
+          throw await resp.text();
+        }
+      } catch(e) {
+        console.error(`!!! Userless API wrapper: unable to fetch url: ${u.toString()}`)
+        throw e
       }
     },
 
@@ -57,8 +62,8 @@ export function createBaseFetcher(url: string, base: string): BaseFetcher {
   return {
     ...fetcher,
     base,
-    async fetchFrom(path: string, args?: Record<string, any>) {
-      return fetcher.fetch(`/${this.base}/${path}`, args);
+    async fetchFrom(path?: string, args?: Record<string, any>) {
+      return fetcher.fetch(`/${this.base}${path ? `/${path}` : ""}`, args);
     },
   };
 }

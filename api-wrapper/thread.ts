@@ -41,8 +41,8 @@ export function createThread(url: string, hash: string): Thread {
 
     async getOwner(): Promise<PublicKey> {
       const content = await this.getContent()
-      const msg = await openpgp.readMessage({
-        armoredMessage: content.original,
+      const msg = await openpgp.readCleartextMessage({
+        cleartextMessage: content.original,
       })
 
       const owner = msg.getSigningKeyIDs()[0].toHex()
