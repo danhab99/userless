@@ -27,10 +27,11 @@ model Thread {
 }
 
 model ThreadRef {
-  id         String @id @default(uuid())
-  name       String @unique
-  thread     Thread @relation(fields: [threadHash], references: [hash])
+  id         String  @id @default(uuid())
+  name       String  @unique
+  thread     Thread  @relation(fields: [threadHash], references: [hash])
   threadHash String
+  advertise  Boolean @default(true)
 }
 
 model ThreadPolicy {
