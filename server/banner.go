@@ -179,7 +179,11 @@ func setupDatabaseTriggers(databaseURL string) error {
 		RETURNS TRIGGER AS $$
 		BEGIN
 			PERFORM pg_notify('banner_update', 'change');
-			RETURN NEW;
+			IF TG_OP = 'DELETE' THEN
+				RETURN OLD;
+			ELSE
+				RETURN NEW;
+			END IF;
 		END;
 		$$ LANGUAGE plpgsql;
 	`)
