@@ -15,15 +15,19 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
+	_ "github.com/lib/pq"
 	"github.com/pelletier/go-toml/v2"
 )
 
 type BannerCache struct {
-	body   string
-	mu     sync.RWMutex
-	config Config
-	banner []byte
-	uc     *UserlessCtx
+	body     string
+	mu       sync.RWMutex
+	config   Config
+	banner   []byte
+	uc       *UserlessCtx
+	ctx      context.Context
+	cancel   context.CancelFunc
+	listener *pq.Listener
 }
 
 func (bc *BannerCache) updateBanner() {
@@ -123,6 +127,12 @@ func (bc *BannerCache) getBanner() string {
 	return bc.body
 }
 
+func (bc *BannerCache) Stop() {
+	if bc.cancel != nil {
+		bc.cancel()
+	}
+}
+
 func (bc *BannerCache) listenForChanges() {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
@@ -136,8 +146,8 @@ func (bc *BannerCache) listenForChanges() {
 		}
 	}
 
-	listener := pq.NewListener(databaseURL, 10*time.Second, time.Minute, reportProblem)
-	err := listener.Listen("banner_update")
+	bc.listener = pq.NewListener(databaseURL, 10*time.Second, time.Minute, reportProblem)
+	err := bc.listener.Listen("banner_update")
 	if err != nil {
 		log.Printf("Error setting up listener: %v", err)
 		return
@@ -146,21 +156,28 @@ func (bc *BannerCache) listenForChanges() {
 	log.Println("Listening for banner update notifications...")
 
 	go func() {
+		defer bc.listener.Close()
 		for {
 			select {
-			case notification := <-listener.Notify:
+			case <-bc.ctx.Done():
+				log.Println("Stopping banner listener...")
+				return
+			case notification := <-bc.listener.Notify:
 				if notification != nil {
 					log.Printf("Received notification: %s", notification.Extra)
 					bc.updateBanner()
 				}
 			case <-time.After(90 * time.Second):
 				// Ping connection to keep it alive
-				go func() {
-					err := listener.Ping()
+				select {
+				case <-bc.ctx.Done():
+					return
+				default:
+					err := bc.listener.Ping()
 					if err != nil {
 						log.Printf("Listener ping failed: %v", err)
 					}
-				}()
+				}
 			}
 		}
 	}()
@@ -230,10 +247,13 @@ func banner(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 		panic(err)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
 	bc := &BannerCache{
 		config: config,
 		banner: bannerContent,
 		uc:     uc,
+		ctx:    ctx,
+		cancel: cancel,
 	}
 
 	// Initialize banner content
