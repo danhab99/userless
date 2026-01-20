@@ -58,7 +58,7 @@ func getKeyFiles(uc *UserlessCtx) func(ctx *gin.Context) {
 		key := keyRaw.(*PublicKey)
 
 		skip, take := getLimits(ctx)
-		files, err := uc.db.FindPublicKeyFiles(key.ID, skip, take)
+		files, err := uc.db.FindPublicKeyFiles(key.Finger, skip, take)
 		if err != nil {
 			panic(err)
 		}
@@ -140,8 +140,8 @@ func discoverKeys(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		_, quiet := ctx.GetQuery("quiet")
 
-		skip, limit := getLimits(ctx)
-		keys, err := uc.db.FindPublicKeys(skip, limit, quiet)
+		skip, take := getLimits(ctx)
+		keys, err := uc.db.FindPublicKeys(skip, take, quiet)
 		if err != nil {
 			panic(err)
 		}

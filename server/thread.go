@@ -75,7 +75,7 @@ func getThreadPolicy(_ *UserlessCtx) func(ctx *gin.Context) {
 
 		thread := threadRaw.(*Thread)
 		policy := thread.ThreadPolicy
-		fmt.Println("Thread policy", policy, ok)
+		fmt.Println("Thread policy", policy)
 		if policy == nil {
 			ctx.Status(404)
 			return

@@ -127,7 +127,7 @@ func uploadHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 
 		err = uc.db.UpsertFile(&File{
 			ID:         generateUUID(),
-			SignedByID: strings.ToLower(keyID),
+			SignedByID: publicKey.Finger,
 			Hash:       hashStr,
 			Timestamp:  sigPacket.CreationTime,
 			Size:       int64(len(docBuff)),
