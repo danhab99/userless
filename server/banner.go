@@ -131,15 +131,12 @@ func (bc *BannerCache) Stop() {
 	if bc.cancel != nil {
 		bc.cancel()
 	}
+	if bc.listener != nil {
+		bc.listener.Close()
+	}
 }
 
-func (bc *BannerCache) listenForChanges() {
-	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL == "" {
-		log.Println("DATABASE_URL not set, cannot listen for changes")
-		return
-	}
-
+func (bc *BannerCache) listenForChanges(databaseURL string) {
 	reportProblem := func(ev pq.ListenerEventType, err error) {
 		if err != nil {
 			log.Printf("Listener error: %v", err)
@@ -268,7 +265,7 @@ func banner(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 			log.Println("Banner will not auto-update on database changes")
 		} else {
 			// Start listening for changes
-			bc.listenForChanges()
+			bc.listenForChanges(databaseURL)
 		}
 	} else {
 		log.Println("Warning: DATABASE_URL not set, banner will not auto-update")
