@@ -2,14 +2,13 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"io"
 	"strconv"
 	"strings"
 	"sync"
-	"userless/server/prisma/db"
 
 	openpgp "github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/armor"
@@ -59,18 +58,14 @@ func uploadHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 		}
 
 		keyID := strings.ToUpper(strconv.FormatUint(*sigPacket.IssuerKeyId, 16))
-		publicKey, err := uc.client.PublicKey.FindUnique(
-			db.PublicKey.KeyID.Equals(strings.ToLower(keyID)),
-		).With(
-			db.PublicKey.Policy.Fetch(),
-		).Exec(context.Background())
+		publicKey, err := uc.db.FindPublicKeyByKeyID(strings.ToLower(keyID))
 		if err != nil {
 			ctx.String(404, "public key not found")
 			return
 		}
 
-		policy, ok := publicKey.Policy()
-		if !ok {
+		policy := publicKey.Policy
+		if policy == nil {
 			panic("this key needs a policy")
 		}
 
@@ -84,7 +79,7 @@ func uploadHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 			return
 		}
 
-		if policy.MaxFileSize < db.BigInt(len(docBuff)) {
+		if policy.MaxFileSize < int64(len(docBuff)) {
 			ctx.String(403, "file too big")
 			return
 		}
@@ -125,17 +120,19 @@ func uploadHandler(uc *UserlessCtx) func(ctx *gin.Context) {
 
 		wg.Wait()
 
-		_, err = uc.client.File.UpsertOne(
-			db.File.Hash.Equals(string(hash[:])),
-		).Create(
-			db.File.SignedBy.Link(
-				db.PublicKey.KeyID.Equals(strings.ToLower(keyID)),
-			),
-			db.File.Hash.Set(hashStr),
-			db.File.Timestamp.Set(sigPacket.CreationTime),
-			db.File.Size.Set(db.BigInt(len(docBuff))),
-			db.File.MimeType.Set(header.Header.Get("Content-Type")),
-		).Update().Exec(context.Background())
+		mimeType := sql.NullString{}
+		if header.Header.Get("Content-Type") != "" {
+			mimeType = sql.NullString{String: header.Header.Get("Content-Type"), Valid: true}
+		}
+
+		err = uc.db.UpsertFile(&File{
+			ID:         generateUUID(),
+			SignedByID: publicKey.Finger,
+			Hash:       hashStr,
+			Timestamp:  sigPacket.CreationTime,
+			Size:       int64(len(docBuff)),
+			MimeType:   mimeType,
+		})
 
 		if err != nil {
 			ctx.String(500, "error creating database record")

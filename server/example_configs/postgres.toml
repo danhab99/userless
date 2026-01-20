@@ -3,8 +3,13 @@ port = 4444
 host = "0.0.0.0"
 
 [database]
-driver = "sqlite3"
-dsn = "./userless.db"
+# For PostgreSQL, use:
+driver = "postgres"
+dsn = "host=localhost port=5432 user=userless password=userless dbname=userless sslmode=disable"
+
+# For SQLite, use:
+# driver = "sqlite3"
+# dsn = "./userless.db"
 
 [public_keys]
 enable = true

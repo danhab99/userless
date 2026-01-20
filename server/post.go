@@ -2,26 +2,22 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"io"
 	"log"
 	"strings"
-	"userless/server/prisma/db"
 
 	"github.com/BurntSushi/toml"
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/clearsign"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/gin-gonic/gin"
-	"github.com/steebchen/prisma-client-go/runtime/types"
 )
 
 func postHandler(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
-	client := uc.client
-
 	return func(ctx *gin.Context) {
 		defer ctx.Done()
 
@@ -41,11 +37,7 @@ func postHandler(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 		timestamp := sig.CreationTime
 		finger := hex.EncodeToString(sig.IssuerFingerprint)
 
-		ownerKeyDb, err := client.PublicKey.FindUnique(
-			db.PublicKey.Finger.Equals(strings.ToLower(finger)),
-		).With(
-			db.PublicKey.Policy.Fetch(),
-		).Exec(context.Background())
+		ownerKeyDb, err := uc.db.FindPublicKeyByFinger(strings.ToLower(finger))
 		if err != nil {
 			panic(err)
 		}
@@ -64,13 +56,13 @@ func postHandler(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 			panic(err)
 		}
 
-		policy, ok := ownerKeyDb.Policy()
-		if !ok {
+		policy := ownerKeyDb.Policy
+		if policy == nil {
 			ctx.String(404, "signer policy not found")
 			return
 		}
 
-		var threadPolicy db.RawThreadPolicyModel
+		var threadPolicy ThreadPolicy
 
 		err = InspectPolicy(
 			text,
@@ -113,52 +105,55 @@ func postHandler(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 
 		log.Println("Saving thread", hashStr)
 
-		params := []db.ThreadSetParam{}
-		replyTo, hasReplyTo := info["replyTo"].(string)
+		replyTo := sql.NullString{}
+		replyToStr, hasReplyTo := info["replyTo"].(string)
 		if hasReplyTo {
-			params = append(params, db.Thread.Parent.Link(
-				db.Thread.Hash.Equals(replyTo),
-			))
+			replyTo = sql.NullString{String: replyToStr, Valid: true}
 		} else if !policy.CanStartThreads {
 			ctx.String(401, "not allowed to start threads")
 			return
 		}
 
-		infoBytes := bytes.NewBuffer([]byte{})
-		err = json.NewEncoder(infoBytes).Encode(info)
+		infoJSON := sql.NullString{}
+		if info != nil {
+			infoBytes, err := json.Marshal(info)
+			if err != nil {
+				panic(err)
+			}
+			infoJSON = sql.NullString{String: string(infoBytes), Valid: true}
+		}
+
+		thread := &Thread{
+			ID:         generateUUID(),
+			Body:       string(text),
+			Hash:       hashStr,
+			ReplyTo:    replyTo,
+			SignedByID: ownerKeyDb.ID,
+			Timestamp:  timestamp,
+			Info:       infoJSON,
+		}
+
+		err = uc.db.CreateThread(thread)
 		if err != nil {
 			panic(err)
 		}
 
-		x := json.RawMessage(infoBytes.Bytes())
-		xx := types.JSON(x)
+		threadPolicyToCreate := &ThreadPolicy{
+			ID:             generateUUID(),
+			Visible:        true,
+			AcceptsReplies: true,
+			EncryptFor:     []string{},
+			PolicyEditors:  []string{},
+			Advertise:      false,
+			ThreadHash:     sql.NullString{String: hashStr, Valid: true},
+		}
 
-		params = append(params, db.Thread.Info.Set(xx))
-
-		thread, err := uc.client.Thread.CreateOne(
-			db.Thread.Body.Set(string(text)),
-			db.Thread.Hash.Set(hashStr),
-			db.Thread.SignedBy.Link(
-				db.PublicKey.KeyID.Equals(strings.ToLower(ownerKeyDb.KeyID)),
-			),
-			db.Thread.Timestamp.Set(timestamp),
-			params...,
-		).Exec(context.Background())
+		err = uc.db.CreateThreadPolicy(threadPolicyToCreate)
 		if err != nil {
 			panic(err)
 		}
 
-		_, err = uc.client.ThreadPolicy.CreateOne(
-			db.ThreadPolicy.Thread.Link(
-				db.Thread.ID.Equals(thread.ID),
-			),
-		).Exec(context.Background())
-		if err != nil {
-			panic(err)
-		}
-
-		// ctx.Redirect(307, fmt.Sprintf("/thread/%s", hashStr))
 		ctx.Status(201)
-		ctx.Writer.Write([]byte(thread.Hash))
+		ctx.Writer.Write([]byte(hashStr))
 	}
 }

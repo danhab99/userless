@@ -5,10 +5,11 @@ type Config struct {
 	Port       int    `toml:"port"`
 	Host       string `toml:"host"`
 
-	KeyConfig     KeyConfig    `toml:"public_keys"`
-	ThreadsConfig ThreadConfig `toml:"threads"`
-	FileConfig    FileConfig   `toml:"files"`
-	SearchConfig  SearchConfig `toml:"search"`
+	Database      DatabaseConfig `toml:"database"`
+	KeyConfig     KeyConfig      `toml:"public_keys"`
+	ThreadsConfig ThreadConfig   `toml:"threads"`
+	FileConfig    FileConfig     `toml:"files"`
+	SearchConfig  SearchConfig   `toml:"search"`
 }
 
 type SecurityConfigMode string
@@ -75,4 +76,9 @@ type SearchConfig struct {
 	SearchThreads  bool `toml:"search_threads"`
 	SearchKeys     bool `toml:"search_keys"`
 	RegexSearch    bool `toml:"regex"`
+}
+
+type DatabaseConfig struct {
+	Driver string `toml:"driver"` // "sqlite3" or "postgres"
+	DSN    string `toml:"dsn"`    // Data source name/connection string
 }
