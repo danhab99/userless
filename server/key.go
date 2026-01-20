@@ -1,9 +1,7 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"userless/server/prisma/db"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/gin-gonic/gin"
@@ -18,7 +16,7 @@ func getKey(uc *UserlessCtx) func(ctx *gin.Context) {
 			panic("key not set")
 		}
 
-		key := keyRaw.(*db.PublicKeyModel)
+		key := keyRaw.(*PublicKey)
 		ctx.Writer.WriteString(key.ArmoredKey)
 		ctx.Status(200)
 	}
@@ -31,20 +29,10 @@ func getKeyThreads(uc *UserlessCtx) func(ctx *gin.Context) {
 		if !ok {
 			panic("key not set")
 		}
-		key := keyRaw.(*db.PublicKeyModel)
-
-		query := uc.client.Thread.FindMany(
-			db.Thread.SignedBy.Where(
-				db.PublicKey.ID.Equals(key.ID),
-			),
-		).Select(
-			db.Thread.Hash.Field(),
-		)
+		key := keyRaw.(*PublicKey)
 
 		skip, take := getLimits(ctx)
-		query = query.Skip(skip).Take(take)
-
-		threads, err := query.Exec(context.Background())
+		threads, err := uc.db.FindPublicKeyThreads(key.ID, skip, take)
 		if err != nil {
 			panic(err)
 		}
@@ -67,23 +55,18 @@ func getKeyFiles(uc *UserlessCtx) func(ctx *gin.Context) {
 		if !ok {
 			panic("key not set")
 		}
-		key := keyRaw.(*db.PublicKeyModel)
+		key := keyRaw.(*PublicKey)
 
-		files, err := uc.client.File.FindMany(
-			db.File.SignedBy.Where(
-				db.PublicKey.ID.Equals(key.ID),
-			),
-		).Select(
-			db.File.Hash.Field(),
-		).Exec(context.Background())
+		skip, take := getLimits(ctx)
+		files, err := uc.db.FindPublicKeyFiles(key.ID, skip, take)
 		if err != nil {
 			panic(err)
 		}
 
 		ctx.Status(200)
 
-		for _, thread := range files {
-			_, err := ctx.Writer.WriteString(thread.Hash + "\n")
+		for _, file := range files {
+			_, err := ctx.Writer.WriteString(file.Hash + "\n")
 			if err != nil {
 				panic(err)
 			}
@@ -98,9 +81,9 @@ func getKeyPolicy(uc *UserlessCtx) func(ctx *gin.Context) {
 			panic("no key")
 		}
 
-		pk := p.(*db.PublicKeyModel)
-		policy, ok := pk.Policy()
-		if !ok {
+		pk := p.(*PublicKey)
+		policy := pk.Policy
+		if policy == nil {
 			ctx.Status(404)
 			return
 		}
@@ -124,36 +107,27 @@ func patchKeyPolicy(uc *UserlessCtx) func(ctx *gin.Context) {
 			panic(err)
 		}
 
-		var changes []db.PublicKeyPolicySetParam
+		changes := make(map[string]interface{})
 
-		revoked, ok := info["revoked"].(bool)
-		if ok {
-			changes = append(changes, db.PublicKeyPolicy.Revoked.Set(revoked))
+		if revoked, ok := info["revoked"].(bool); ok {
+			changes["revoked"] = revoked
 		}
-		allowedToPost, ok := info["allowedToPost"].(bool)
-		if ok {
-			changes = append(changes, db.PublicKeyPolicy.AllowedToPost.Set(allowedToPost))
+		if allowedToPost, ok := info["allowedToPost"].(bool); ok {
+			changes["allowed_to_post"] = allowedToPost
 		}
-		canStartThreads, ok := info["canStartThreads"].(bool)
-		if ok {
-			changes = append(changes, db.PublicKeyPolicy.CanStartThreads.Set(canStartThreads))
+		if canStartThreads, ok := info["canStartThreads"].(bool); ok {
+			changes["can_start_threads"] = canStartThreads
 		}
-		isMaster, ok := info["isMaster"].(bool)
-		if ok {
-			changes = append(changes, db.PublicKeyPolicy.IsMaster.Set(isMaster))
+		if isMaster, ok := info["isMaster"].(bool); ok {
+			changes["is_master"] = isMaster
 		}
-		allowedToUploadFiles, ok := info["allowedToUploadFiles"].(bool)
-		if ok {
-			changes = append(changes, db.PublicKeyPolicy.AllowedToUploadFiles.Set(allowedToUploadFiles))
+		if allowedToUploadFiles, ok := info["allowedToUploadFiles"].(bool); ok {
+			changes["allowed_to_upload_files"] = allowedToUploadFiles
 		}
 
 		id := ctx.Param("id")
 
-		client := uc.client
-
-		_, err = client.PublicKeyPolicy.FindUnique(
-			db.PublicKeyPolicy.ID.Equals(id),
-		).Update(changes...).Exec(context.Background())
+		err = uc.db.UpdatePublicKeyPolicy(id, changes)
 		if err != nil {
 			panic(err)
 		}
@@ -164,26 +138,10 @@ func patchKeyPolicy(uc *UserlessCtx) func(ctx *gin.Context) {
 
 func discoverKeys(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
-		query := uc.client.PublicKey.FindMany()
 		_, quiet := ctx.GetQuery("quiet")
 
-		if quiet {
-			query = query.Select(
-				db.PublicKey.KeyID.Field(),
-			)
-		} else {
-			query = query.Select(
-				db.PublicKey.KeyID.Field(),
-				db.PublicKey.Name.Field(),
-				db.PublicKey.Email.Field(),
-				db.PublicKey.Comment.Field(),
-			)
-		}
-
 		skip, limit := getLimits(ctx)
-		query = query.Skip(skip).Take(limit)
-
-		keys, err := query.Exec(context.Background())
+		keys, err := uc.db.FindPublicKeys(skip, limit, quiet)
 		if err != nil {
 			panic(err)
 		}

@@ -36,7 +36,7 @@ func main() {
 	log.Printf("Starting...\n%s\n\n", string(configContent))
 	log.Printf("%#v\n", config)
 
-	ctx := NewUserlessCtx()
+	ctx := NewUserlessCtx(config)
 
 	route := gin.Default()
 

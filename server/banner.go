@@ -2,13 +2,11 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"net/url"
 	"os"
 	"time"
-	"userless/server/prisma/db"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pelletier/go-toml/v2"
@@ -29,28 +27,9 @@ func banner(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 
 	go func() {
 		for {
-			publicThreads, err := uc.client.Thread.FindMany(
-				db.Thread.ThreadPolicy.Where(
-					db.ThreadPolicy.Advertise.Equals(true),
-				),
-			).Exec(context.Background())
-			if err != nil {
-				panic(err)
-			}
-
-			publicThreadRefs, err := uc.client.ThreadRef.FindMany(
-				db.ThreadRef.Advertise.Equals(true),
-			).With(
-				db.ThreadRef.Thread.Fetch(),
-			).Exec(context.Background())
-
-			pubThreadHashes := make([]string, len(publicThreads) + len(publicThreadRefs))
-			for i, tm := range publicThreads {
-				pubThreadHashes[i] = tm.Hash
-			}
-			for i, tm := range publicThreadRefs {
-				pubThreadHashes[i+len(publicThreads)] = tm.Name
-			}
+			// TODO: Implement fetching public threads and thread refs
+			// For now, just return empty list
+			pubThreadHashes := []string{}
 
 			var u url.URL
 			if config.FileConfig.S3Config.SSL {

@@ -1,12 +1,10 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"regexp"
 	"strings"
-	"userless/server/prisma/db"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,18 +20,14 @@ func isHash(t string) bool {
 func threadMiddleware(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		hash := ctx.Params.ByName("hash")
-		var thread *db.ThreadModel
+		var thread *Thread
 		var err error
 
 		if isHash(hash) {
-			thread, err = uc.client.Thread.FindFirst(
-				db.Thread.Hash.Equals(strings.ToLower(hash)),
-			).With(
-				db.Thread.ThreadPolicy.Fetch(),
-			).Exec(context.Background())
+			thread, err = uc.db.FindThreadByHash(strings.ToLower(hash))
 
 			if err != nil {
-				if errors.Is(err, db.ErrNotFound) {
+				if errors.Is(err, ErrNotFound) {
 					ctx.String(404, "thread not found")
 					ctx.Abort()
 					return
@@ -43,13 +37,9 @@ func threadMiddleware(uc *UserlessCtx) func(ctx *gin.Context) {
 
 			ctx.Set("thread", thread)
 		} else {
-			ref, err := uc.client.ThreadRef.FindFirst(
-				db.ThreadRef.Name.Equals(hash),
-			).With(
-				db.ThreadRef.Thread.Fetch(),
-			).Exec(context.Background())
+			ref, err := uc.db.FindThreadRefByName(hash)
 			if err != nil {
-				if errors.Is(err, db.ErrNotFound) {
+				if errors.Is(err, ErrNotFound) {
 					ctx.String(404, "thread not found")
 					ctx.Abort()
 					return
@@ -57,7 +47,10 @@ func threadMiddleware(uc *UserlessCtx) func(ctx *gin.Context) {
 				panic(err)
 			}
 
-			thread = ref.Thread()
+			thread, err = uc.db.FindThreadByHash(ref.ThreadHash)
+			if err != nil {
+				panic(err)
+			}
 		}
 
 		ctx.Set("thread", thread)
@@ -69,17 +62,10 @@ func keyMiddleware(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		id := ctx.Params.ByName("id")
 
-		key, err := uc.client.PublicKey.FindFirst(
-			db.PublicKey.Or(
-				db.PublicKey.KeyID.Equals(strings.ToLower(id)),
-				db.PublicKey.Finger.Equals(strings.ToLower(id)),
-			),
-		).With(
-			db.PublicKey.Policy.Fetch(),
-		).Exec(context.Background())
+		key, err := uc.db.FindPublicKeyByKeyIDOrFinger(strings.ToLower(id))
 
 		if err != nil {
-			if errors.Is(err, db.ErrNotFound) {
+			if errors.Is(err, ErrNotFound) {
 				ctx.String(404, "public key not found")
 				ctx.Abort()
 				fmt.Println("RETURN 404")
@@ -97,12 +83,10 @@ func fileMiddleware(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		hash := ctx.Params.ByName("hash")
 
-		file, err := uc.client.File.FindFirst(
-			db.File.Hash.Equals(hash),
-		).Exec(context.Background())
+		file, err := uc.db.FindFileByHash(hash)
 
 		if err != nil {
-			if errors.Is(err, db.ErrNotFound) {
+			if errors.Is(err, ErrNotFound) {
 				ctx.String(404, "file not found")
 				ctx.Abort()
 				return
