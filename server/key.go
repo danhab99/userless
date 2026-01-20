@@ -141,7 +141,7 @@ func discoverKeys(uc *UserlessCtx) func(ctx *gin.Context) {
 		_, quiet := ctx.GetQuery("quiet")
 
 		skip, take := getLimits(ctx)
-		keys, err := uc.db.FindPublicKeys(skip, take, quiet)
+		keys, err := uc.db.FindPublicKeys(skip, take)
 		if err != nil {
 			panic(err)
 		}

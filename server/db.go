@@ -340,7 +340,7 @@ func (d *Database) FindPublicKeyByKeyIDOrFinger(id string) (*PublicKey, error) {
 	return key, nil
 }
 
-func (d *Database) FindPublicKeys(skip, take int, quiet bool) ([]*PublicKey, error) {
+func (d *Database) FindPublicKeys(skip, take int) ([]*PublicKey, error) {
 	query := `SELECT id, armored_key, comment, email, finger, key_id, name, policy_id FROM public_keys`
 	if take > 0 {
 		query += fmt.Sprintf(" LIMIT %d OFFSET %d", take, skip)
@@ -654,10 +654,16 @@ func (d *Database) FindThreadRefByName(name string) (*ThreadRef, error) {
 
 // ThreadPolicy operations
 func (d *Database) CreateThreadPolicy(policy *ThreadPolicy) error {
-	encryptForJSON, _ := json.Marshal(policy.EncryptFor)
-	policyEditorsJSON, _ := json.Marshal(policy.PolicyEditors)
+	encryptForJSON, err := json.Marshal(policy.EncryptFor)
+	if err != nil {
+		return err
+	}
+	policyEditorsJSON, err := json.Marshal(policy.PolicyEditors)
+	if err != nil {
+		return err
+	}
 
-	_, err := d.db.Exec(`
+	_, err = d.db.Exec(`
 		INSERT INTO thread_policies (id, visible, accepts_replies, encrypt_for, policy_editors, advertise, thread_hash)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`, policy.ID, policy.Visible, policy.AcceptsReplies, string(encryptForJSON), string(policyEditorsJSON), policy.Advertise, policy.ThreadHash)
@@ -679,8 +685,12 @@ func (d *Database) FindThreadPolicyByHash(hash string) (*ThreadPolicy, error) {
 		return nil, err
 	}
 
-	json.Unmarshal([]byte(encryptForJSON), &policy.EncryptFor)
-	json.Unmarshal([]byte(policyEditorsJSON), &policy.PolicyEditors)
+	if err := json.Unmarshal([]byte(encryptForJSON), &policy.EncryptFor); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal([]byte(policyEditorsJSON), &policy.PolicyEditors); err != nil {
+		return nil, err
+	}
 
 	return policy, nil
 }
@@ -702,7 +712,10 @@ func (d *Database) UpdateThreadPolicy(hash string, updates map[string]interface{
 
 		// Handle array fields
 		if key == "encrypt_for" || key == "policy_editors" {
-			jsonVal, _ := json.Marshal(val)
+			jsonVal, err := json.Marshal(val)
+			if err != nil {
+				return err
+			}
 			val = string(jsonVal)
 		}
 

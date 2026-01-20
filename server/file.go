@@ -45,7 +45,7 @@ func discoverFiles(uc *UserlessCtx) func(ctx *gin.Context) {
 				if file.MimeType.Valid {
 					mime = file.MimeType.String
 				}
-				_, err := ctx.Writer.WriteString(fmt.Sprintf("%s %s %d", file.Hash, mime, file.Size))
+				_, err := ctx.Writer.WriteString(fmt.Sprintf("%s %s %d\n", file.Hash, mime, file.Size))
 				if err != nil {
 					panic(err)
 				}

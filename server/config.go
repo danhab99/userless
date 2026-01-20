@@ -79,6 +79,6 @@ type SearchConfig struct {
 }
 
 type DatabaseConfig struct {
-	Driver string `toml:"driver"` // "sqlite" or "postgres"
+	Driver string `toml:"driver"` // "sqlite3" or "postgres"
 	DSN    string `toml:"dsn"`    // Data source name/connection string
 }
