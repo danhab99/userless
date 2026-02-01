@@ -24,6 +24,15 @@ func NewUserlessCtx() *UserlessCtx {
 		log.Fatal("DATABASE_URL environment variable not set")
 	}
 
+	// Add sslmode=disable if not already present in the connection string
+	if !strings.Contains(dbURL, "sslmode=") {
+		if strings.Contains(dbURL, "?") {
+			dbURL += "&sslmode=disable"
+		} else {
+			dbURL += "?sslmode=disable"
+		}
+	}
+
 	db, err := NewDatabase(dbURL)
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
