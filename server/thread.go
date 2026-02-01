@@ -95,11 +95,21 @@ func getThreadPolicy(_ *UserlessCtx) func(ctx *gin.Context) {
 			return
 		}
 
-		m := StructToMap(policy)["innerThreadPolicy"].(map[string]any)
-		delete(m, "threadHash")
-		delete(m, "iD")
+		m := StructToMap(policy)
+		innerPolicy, ok := m["innerThreadPolicy"]
+		if !ok || innerPolicy == nil {
+			// No inner policy, use the top-level policy fields directly
+			delete(m, "threadHash")
+			delete(m, "iD")
+			ctx.TOML(200, m)
+			return
+		}
 
-		ctx.TOML(200, m)
+		policyMap := innerPolicy.(map[string]any)
+		delete(policyMap, "threadHash")
+		delete(policyMap, "iD")
+
+		ctx.TOML(200, policyMap)
 	}
 }
 

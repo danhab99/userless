@@ -329,14 +329,19 @@ RETURNING
 	// Always set the thread hash
 	policy.ThreadHash = &threadHash
 
+	// Initialize empty slices
+	policy.EncryptFor = []string{}
+	policy.PolicyEditors = []string{}
+
 	// Unmarshal JSON/array into Go slices
-	if len(encryptForBytes) > 0 {
+	// Handle Postgres empty array notation "{}" vs JSON "[]"
+	if len(encryptForBytes) > 0 && string(encryptForBytes) != "{}" {
 		if err := json.Unmarshal(encryptForBytes, &policy.EncryptFor); err != nil {
 			return nil, fmt.Errorf("unmarshal encryptFor: %w", err)
 		}
 	}
 
-	if len(policyEditorsBytes) > 0 {
+	if len(policyEditorsBytes) > 0 && string(policyEditorsBytes) != "{}" {
 		if err := json.Unmarshal(policyEditorsBytes, &policy.PolicyEditors); err != nil {
 			return nil, fmt.Errorf("unmarshal policyEditors: %w", err)
 		}
