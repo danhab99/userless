@@ -1,17 +1,20 @@
 import Link from "next/link";
+import { getServer } from "@/lib/userless";
 
-export function Header(props: React.PropsWithChildren) {
+export async function Header(props: React.PropsWithChildren) {
+  const server = await getServer();
+  const banner = await server.getBanner();
+
+
   return (
     <>
-      <header className="p-8 text-center">
+      <nav>
         <Link href="/">
-          <h1>PGChan.gpg</h1>
+          <span>Userless.xyz</span>
         </Link>
-        <p>
-          PGChan is an activity-pub compliant file board that uses GPG for role
-          based access control.
-        </p>
-      </header>
+
+        {(banner.info["threads"]["frontpage"] ?? []).map((x: string) => <Link href={`/thread/${x}`}>{x}</Link>)}
+      </nav>
       {props.children}
     </>
   );
