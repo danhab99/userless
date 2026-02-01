@@ -91,7 +91,7 @@ func postHandler(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 		content := string(msg.Plaintext)
 
 		delimiter := strings.Index(content, DELIMITER)
-		var info map[string]interface{}
+		info := make(map[string]interface{})
 		if delimiter > 0 {
 			infoToml := content[:delimiter]
 			_, err = toml.NewDecoder(bytes.NewBufferString(infoToml)).Decode(&info)

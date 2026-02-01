@@ -134,8 +134,20 @@ func (d *Database) FindThreadByHash(ctx context.Context, hash string) (*Thread, 
 	var encryptFor, policyEditors []byte
 
 	err := d.db.QueryRowContext(ctx, query, hash).Scan(
-		&thread.ID, &thread.Body, &thread.Hash, &thread.ReplyTo, &thread.SignedByID, &thread.Timestamp, &thread.Info,
-		&policyID, &visible, &acceptsReplies, &encryptFor, &policyEditors, &advertise, &policyThreadHash,
+		&thread.ID,
+		&thread.Body,
+		&thread.Hash,
+		&thread.ReplyTo,
+		&thread.SignedByID,
+		&thread.Timestamp,
+		&thread.Info,
+		&policyID,
+		&visible,
+		&acceptsReplies,
+		&encryptFor,
+		&policyEditors,
+		&advertise,
+		&policyThreadHash,
 	)
 
 	if err == sql.ErrNoRows {
@@ -266,32 +278,71 @@ func (d *Database) FindAdvertisedThreadRefs(ctx context.Context) ([]*ThreadRef, 
 
 func (d *Database) CreateThreadPolicy(ctx context.Context, threadID string) (*ThreadPolicy, error) {
 	query := `
-		INSERT INTO "ThreadPolicy" (id, "threadHash", visible, "acceptsReplies", "encryptFor", "policyEditors", advertise)
-		SELECT gen_random_uuid(), t.hash, true, true, '[]'::text[], '[]'::text[], false
-		FROM "Thread" t
-		WHERE t.id = $1
-		RETURNING id, visible, "acceptsReplies", "encryptFor", "policyEditors", advertise, "threadHash"
+INSERT INTO "ThreadPolicy" (
+	id,
+	"threadHash",
+	visible,
+	"acceptsReplies",
+	"encryptFor",
+	"policyEditors",
+	advertise
+)
+SELECT
+	gen_random_uuid(),
+	t.hash,
+	true,
+	true,
+	'{}'::text[],
+	'{}'::text[],
+	false
+FROM "Thread" t
+WHERE t.id = $1
+RETURNING
+	id,
+	visible,
+	"acceptsReplies",
+	"encryptFor",
+	"policyEditors",
+	advertise,
+	"threadHash";
 	`
 
 	policy := &ThreadPolicy{}
-	var encryptFor, policyEditors []byte
+
+	// Scan raw JSON/array bytes from Postgres into []byte
+	var encryptForBytes, policyEditorsBytes []byte
 	var threadHash string
 
 	err := d.db.QueryRowContext(ctx, query, threadID).Scan(
-		&policy.ID, &policy.Visible, &policy.AcceptsReplies, &encryptFor, &policyEditors, &policy.Advertise, &threadHash,
+		&policy.ID,
+		&policy.Visible,
+		&policy.AcceptsReplies,
+		&encryptForBytes,
+		&policyEditorsBytes,
+		&policy.Advertise,
+		&threadHash,
 	)
-
 	if err != nil {
+		panic(err)
 		return nil, err
 	}
 
+	// Always set the thread hash
 	policy.ThreadHash = &threadHash
 
-	if len(encryptFor) > 0 {
-		json.Unmarshal(encryptFor, &policy.EncryptFor)
+	// Unmarshal JSON/array into Go slices
+	if len(encryptForBytes) > 0 {
+		if err := json.Unmarshal(encryptForBytes, &policy.EncryptFor); err != nil {
+			panic(err)
+			return nil, fmt.Errorf("unmarshal encryptFor: %w", err)
+		}
 	}
-	if len(policyEditors) > 0 {
-		json.Unmarshal(policyEditors, &policy.PolicyEditors)
+
+	if len(policyEditorsBytes) > 0 {
+		if err := json.Unmarshal(policyEditorsBytes, &policy.PolicyEditors); err != nil {
+			panic(err)
+			return nil, fmt.Errorf("unmarshal policyEditors: %w", err)
+		}
 	}
 
 	return policy, nil

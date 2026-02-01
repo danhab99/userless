@@ -157,7 +157,7 @@ func discoverKeys(uc *UserlessCtx) func(ctx *gin.Context) {
 					panic(err)
 				}
 			} else {
-				_, err := ctx.Writer.WriteString(fmt.Sprintf("%s | %s <%s> (%s)", key.KeyID, key.Name, key.Email, key.Comment))
+				_, err := ctx.Writer.WriteString(fmt.Sprintf("%s | %s <%s> (%s)\n", key.KeyID, key.Name, key.Email, key.Comment))
 				if err != nil {
 					panic(err)
 				}
