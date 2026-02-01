@@ -323,7 +323,6 @@ RETURNING
 		&threadHash,
 	)
 	if err != nil {
-		panic(err)
 		return nil, err
 	}
 
@@ -333,14 +332,12 @@ RETURNING
 	// Unmarshal JSON/array into Go slices
 	if len(encryptForBytes) > 0 {
 		if err := json.Unmarshal(encryptForBytes, &policy.EncryptFor); err != nil {
-			panic(err)
 			return nil, fmt.Errorf("unmarshal encryptFor: %w", err)
 		}
 	}
 
 	if len(policyEditorsBytes) > 0 {
 		if err := json.Unmarshal(policyEditorsBytes, &policy.PolicyEditors); err != nil {
-			panic(err)
 			return nil, fmt.Errorf("unmarshal policyEditors: %w", err)
 		}
 	}
