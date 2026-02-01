@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"userless/server/prisma/db"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/gin-gonic/gin"
@@ -17,13 +16,13 @@ func getThead(_ *UserlessCtx) func(ctx *gin.Context) {
 			panic("thread not set")
 		}
 
-		thread := threadRaw.(*db.ThreadModel)
+		thread := threadRaw.(*Thread)
 		ctx.Writer.WriteString(thread.Body)
 		ctx.Status(200)
 	}
 }
 
-func getThreadParents(_ *UserlessCtx) func(ctx *gin.Context) {
+func getThreadParents(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		defer ctx.Done()
 
@@ -31,13 +30,13 @@ func getThreadParents(_ *UserlessCtx) func(ctx *gin.Context) {
 		if !ok {
 			panic("thread not set")
 		}
-		thread := threadRaw.(*db.ThreadModel)
+		thread := threadRaw.(*Thread)
 		parentCount := ctx.GetInt("count")
 
-		for i := 1; i < parentCount && ok; i++ {
+		for i := 1; i < parentCount && thread.ReplyTo != nil; i++ {
 			s := fmt.Sprintf("%s\n", thread.Hash)
 			ctx.Writer.WriteString(s)
-			thread, ok = thread.Parent()
+			thread, _ = uc.db.FindThreadByHash(context.Background(), *thread.ReplyTo)
 		}
 	}
 }
@@ -48,20 +47,11 @@ func getThreadReplies(uc *UserlessCtx) func(ctx *gin.Context) {
 		if !ok {
 			panic("thread not set")
 		}
-		thread := threadRaw.(*db.ThreadModel)
-
-		query := uc.client.Thread.FindMany(
-			db.Thread.ReplyTo.Equals(thread.Hash),
-		).Select(
-			db.Thread.Hash.Field(),
-		).OrderBy(
-			db.Thread.Timestamp.Order(db.DESC),
-		)
+		thread := threadRaw.(*Thread)
 
 		skip, take := getLimits(ctx)
-		query = query.Skip(skip).Take(take)
 
-		threads, err := query.Exec(context.Background())
+		threads, err := uc.db.FindThreadsByReplyTo(context.Background(), thread.Hash, skip, take)
 		if err != nil {
 			panic(err)
 		}
@@ -85,10 +75,10 @@ func getThreadPolicy(_ *UserlessCtx) func(ctx *gin.Context) {
 			panic("thread not set")
 		}
 
-		thread := threadRaw.(*db.ThreadModel)
-		policy, ok := thread.ThreadPolicy()
+		thread := threadRaw.(*Thread)
+		policy := thread.ThreadPolicy
 		fmt.Println("Thread policy", policy, ok)
-		if !ok {
+		if policy == nil {
 			ctx.Status(404)
 			return
 		}
@@ -116,40 +106,32 @@ func patchThreadPolicy(uc *UserlessCtx) func(ctx *gin.Context) {
 			panic(err)
 		}
 
-		var changes []db.ThreadPolicySetParam
+		var visible, acceptsReplies, advertise *bool
+		var encryptFor, policyEditors []string
 
-		visible, ok := info["visible"].(bool)
-		if ok {
-			changes = append(changes, db.ThreadPolicy.Visible.Set(visible))
+		if v, ok := info["visible"].(bool); ok {
+			visible = &v
 		}
 
-		acceptsReplies, ok := info["acceptsReplies"].(bool)
-		if ok {
-			changes = append(changes, db.ThreadPolicy.AcceptsReplies.Set(acceptsReplies))
+		if v, ok := info["acceptsReplies"].(bool); ok {
+			acceptsReplies = &v
 		}
 
-		encryptFor, ok := info["encryptFor"].([]string)
-		if ok {
-			changes = append(changes, db.ThreadPolicy.EncryptFor.Set(encryptFor))
+		if v, ok := info["encryptFor"].([]string); ok {
+			encryptFor = v
 		}
 
-		policyEditors, ok := info["policyEditors"].([]string)
-		if ok {
-			changes = append(changes, db.ThreadPolicy.PolicyEditors.Set(policyEditors))
+		if v, ok := info["policyEditors"].([]string); ok {
+			policyEditors = v
 		}
 
-		advertise, ok := info["advertise"].(bool)
-		if ok {
-			changes = append(changes, db.ThreadPolicy.Advertise.Set(advertise))
+		if v, ok := info["advertise"].(bool); ok {
+			advertise = &v
 		}
 
 		hash := ctx.Param("hash")
 
-		client := uc.client
-
-		_, err = client.ThreadPolicy.FindUnique(
-			db.ThreadPolicy.ThreadHash.Equals(hash),
-		).Update(changes...).Exec(context.Background())
+		err = uc.db.UpdateThreadPolicy(context.Background(), hash, visible, acceptsReplies, encryptFor, policyEditors, advertise)
 		if err != nil {
 			panic(err)
 		}

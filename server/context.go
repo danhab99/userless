@@ -7,22 +7,26 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"userless/server/prisma/db"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/minio/minio-go"
 )
 
 type UserlessCtx struct {
-	client      *db.PrismaClient
+	db          *Database
 	minioClient *minio.Client
 	bucketName  string
 }
 
 func NewUserlessCtx() *UserlessCtx {
-	client := db.NewClient()
-	if err := client.Prisma.Connect(); err != nil {
-		panic(err)
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		log.Fatal("DATABASE_URL environment variable not set")
+	}
+
+	db, err := NewDatabase(dbURL)
+	if err != nil {
+		log.Fatal("Failed to connect to database:", err)
 	}
 
 	endpoint := os.Getenv("S3_ENDPOINT")
@@ -36,13 +40,13 @@ func NewUserlessCtx() *UserlessCtx {
 	}
 
 	return &UserlessCtx{
-		client:      client,
+		db:          db,
 		minioClient: minioClient,
 		bucketName:  os.Getenv("S3_BUCKET"),
 	}
 }
 
-func (uc *UserlessCtx) VerifyCleartext(msg *openpgp.MessageDetails) (body string, signedBy *openpgp.Key, signedByDb *db.PublicKeyModel) {
+func (uc *UserlessCtx) VerifyCleartext(msg *openpgp.MessageDetails) (body string, signedBy *openpgp.Key, signedByDb *PublicKey) {
 	dpk, err := uc.getSigner(msg)
 	if err != nil {
 		panic(err)
@@ -60,12 +64,10 @@ func (uc *UserlessCtx) VerifyCleartext(msg *openpgp.MessageDetails) (body string
 	return
 }
 
-func (uc *UserlessCtx) getSigner(msg *openpgp.MessageDetails) (*db.PublicKeyModel, error) {
+func (uc *UserlessCtx) getSigner(msg *openpgp.MessageDetails) (*PublicKey, error) {
 	id := strconv.FormatUint(msg.SignedByKeyId, 16)
 
-	return uc.client.PublicKey.FindUnique(
-		db.PublicKey.KeyID.Equals(strings.ToLower(id)),
-	).Exec(context.Background())
+	return uc.db.FindPublicKeyByKeyID(context.Background(), strings.ToLower(id))
 }
 
 func spoofArmoredSignature(clearText string) string {

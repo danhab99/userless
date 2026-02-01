@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"time"
-	"userless/server/prisma/db"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pelletier/go-toml/v2"
@@ -29,22 +28,14 @@ func banner(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 
 	go func() {
 		for {
-			publicThreads, err := uc.client.Thread.FindMany(
-				db.Thread.ThreadPolicy.Where(
-					db.ThreadPolicy.Advertise.Equals(true),
-				),
-			).Exec(context.Background())
+			publicThreads, err := uc.db.FindAdvertisedThreads(context.Background())
 			if err != nil {
 				panic(err)
 			}
 
-			publicThreadRefs, err := uc.client.ThreadRef.FindMany(
-				db.ThreadRef.Advertise.Equals(true),
-			).With(
-				db.ThreadRef.Thread.Fetch(),
-			).Exec(context.Background())
+			publicThreadRefs, err := uc.db.FindAdvertisedThreadRefs(context.Background())
 
-			pubThreadHashes := make([]string, len(publicThreads) + len(publicThreadRefs))
+			pubThreadHashes := make([]string, len(publicThreads)+len(publicThreadRefs))
 			for i, tm := range publicThreads {
 				pubThreadHashes[i] = tm.Hash
 			}

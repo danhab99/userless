@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"time"
-	"userless/server/prisma/db"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,7 +15,7 @@ func getFile(uc *UserlessCtx, suffix string) func(ctx *gin.Context) {
 			panic("file not set")
 		}
 
-		file := fileRaw.(*db.FileModel)
+		file := fileRaw.(*File)
 		url, err := uc.minioClient.PresignedGetObject(uc.bucketName, fmt.Sprintf("/file/%s%s", file.Hash, suffix), time.Hour*168, nil)
 		if err != nil {
 			panic(err)
@@ -28,28 +27,11 @@ func getFile(uc *UserlessCtx, suffix string) func(ctx *gin.Context) {
 
 func discoverFiles(uc *UserlessCtx) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
-		query := uc.client.File.FindMany().Select(
-			db.File.Hash.Field(),
-		)
-
 		_, quiet := ctx.GetQuery("quiet")
 
-		if quiet {
-			query = query.Select(
-				db.File.Hash.Field(),
-			)
-		} else {
-			query = query.Select(
-				db.File.Hash.Field(),
-				db.File.MimeType.Field(),
-				db.File.Size.Field(),
-			)
-		}
-
 		skip, take := getLimits(ctx)
-		query = query.Skip(skip).Take(take)
 
-		files, err := query.Exec(context.Background())
+		files, err := uc.db.FindFiles(context.Background(), skip, take, quiet)
 		if err != nil {
 			panic(err)
 		}
@@ -61,7 +43,10 @@ func discoverFiles(uc *UserlessCtx) func(ctx *gin.Context) {
 					panic(err)
 				}
 			} else {
-				mime, _ := file.MimeType()
+				mime := ""
+				if file.MimeType != nil {
+					mime = *file.MimeType
+				}
 				_, err := ctx.Writer.WriteString(fmt.Sprintf("%s %s %d", file.Hash, mime, file.Size))
 				if err != nil {
 					panic(err)
