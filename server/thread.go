@@ -32,11 +32,23 @@ func getThreadParents(uc *UserlessCtx) func(ctx *gin.Context) {
 		}
 		thread := threadRaw.(*Thread)
 		parentCount := ctx.GetInt("count")
+		if parentCount == 0 {
+			parentCount = 10
+		}
 
-		for i := 1; i < parentCount && thread.ReplyTo != nil; i++ {
+		var err error
+
+		for i := 0; i < parentCount && thread.ReplyTo != nil; i++ {
+			fmt.Println("SEARCHING FOR PARENT THREAD", thread.Hash, *thread.ReplyTo)
+			thread, err = uc.db.FindThreadByHash(context.Background(), *thread.ReplyTo)
+			fmt.Println("FOUND", thread.Hash)
+
 			s := fmt.Sprintf("%s\n", thread.Hash)
 			ctx.Writer.WriteString(s)
-			thread, _ = uc.db.FindThreadByHash(context.Background(), *thread.ReplyTo)
+
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 }
