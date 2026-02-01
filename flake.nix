@@ -14,6 +14,16 @@
         lib = pkgs.lib;
 
       in {
+        packages = {
+          server = pkgs.buildGoModule {
+            pname = "userless-server";
+            version = "1.0";
+
+            src = ./server;
+            vendorHash = "sha256-pe+h/8kdh8zbV1yrvATwk1APjnA05qa7bpGhOpgicsA=";
+          };
+        };
+
         devShells = {
           go = pkgs.mkShell {
             packages = with pkgs; [
