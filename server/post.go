@@ -26,11 +26,21 @@ func postHandler(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 			panic(err)
 		}
 
+		if len(text) == 0 {
+			ctx.String(400, "empty request body")
+			return
+		}
+
 		msg, _ := clearsign.Decode(text)
+		if msg == nil {
+			ctx.String(400, "invalid clearsigned message")
+			return
+		}
 
 		sigPacket, err := packet.NewReader(msg.ArmoredSignature.Body).Next()
 		if err != nil {
-			panic(err)
+			ctx.String(400, "failed to read signature packet: %v", err)
+			return
 		}
 
 		sig := sigPacket.(*packet.Signature)
@@ -42,7 +52,8 @@ func postHandler(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 			panic(err)
 		}
 		if ownerKeyDb == nil {
-			log.Fatal("cannot find owner key")
+			ctx.String(404, "signer key not found in database")
+			return
 		}
 
 		key, err := openpgp.ReadArmoredKeyRing(strings.NewReader(ownerKeyDb.ArmoredKey))
@@ -51,9 +62,14 @@ func postHandler(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 		}
 
 		msg, _ = clearsign.Decode(text)
+		if msg == nil {
+			ctx.String(400, "failed to verify clearsigned message")
+			return
+		}
 		_, err = msg.VerifySignature(key, nil)
 		if err != nil {
-			panic(err)
+			ctx.String(401, "signature verification failed: %v", err)
+			return
 		}
 
 		policy := ownerKeyDb.Policy
@@ -108,6 +124,15 @@ func postHandler(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 		var replyTo *string
 		replyToVal, hasReplyTo := info["replyTo"].(string)
 		if hasReplyTo {
+			// Verify the parent thread exists
+			parentThread, err := uc.db.FindThreadByHash(context.Background(), replyToVal)
+			if err != nil {
+				panic(err)
+			}
+			if parentThread == nil {
+				ctx.String(404, "parent thread not found: %s", replyToVal)
+				return
+			}
 			replyTo = &replyToVal
 		} else if !policy.CanStartThreads {
 			ctx.String(401, "not allowed to start threads")
@@ -129,6 +154,16 @@ func postHandler(uc *UserlessCtx, config Config) func(ctx *gin.Context) {
 			infoBytes,
 		)
 		if err != nil {
+			// Check if it's a duplicate key error
+			if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "Thread_hash_key") {
+				ctx.String(409, "Thread with this content already exists: %s", hashStr)
+				return
+			}
+			// Check if it's a foreign key error (shouldn't happen now, but just in case)
+			if strings.Contains(err.Error(), "fk_parent") || strings.Contains(err.Error(), "foreign key") {
+				ctx.String(400, "invalid parent thread reference")
+				return
+			}
 			panic(err)
 		}
 
