@@ -1,61 +1,77 @@
-import { createBaseFetcher, createFetcher } from "./fetch";
+import { fetchFrom, fetchText, fetchWithRedirect } from "./fetch";
 import { parse } from "smol-toml";
-import { Info } from "./types";
-import { createContent, Content } from "./content"
-import { createPublicKey, PublicKey } from "./key";
+import { Info, Thread, ThreadByHash, Content } from "./types";
+import { createContent } from "./content";
 import * as openpgp from "openpgp";
 
-export interface Thread {
-  hash: string;
-  getPolicy: () => Promise<Info>;
-  getContent: () => Promise<Content>;
-  getReplies: (skip?: number, take?: number) => Promise<Thread[]>;
-  getParents: (count?: number) => Promise<Thread[]>;
-  getOwner: () => Promise<PublicKey>
-}
-
-export async function resolveThreadRef(url: string, ref: string) {
-  const baseFetcher = createFetcher(url);
-  baseFetcher.fetchWithRedirect(`thread/${hash}`)
-
-}
-
-export function createThread(url: string, hash: string): Thread {
-  if (hash.length != 64) {
-    throw "not a real hash"
+export async function resolveThreadRef(
+  threadRef: Thread
+): Promise<ThreadByHash> {
+  if (threadRef.type === "hash") {
+    return threadRef;
   }
-  const baseFetcher = createBaseFetcher(url, `thread/${hash}`);
+
+  const { finalUrl } = await fetchWithRedirect(
+    threadRef.url,
+    `thread/${threadRef.ref}`
+  );
+  
+  const hashMatch = finalUrl.match(/thread\/([a-f0-9]{64})/);
+  if (!hashMatch || !hashMatch[1]) {
+    throw new Error(`Could not resolve ref "${threadRef.ref}" to a hash`);
+  }
 
   return {
-    hash,
-    async getPolicy(): Promise<Info> {
-      return parse(await baseFetcher.fetchFrom("policy"));
-    },
-
-    async getContent(): Promise<Content> {
-      return createContent(await baseFetcher.fetchFrom(""));
-    },
-
-    async getReplies(skip = 0, take?: number): Promise<Thread[]> {
-      const replies = await baseFetcher.fetchFrom("replies", { skip, take });
-      const hashs = replies.split("\n").filter((x) => x);
-      return hashs.map((hash) => createThread(url, hash));
-    },
-
-    async getParents(count?: number): Promise<Thread[]> {
-      const replies = await baseFetcher.fetchFrom("parents", { count });
-      const hashs = replies.split("\n").filter((x) => x);
-      return hashs.map((hash) => createThread(url, hash));
-    },
-
-    async getOwner(): Promise<PublicKey> {
-      const content = await this.getContent()
-      const msg = await openpgp.readCleartextMessage({
-        cleartextMessage: content.original,
-      })
-
-      const owner = msg.getSigningKeyIDs()[0].toHex()
-      return createPublicKey(url, owner)
-    }
+    type: "hash",
+    url: threadRef.url,
+    hash: hashMatch[1],
   };
+}
+
+export async function getThreadPolicy(
+  threadRef: Thread
+): Promise<Info> {
+  const resolved = await resolveThreadRef(threadRef);
+  return parse(await fetchFrom(resolved.url, `thread/${resolved.hash}`, "policy"));
+}
+
+export async function getThreadContent(
+  threadRef: Thread
+): Promise<Content> {
+  const resolved = await resolveThreadRef(threadRef);
+  const text = await fetchFrom(resolved.url, `thread/${resolved.hash}`, "");
+  return createContent(text);
+}
+
+export async function getThreadReplies(
+  threadRef: Thread,
+  skip?: number,
+  take?: number
+): Promise<Thread[]> {
+  const resolved = await resolveThreadRef(threadRef);
+  const replies = await fetchFrom(resolved.url, `thread/${resolved.hash}`, "replies", { skip, take });
+  const hashs = replies.split("\n").filter((x) => x);
+  return hashs.map((h) => ({ type: "hash", url: resolved.url, hash: h } as const));
+}
+
+export async function getThreadParents(
+  threadRef: Thread,
+  count?: number
+): Promise<Thread[]> {
+  const resolved = await resolveThreadRef(threadRef);
+  const replies = await fetchFrom(resolved.url, `thread/${resolved.hash}`, "parents", { count });
+  const hashs = replies.split("\n").filter((x) => x);
+  return hashs.map((h) => ({ type: "hash", url: resolved.url, hash: h } as const));
+}
+
+export async function getThreadOwner(
+  threadRef: Thread
+): Promise<string> {
+  const content = await getThreadContent(threadRef);
+  const msg = await openpgp.readCleartextMessage({
+    cleartextMessage: content.original,
+  });
+
+  const owner = msg.getSigningKeyIDs()[0].toHex();
+  return owner;
 }

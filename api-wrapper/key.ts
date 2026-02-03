@@ -1,42 +1,39 @@
-import { createBaseFetcher } from "./fetch";
-import { createThread, Thread } from "./thread";
+import { fetchFrom } from "./fetch";
 import { parse } from "smol-toml";
+import { Thread, Policy } from "./types";
 
-export interface PublicKey {
-  keyId: string;
-  url: string;
-  getArmored: () => Promise<string>;
-  getThreads: (skip?: number, take?: number) => Promise<Thread[]>;
-  getFiles: () => Promise<string[]>;
-  getPolicy: () => Promise<any>;
+export async function getArmoredKey(
+  url: string,
+  keyId: string
+): Promise<string> {
+  return fetchFrom(url, `key/${keyId}`, "");
 }
 
-export function createPublicKey(url: string, keyId: string): PublicKey {
-  const baseFetcher = createBaseFetcher(url, `key/${keyId}`);
+export async function getThreadsForKey(
+  url: string,
+  keyId: string,
+  skip?: number,
+  take?: number
+): Promise<Thread[]> {
+  const threadHashes = await fetchFrom(url, `key/${keyId}`, "threads", {
+    skip,
+    take,
+  });
+  const hashs = threadHashes.split("\n").filter((x) => x);
+  return hashs.map((hash) => ({ type: "hash", hash, url }));
+}
 
-  return {
-    keyId,
-    url,
-    async getArmored() {
-      return baseFetcher.fetchFrom("");
-    },
+export async function getFilesForKey(
+  url: string,
+  keyId: string
+): Promise<string[]> {
+  const resp = await fetchFrom(url, `key/${keyId}`, "files");
+  return resp.split("\n");
+}
 
-    async getThreads(skip?: number, take?: number) {
-      const threadHashes = await baseFetcher.fetchFrom("threads", {
-        skip,
-        take,
-      });
-      const hashs = threadHashes.split("\n").filter((x) => x);
-      return hashs.map((hash) => createThread(url, hash));
-    },
-
-    async getFiles(): Promise<string[]> {
-      const resp = await baseFetcher.fetchFrom("files");
-      return resp.split("\n");
-    },
-
-    async getPolicy() {
-      return parse(await baseFetcher.fetchFrom("policy"));
-    },
-  };
+export async function getPolicyForKey(
+  url: string,
+  keyId: string
+): Promise<Policy> {
+  return parse(await fetchFrom(url, `key/${keyId}`, "policy"));
 }

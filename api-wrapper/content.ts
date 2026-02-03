@@ -1,11 +1,6 @@
 import { DELIMITER } from "./const";
 import { parse } from "smol-toml";
-
-export interface Content {
-  readonly info?: Record<string, any>;
-  readonly body: string;
-  readonly original: string;
-}
+import { Content } from "./types";
 
 export function createContent(content: string): Content {
   if (
