@@ -37,6 +37,7 @@ func threadMiddleware(uc *UserlessCtx) func(ctx *gin.Context) {
 			}
 
 			ctx.Set("thread", thread)
+			ctx.Next()
 		} else {
 			ref, err := uc.db.FindThreadRefByName(context.Background(), hash)
 			if err != nil {
@@ -48,14 +49,9 @@ func threadMiddleware(uc *UserlessCtx) func(ctx *gin.Context) {
 				panic(err)
 			}
 
-			thread, err = uc.db.FindThreadByHash(context.Background(), ref.ThreadHash)
-			if err != nil {
-				panic(err)
-			}
+			ctx.Redirect(307, ref.ThreadHash)
+			ctx.Done()
 		}
-
-		ctx.Set("thread", thread)
-		ctx.Next()
 	}
 }
 
