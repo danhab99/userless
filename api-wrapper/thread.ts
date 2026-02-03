@@ -1,4 +1,4 @@
-import { createBaseFetcher } from "./fetch";
+import { createBaseFetcher, createFetcher } from "./fetch";
 import { parse } from "smol-toml";
 import { Info } from "./types";
 import { createContent, Content } from "./content"
@@ -14,7 +14,16 @@ export interface Thread {
   getOwner: () => Promise<PublicKey>
 }
 
+export async function resolveThreadRef(url: string, ref: string) {
+  const baseFetcher = createFetcher(url);
+  baseFetcher.fetchWithRedirect(`thread/${hash}`)
+
+}
+
 export function createThread(url: string, hash: string): Thread {
+  if (hash.length != 64) {
+    throw "not a real hash"
+  }
   const baseFetcher = createBaseFetcher(url, `thread/${hash}`);
 
   return {

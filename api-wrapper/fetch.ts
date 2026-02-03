@@ -5,6 +5,7 @@ export interface Fetcher {
   url: string;
   fetch: (path: string, args?: Record<string, any>) => Promise<string>;
   fetchContent: (path: string, args?: Record<string, any>) => Promise<Content>;
+  fetchWithRedirect: (path: string, args?: Record<string, any>) => Promise<{ content: string; finalUrl: string }>;
 }
 
 export interface BaseFetcher extends Fetcher {
@@ -37,6 +38,40 @@ export function createFetcher(url: string): Fetcher {
 
         if (resp.ok) {
           return resp.text();
+        } else {
+          throw await resp.text();
+        }
+      } catch(e) {
+        console.error(`!!! Userless API wrapper: unable to fetch url: ${u.toString()}`)
+        throw e
+      }
+    },
+
+    async fetchWithRedirect(path: string, args?: Record<string, any>): Promise<{ content: string; finalUrl: string }> {
+      if (path[path.length - 1] === "/") {
+        path = path.slice(0, path.length - 1);
+      }
+
+      const u = new URL(this.url);
+      u.pathname = path;
+      if (args) {
+        Object.entries(args).forEach(([key, value]) => {
+          if (value) {
+            u.searchParams.set(key, value);
+          }
+        });
+      }
+
+      try {
+        debug("fetching with redirect tracking", u.toString());
+        const resp = await fetch(u.toString());
+        debug("fetched", u.toString(), resp.status, "final URL:", resp.url);
+
+        if (resp.ok) {
+          return {
+            content: await resp.text(),
+            finalUrl: resp.url
+          };
         } else {
           throw await resp.text();
         }
