@@ -11,7 +11,10 @@ export type CommentProps = {
   body: string;
   hash: string;
 
+  enableDelete: boolean;
   replies: CommentProps[]
+
+  onDelete: () => void
 };
 
 const DepthContext = createContext(0)
@@ -36,7 +39,7 @@ export function Comment(props: CommentProps) {
 
         <div className={clsx([style.button_row])}>
           <button className={clsx([style.button])}>Reply</button>
-          <button className={clsx([style.button])}>Delete</button>
+          {props.enableDelete ? <button onClick={props.onDelete} className={clsx([style.button])}>Delete</button> : null}
         </div>
       </div>
     </div>

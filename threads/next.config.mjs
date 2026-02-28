@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ["api-wrapper"],
+  transpilePackages: ["api-wrapper", "ui-components"],
   webpack: (config, { isServer, dev }) => {
     config.resolve.extensionAlias = {
       ".js": [".js", ".ts"],

@@ -1,9 +1,19 @@
-export {
-  KeyContextProvider,
-  usePrivateKeys,
-  useAddPrivateKey,
-  useMasterKey,
-} from "ui-components";
+"use client";
+import { useState, useCallback } from "react";
+import * as openpgp from "openpgp";
+import { ActionButton } from "../ActionButton/ActionButton";
+import Link from "next/link";
+import {
+  createStateContext,
+  useAsync,
+  useAsyncRetry,
+  useDeepCompareEffect,
+  useLocalStorage,
+  useSessionStorage,
+  useShallowCompareEffect,
+} from "react-use";
+import { Hash } from "../Hash/Hash";
+import { getServer } from "../userless";
 
 const [usePrivateKeysState, PrivateKeysStateProvider] = createStateContext<
   openpgp.PrivateKey[]
@@ -25,9 +35,8 @@ function uniqueKeys(keys: openpgp.PrivateKey[][]) {
     (k, i) =>
       allKeys.findIndex(
         (o) => o.getKeyID().toHex() === k.getKeyID().toHex(),
-    ) === i,
+      ) === i,
   );
-  
 }
 
 export const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
@@ -275,9 +284,9 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
   const registered = useAsyncRetry(async () => {
     try {
       const server = getServer();
-      await server.getKey(keyId).getArmored()
+      await server.getKey(keyId).getArmored();
       return true;
-    } catch(e) {
+    } catch (e) {
       return false;
     }
   }, [keyId]);

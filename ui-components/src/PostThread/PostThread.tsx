@@ -1,5 +1,19 @@
-export { PostThread, PostThreadNarrow } from "ui-components";
-export type { PostThreadProps } from "ui-components";
+"use client";
+import {
+  ChangeEventHandler,
+  FormEventHandler,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { usePrivateKeys } from "../KeyContext/KeyContext";
+import * as openpgp from "openpgp";
+import { useRouter } from "next/navigation";
+import { useMap } from "react-use";
+import { createHash } from "crypto";
+import * as toml from "smol-toml";
+import { DELIMITER } from "api-wrapper";
 
 export type PostThreadProps = {
   replyTo?: string;

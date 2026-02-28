@@ -33,10 +33,6 @@
             ];
 
             GO_PATH="${self.outPath}/.go";
-
-            shellHook = ''
-            zsh
-            '';
           };
 
           ts = pkgs.mkShell {
@@ -45,10 +41,6 @@
               yarn
               nodejs_22
             ];
-
-            shellHook = ''
-            zsh
-            '';
           };
         };
       });
