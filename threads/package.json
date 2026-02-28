@@ -15,7 +15,7 @@
     "api-wrapper": "file:../api-wrapper",
     "ui-components": "file:../ui-components",
     "mailto-link": "^2.0.0",
-    "minio": "^8.0.1",
+    "minio": "^8.0.7",
     "next": "15.0.1",
     "openpgp": "^5.11.2",
     "prisma": "^5.18.0",
