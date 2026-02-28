@@ -1,0 +1,33 @@
+@reference "tailwindcss";
+
+.Comment {
+  @apply bg-zinc-100 px-2 py-1 border-l-2 border-solid text-black;
+}
+
+.button_row {
+  @apply flex flex-row gap-1;
+}
+
+.button {
+  @apply bg-yellow-300 px-1 py-0.5 text-xs rounded-sm;
+}
+
+.side-0 {
+  @apply border-red-500;
+}
+
+.side-1 {
+  @apply border-amber-500;
+}
+.side-2 {
+  @apply border-yellow-300;
+}
+.side-3 {
+  @apply border-green-500;
+}
+.side-4 {
+  @apply border-blue-500;
+}
+.side-5 {
+  @apply border-violet-400;
+}
