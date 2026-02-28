@@ -1,5 +1,47 @@
 @import "tailwindcss";
 
+/* Scan ui-components source so Tailwind v4 includes its utility classes */
+@source "../../ui-components/src";
+
+/* ─── Design tokens shared with ui-components ─────────────────── */
+@theme {
+  --color-username: #a970d4;
+  --color-card: #fcff63;
+  --color-hash: #222;
+  --color-sig-working: yellow;
+  --color-sig-error: red;
+  --color-sig-nomatch: orange;
+  --color-sig-revoked: purple;
+  --color-sig-success: green;
+  --color-advertise: green;
+}
+
+/* ─── Shared layout utilities (mirrors threads/app/index.css) ─── */
+@layer utilities {
+  .centered {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    padding-top: 2rem;
+  }
+
+  .centered-widths {
+    width: 91.666667%;
+  }
+
+  @media (min-width: 768px) {
+    .centered-widths {
+      width: 50%;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .centered-widths {
+      width: 66.666667%;
+    }
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

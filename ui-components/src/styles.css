@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+/* ─── Design tokens ──────────────────────────────────────────── */
+@theme {
+  --color-username: #a970d4;
+  --color-card: #fcff63;
+  --color-hash: #222;
+  --color-sig-working: yellow;
+  --color-sig-error: red;
+  --color-sig-nomatch: orange;
+  --color-sig-revoked: purple;
+  --color-sig-success: green;
+  --color-advertise: green;
+}
+
+/* ─── Shared layout utilities ────────────────────────────────── */
+/*
+ * .centered and .centered-widths are used by PostThreadNarrow.
+ * In threads (Tailwind v3) these are defined via @apply in index.css.
+ * Here we define the same rules as plain CSS for Tailwind v4 consumers
+ * (ui-components Storybook, redditless, etc.).
+ */
+@layer utilities {
+  .centered {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    padding-top: 2rem;
+  }
+
+  .centered-widths {
+    width: 91.666667%; /* sm: w-11/12 */
+  }
+
+  @media (min-width: 768px) {
+    .centered-widths {
+      width: 50%; /* md: w-1/2 */
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .centered-widths {
+      width: 66.666667%; /* lg: w-2/3 */
+    }
+  }
+}
