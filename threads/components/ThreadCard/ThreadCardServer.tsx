@@ -15,8 +15,11 @@ export async function ThreadCardFromHash(props: ThreadCardFromHashProps) {
   }
 
   const server = await getServer();
-
   const thread = server.getThread(props.hash);
+  
+  // Resolve the actual hash if this is a ref
+  const actualHash = await thread.resolveHash();
+
   const replies = props.replies
     ? await thread.getReplies(0, props.replies)
     : [];
@@ -56,7 +59,7 @@ export async function ThreadCardFromHash(props: ThreadCardFromHashProps) {
         {...props}
         threadText={threadText.original}
         body={body}
-        hash={props.hash}
+        hash={actualHash}
         signedBy={signedBy}
         timestamp={timestamp}
       />

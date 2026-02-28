@@ -1,20 +1,23 @@
-import { fetchFrom } from "./fetch";
-import { parse } from "smol-toml";
-import { Thread, Policy } from "./types";
+import { Thread, Policy, UserlessConfig } from "./types";
+
+function getUrl(config: UserlessConfig | string): string {
+  return typeof config === "string" ? config : config.url;
+}
 
 export async function getArmoredKey(
-  url: string,
+  config: UserlessConfig | string,
   keyId: string
 ): Promise<string> {
-  return fetchFrom(url, `key/${keyId}`, "");
+  return fetchFrom(getUrl(config), `key/${keyId}`, "");
 }
 
 export async function getThreadsForKey(
-  url: string,
+  config: UserlessConfig | string,
   keyId: string,
   skip?: number,
   take?: number
 ): Promise<Thread[]> {
+  const url = getUrl(config);
   const threadHashes = await fetchFrom(url, `key/${keyId}`, "threads", {
     skip,
     take,
@@ -24,16 +27,15 @@ export async function getThreadsForKey(
 }
 
 export async function getFilesForKey(
-  url: string,
+  config: UserlessConfig | string,
   keyId: string
 ): Promise<string[]> {
-  const resp = await fetchFrom(url, `key/${keyId}`, "files");
-  return resp.split("\n");
+  return (await fetchFrom(getUrl(config), `key/${keyId}`, "files")).split("\n");
 }
 
 export async function getPolicyForKey(
-  url: string,
+  config: UserlessConfig | string,
   keyId: string
 ): Promise<Policy> {
-  return parse(await fetchFrom(url, `key/${keyId}`, "policy"));
+  return parse(await fetchFrom(getUrl(config), `key/${keyId}`, "policy"));
 }

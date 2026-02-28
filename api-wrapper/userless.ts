@@ -1,9 +1,36 @@
 import { fetchText, fetchFrom } from "./fetch";
-import { Banner, Thread } from "./types";
+import { Banner, Thread, UserlessConfig } from "./types";
 import { DELIMITER } from "./const";
 import { parse } from "smol-toml";
 import { debug } from "./debug";
-import { resolveThreadRef } from "./thread";
+import { resolveThreadRef, getThreadContent, getThreadPolicy, getThreadReplies, getThreadOwner, getThreadParents } from "./thread";
+import { getArmoredKey, getThreadsForKey, getFilesForKey, getPolicyForKey } from "./key";
+
+export function createClient(config: UserlessConfig | string) {
+  const url = typeof config === "string" ? config : config.url;
+  
+  return {
+    getBanner: () => getBanner(url),
+    getThread: (id: string) => getThread(url, id),
+    resolveThread: (id: string) => resolveThread(url, id),
+    getKey: (keyId: string) => ({
+      getArmored: () => getArmoredKey(url, keyId),
+      getThreads: (skip?: number, take?: number) => getThreadsForKey(url, keyId, skip, take),
+      getFiles: () => getFilesForKey(url, keyId),
+      getPolicy: () => getPolicyForKey(url, keyId),
+    }),
+    thread: (id: string) => {
+      const thread = getThread(url, id);
+      return {
+        getContent: () => getThreadContent(thread),
+        getPolicy: () => getThreadPolicy(thread),
+        getReplies: (skip?: number, take?: number) => getThreadReplies(thread, skip, take),
+        getParents: (count?: number) => getThreadParents(thread, count),
+        getOwner: () => getThreadOwner(thread),
+      };
+    }
+  };
+}
 
 export async function getBanner(url: string): Promise<Banner> {
   const ret = await fetchText(url, "/");

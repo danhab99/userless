@@ -8,12 +8,13 @@ export async function Header(props: React.PropsWithChildren) {
 
   return (
     <>
-      <nav>
-        <Link href="/">
+      <nav className="flex flex-start items-center">
+        <Link href="/" className="pr-8">
           <span>Userless.xyz</span>
         </Link>
 
-        {(banner.info["threads"]["frontpage"] ?? []).map((x: string) => <Link href={`/thread/${x}`}>{x}</Link>)}
+        {(banner.info["threads"]["frontpage"] ?? []).map((x: string) => <Link className="text-xs text-green-800" href={`/thread/${x}`}>[ {x.slice(0, 8)} ]</Link>)}
+
       </nav>
       {props.children}
     </>

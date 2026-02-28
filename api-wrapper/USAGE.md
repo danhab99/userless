@@ -1,70 +1,65 @@
 # Userless API Wrapper — Usage Guide ✅
 
-This project exposes a small, functional API for interacting with a Userless server. All operations are pure functions that accept primitive values or simple data structs and return Promises.
+This project exposes a structured, type-safe API for interacting with a Userless server. It follows Next.js best practices for API clients: centralized fetching, grouped service methods, and full TypeScript support.
 
 ---
 
-## Key types ✨
-- `Thread` — discriminated union referencing a thread by **hash** or **ref**:
-  - `{ type: "hash", url, hash }`
-  - `{ type: "ref", url, ref }`
-- `Content` — parsed PGP cleartext content with `body`, `info?`, and `original` fields
-- `Banner` — server banner with `body` and `info`
+## 🚀 1. Setup: Centralize your Client
+
+Create a single instance of the Userless client in your app (e.g., in `lib/userless.ts`) to reuse the base URL and configuration.
+
+```ts
+import { createClient } from 'api-wrapper';
+
+// Central client for your backend
+export const userless = createClient(process.env.NEXT_PUBLIC_USERLESS_URL || 'http://localhost:4444');
+```
 
 ---
 
-## Common functions 🔧
-(Import from the package root: `import * as userless from './userless'` or named imports.)
+## 🔧 2. Common Operations
 
 ### Get server banner
 ```ts
-const banner = await getBanner('http://localhost:4444');
+const banner = await userless.getBanner();
 console.log(banner.body, banner.info);
 ```
 
-### Build a thread reference (auto-detect if identifier is a hash)
+### Working with Threads
+You can either use the `thread()` helper for chaining or the standalone service functions.
+
 ```ts
-const refA = getThread('http://localhost:4444', 'b3ff...64chars'); // treated as hash
-const refB = getThread('http://localhost:4444', 'my-awesome-thread'); // treated as ref
+// Using the client helper (Recommended)
+const myThread = userless.thread('my-thread-ref-or-hash');
+const content = await myThread.getContent();
+const replies = await myThread.getReplies(0, 20);
+
+// Using standalone services (Good for passing Thread objects around)
+import { getThreadContent } from 'api-wrapper';
+const threadObj = userless.getThread('hash');
+const content2 = await getThreadContent(threadObj); // URL is reused from threadObj
 ```
 
-### Resolve an identifier (hash or ref) to a canonical hash
+### Working with Keys
 ```ts
-// returns [resolvedThread (type: "hash"), resolvedHash]
-const [resolvedThread, hash] = await resolveThread('http://localhost:4444', 'my-ref-or-hash');
-console.log(resolvedThread, hash);
-```
-
-### Fetch thread content / policy / replies / parents / owner
-```ts
-import { getThreadContent, getThreadPolicy, getThreadReplies, getThreadOwner } from './thread';
-
-const thread = getThread('http://localhost:4444', 'my-ref-or-hash');
-const content = await getThreadContent(thread);
-const policy = await getThreadPolicy(thread);
-const replies = await getThreadReplies(thread, 0, 20); // returns array of Thread (hash-type)
-const ownerKeyId = await getThreadOwner(thread); // returns signing key id as hex string
-```
-
-### Resolve thread reference first (optional) and then call helpers
-```ts
-const [resolved, hash] = await resolveThread('http://localhost:4444', 'my-ref');
-// resolved is { type: 'hash', url, hash }
-const content2 = await getThreadContent(resolved);
-```
-
-### Key helpers
-```ts
-import { getArmoredKey, getThreadsForKey, getFilesForKey, getPolicyForKey } from './key';
-
-const armored = await getArmoredKey('http://localhost:4444', '0xABCDEF...');
-const threadList = await getThreadsForKey('http://localhost:4444', '0xABCDEF...', 0, 50);
+const myKey = userless.getKey('0xABCDEF...');
+const armored = await myKey.getArmored();
+const threads = await myKey.getThreads();
 ```
 
 ---
 
-## Tips & Notes 💡
-- The library is intentionally non-OOP: data structs are plain objects and behavior is exposed via exported async functions.
-- `resolveThread` uses the backend redirect when a `ref` is supplied so callers can transparently use either a hash or a human-friendly ref.
+## ✨ 3. Key Types & Models
 
-If you'd like, I can add example tests or a short example script demonstrating a real-server flow. 🔧
+- `Thread` — discriminated union referencing a thread by **hash** or **ref**.
+- `Content` — parsed PGP cleartext content.
+- `Policy` — parsed TOML policy configuration.
+
+---
+
+## 🛠 4. Best Practices Followed
+
+1. **Centralized Fetching**: All calls go through a consistent fetch wrapper with proper error handling and debug logging.
+2. **Layered Architecture**: Separation between raw fetch logic ([fetch.ts](fetch.ts)), service modules ([thread.ts](thread.ts), [key.ts](key.ts)), and the client consumer ([userless.ts](userless.ts)).
+3. **Type Safety**: Everything is fully typed with TypeScript to catch errors at compile time.
+4. **URL Reuse**: The `createClient` factory and the `Thread` object pattern ensure you never have to manually pass the backend URL once the initial connection is established.

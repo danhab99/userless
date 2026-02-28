@@ -25,5 +25,9 @@ export type ThreadByRef = {
 
 export type Thread = ThreadByHash | ThreadByRef;
 
+export interface UserlessConfig {
+  url: string;
+}
+
 export type Policy = Info;
 
