@@ -1,3 +1,5 @@
+import { fetchFrom } from "./fetch";
+import { parse } from "smol-toml";
 import { Thread, Policy, UserlessConfig } from "./types";
 
 function getUrl(config: UserlessConfig | string): string {
@@ -22,8 +24,8 @@ export async function getThreadsForKey(
     skip,
     take,
   });
-  const hashs = threadHashes.split("\n").filter((x) => x);
-  return hashs.map((hash) => ({ type: "hash", hash, url }));
+  const hashs = threadHashes.split("\n").filter((x: string) => x);
+  return hashs.map((hash: string) => ({ type: "hash" as const, hash, url }));
 }
 
 export async function getFilesForKey(

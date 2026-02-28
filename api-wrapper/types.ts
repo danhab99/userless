@@ -25,6 +25,16 @@ export type ThreadByRef = {
 
 export type Thread = ThreadByHash | ThreadByRef;
 
+export interface ResolvedThread {
+  readonly url: string;
+  readonly hash: string;
+  getContent(): Promise<Content>;
+  getPolicy(): Promise<Info>;
+  getReplies(skip?: number, take?: number): Promise<ResolvedThread[]>;
+  getParents(count?: number): Promise<ResolvedThread[]>;
+  getOwner(): Promise<string>;
+}
+
 export interface UserlessConfig {
   url: string;
 }

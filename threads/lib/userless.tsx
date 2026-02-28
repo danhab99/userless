@@ -1,6 +1,8 @@
-import { createUserlessServer } from "api-wrapper";
+import { createClient } from "api-wrapper";
 
-export async function getServer() {
-  return createUserlessServer(process.env["NEXT_PUBLIC_USERLESS_URL"] as string)
+export function getServer() {
+  return createClient({
+    url: process.env["NEXT_PUBLIC_USERLESS_URL"] as string
+  });
 }
 

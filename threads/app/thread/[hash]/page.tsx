@@ -11,8 +11,8 @@ type ThreadPageProps = {
 
 const ThreadPage = async (props: ThreadPageProps) => {
   const params = await props.params;
-  const server = await getServer();
-  const thread = server.getThread(params.hash.toLowerCase())
+  const server = getServer();
+  const thread = await server.resolveThread(params.hash.toLowerCase())
 
   const [replies, parents] = await Promise.all([
     thread.getReplies(),
@@ -44,10 +44,10 @@ export default ThreadPage;
 
 export async function generateMetadata(props: ThreadPageProps): Promise<Metadata> {
   const params = await props.params;
-  const server = await getServer();
-  const thread = server.getThread(params.hash);
+  const server = getServer();
+  const thread = await server.resolveThread(params.hash);
   const owner = await thread.getOwner()
-  const armored = await owner.getArmored()
+  const armored = await server.getKey(owner).getArmored();
 
   const pk = await openpgp.readKey({
     armoredKey: armored,

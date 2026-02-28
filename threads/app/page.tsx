@@ -6,7 +6,7 @@ import { ThreadCardFromHash } from "@/components/ThreadCard/ThreadCardServer";
 import { CenteredLayout } from "@/layouts/centered";
 
 const WelcomePage = async () => {
-  const server = await getServer();
+  const server = getServer();
   const banner = await server.getBanner();
 
   return (

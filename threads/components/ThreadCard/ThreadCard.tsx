@@ -80,8 +80,11 @@ export const ThreadCard = ({
 
   const { value: policy, retry } = useAsyncRetry(async () => {
     if (hash) {
-      const server = await getServer()
-      return server.getThread(hash).getPolicy();
+      const server = getServer()
+      const t = await server.resolveThread(hash);
+      t
+
+      return t.getPolicy();
     }
   }, [master, hash]);
 

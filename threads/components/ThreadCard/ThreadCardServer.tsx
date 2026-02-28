@@ -3,6 +3,7 @@ import { getServer } from "@/lib/userless";
 import { ThreadCard } from "./ThreadCard";
 import * as openpgp from "openpgp";
 import { spoofArmoredSignature } from "@/lib/utils";
+import {resolveThread, resolveThreadRef} from "api-wrapper";
 
 type ThreadCardFromHashProps = {
   hash: string;
@@ -14,11 +15,8 @@ export async function ThreadCardFromHash(props: ThreadCardFromHashProps) {
     return <h1>Missing hash</h1>;
   }
 
-  const server = await getServer();
-  const thread = server.getThread(props.hash);
-  
-  // Resolve the actual hash if this is a ref
-  const actualHash = await thread.resolveHash();
+  const server = getServer();
+  const thread = await server.resolveThread(props.hash);
 
   const replies = props.replies
     ? await thread.getReplies(0, props.replies)
@@ -59,7 +57,7 @@ export async function ThreadCardFromHash(props: ThreadCardFromHashProps) {
         {...props}
         threadText={threadText.original}
         body={body}
-        hash={actualHash}
+        hash={thread.hash}
         signedBy={signedBy}
         timestamp={timestamp}
       />

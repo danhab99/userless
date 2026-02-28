@@ -20,7 +20,7 @@ const collectInfo = async (params: Awaited<KeyPageParams["params"]>): Promise<{
   armored: string,
   threads: Thread[],
 }> => {
-  const server = await getServer();
+  const server = getServer();
 
   const publickey = server.getKey(params.keyId.toLowerCase());
 
@@ -68,7 +68,7 @@ const KeyPage = async ({ params }: KeyPageParams) => {
       </Centered>
 
       {threads.map((thread, i) => (
-        <ThreadCardFromHash key={i} hash={thread.hash} />
+        <ThreadCardFromHash key={i} hash={thread} />
       ))}
     </>
   );

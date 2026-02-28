@@ -29,8 +29,8 @@ const SigVerify = (props: SigVerifyProps) => {
   useShallowCompareEffect(() => {
     setStatus(VerifiedStatus.Working);
     (async () => {
-      const server = await getServer();
-      const getKey = async (keyId: string) => {
+      const server = getServer();
+      const getKey = async (keyId: string): Promise<openpgp.PublicKey | undefined> => {
         try {
           const armored = await server.getKey(keyId).getArmored()
           const keys = await openpgp.readKeys({
@@ -50,7 +50,8 @@ const SigVerify = (props: SigVerifyProps) => {
           setError(`${e}`);
         }
 
-        return server.getKey(keyId).getArmored();
+        const armoredKey = await server.getKey(keyId).getArmored();
+        return openpgp.readKey({ armoredKey })
       };
 
       try {

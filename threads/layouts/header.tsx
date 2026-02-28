@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getServer } from "@/lib/userless";
 
 export async function Header(props: React.PropsWithChildren) {
-  const server = await getServer();
+  const server = getServer();
   const banner = await server.getBanner();
 
 

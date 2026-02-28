@@ -1,6 +1,6 @@
 import { fetchFrom, fetchText, fetchWithRedirect } from "./fetch";
 import { parse } from "smol-toml";
-import { Info, Thread, ThreadByHash, Content } from "./types";
+import { Info, Thread, ThreadByHash, Content, ResolvedThread } from "./types";
 import { createContent } from "./content";
 import * as openpgp from "openpgp";
 
@@ -74,4 +74,27 @@ export async function getThreadOwner(
 
   const owner = msg.getSigningKeyIDs()[0].toHex();
   return owner;
+}
+
+function makeResolvedThread(thread: ThreadByHash): ResolvedThread {
+  return {
+    url: thread.url,
+    hash: thread.hash,
+    getContent: () => getThreadContent(thread),
+    getPolicy: () => getThreadPolicy(thread),
+    getReplies: async (skip?, take?) => {
+      const threads = await getThreadReplies(thread, skip, take);
+      return threads.map((t) => makeResolvedThread(t as ThreadByHash));
+    },
+    getParents: async (count?) => {
+      const threads = await getThreadParents(thread, count);
+      return threads.map((t) => makeResolvedThread(t as ThreadByHash));
+    },
+    getOwner: () => getThreadOwner(thread),
+  };
+}
+
+export async function resolveThread(thread: Thread): Promise<ResolvedThread> {
+  const resolved = await resolveThreadRef(thread);
+  return makeResolvedThread(resolved);
 }

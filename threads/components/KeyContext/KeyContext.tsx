@@ -61,7 +61,7 @@ function MasterLoader() {
   const setMasters = useMasterKeysState()[1];
 
   const { value: testMessage } = useAsync(async () => {
-    const server = await getServer();
+    const server = getServer();
     const banner = await server.getBanner();
 
     const test = banner.info.challenge;
@@ -284,7 +284,7 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
 
   const registered = useAsyncRetry(async () => {
     try {
-      const server = await getServer();
+      const server = getServer();
       await server.getKey(keyId).getArmored()
       return true;
     } catch(e) {
