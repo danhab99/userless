@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/gin-gonic/gin"
@@ -31,9 +32,11 @@ func getThreadParents(uc *UserlessCtx) func(ctx *gin.Context) {
 			panic("thread not set")
 		}
 		thread := threadRaw.(*Thread)
-		parentCount := ctx.GetInt("count")
-		if parentCount == 0 {
-			parentCount = 10
+		parentCount := 10
+		if countStr := ctx.Query("count"); countStr != "" {
+			if n, err := strconv.Atoi(countStr); err == nil && n > 0 {
+				parentCount = n
+			}
 		}
 
 		var err error
