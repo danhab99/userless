@@ -36,6 +36,8 @@
           };
 
           ts = pkgs.mkShell {
+            NEXT_PUBLIC_USERLESS_URL="http://localhost:4444";
+
             packages = with pkgs; [
               gnumake
               yarn

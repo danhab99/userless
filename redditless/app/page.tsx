@@ -1,4 +1,4 @@
-import { createClient, getBanner } from "api-wrapper/userless";
+import { createClient, getBanner } from "api-wrapper";
 import { ThreadList } from "@/components/ThreadList/ThreadList";
 import type { Metadata } from "next";
 

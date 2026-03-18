@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* Scan ui-components source so Tailwind v4 includes its utility classes */
-@source "../../ui-components/src";
+@source "../ui-components/src";
 
 /* ─── Design tokens shared with ui-components ─────────────────── */
 @theme {
