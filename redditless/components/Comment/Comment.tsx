@@ -1,3 +1,4 @@
+"use client";
 import clsx from "clsx";
 import style from "./Comment.module.css";
 import Markdown from "react-markdown";

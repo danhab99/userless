@@ -4,14 +4,9 @@ import {
 } from "../ThreadListItem/ThreadListItem";
 import { getThreadTitle } from "@/lib/getThreadTitle";
 import Markdown from "react-markdown";
+import { ThreadProps } from "@/lib/thread";
 
-export type CommunityProps = {
-  ownerEmail: string;
-  ownerName: string;
-  timestamp: number;
-  body: string;
-  hash: string;
-
+export type CommunityProps = ThreadProps & {
   threads: ThreadListItemProps[];
 };
 

@@ -1,5 +1,5 @@
-import { createClient, resolveThread } from "api-wrapper/userless";
-import type { Thread, Content } from "api-wrapper/types";
+import { createClient, resolveThread } from "api-wrapper";
+import type { Thread, Content } from "api-wrapper";
 
 export interface CommentData {
   thread: Thread;
