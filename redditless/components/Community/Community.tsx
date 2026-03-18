@@ -1,6 +1,3 @@
-import clsx from "clsx";
-import style from "./Community.module.css";
-import { ThreadProps } from "../Thread/Thread";
 import {
   ThreadListItem,
   ThreadListItemProps,
@@ -23,7 +20,7 @@ export function Community(props: CommunityProps) {
 
   return (
     <div>
-      <h1>{title}</h1>
+      <h1 className="text-4xl underline pb-4">{title}</h1>
       <div className="flex flex-row">
         <div className="w-4/5">
           {props.threads.map((props) => (
