@@ -11,15 +11,28 @@ import { usePrivateKeys } from "../KeyContext/KeyContext";
 import * as openpgp from "openpgp";
 import { useRouter } from "next/navigation";
 import { useMap } from "react-use";
-import { createHash } from "crypto";
+// import { createHash } from "crypto";
 import * as toml from "smol-toml";
 import { DELIMITER } from "api-wrapper";
+import { ActionButton } from "../ActionButton/ActionButton";
 
 export type PostThreadProps = {
   replyTo?: string;
 };
 
 const MATCH_SHA256 = /[a-fA-F0-9]{64}/gm;
+
+function arrayBufferToHex(buffer: ArrayBuffer) {
+  // Create a Uint8Array view of the ArrayBuffer
+  const uint8Array = new Uint8Array(buffer);
+  
+  // Use Array.from and map to convert each byte to a padded hex string, then join
+  const hexString = Array.from(uint8Array)
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('');
+    
+  return hexString;
+}
 
 export const PostThread = (props: PostThreadProps) => {
   const privateKeys = usePrivateKeys();
@@ -205,11 +218,12 @@ export const PostThread = (props: PostThreadProps) => {
         }
 
         const buff = await file.arrayBuffer();
-        const hasher = createHash("sha256");
-        hasher.write(Buffer.from(buff));
-        const hash = hasher.digest("hex");
+
+        const hash = await window.crypto.subtle.digest("SHA-256", buff);
+
+        debugger;
         filesControls.set(
-          hash,
+          arrayBufferToHex(hash),
           new Blob([buff], {
             type: file.type,
           }),
@@ -233,7 +247,7 @@ export const PostThread = (props: PostThreadProps) => {
     <div className="bg-white shadow-xl">
       <form onSubmit={onSubmit}>
         <div className="w-full flex">
-          <label className="px-2 flex-1 truncate overflow-hidden text-ellipsis whitespace-nowrap">
+          <label className="px-2 flex-1 truncate overflow-hidden text-ellipsis whitespace-nowrap bg-gray-100">
             {props.replyTo ? `Reply to ${props.replyTo}` : "Body:"}
           </label>
         </div>
@@ -249,7 +263,11 @@ export const PostThread = (props: PostThreadProps) => {
         />
 
         <div>
-          <label>Add file</label>
+          <ActionButton
+            label="Add File"
+            color="text-blue-500"
+            onClick={() => fileinputRef.current?.click()}
+          />
           <input
             multiple
             type="file"
@@ -257,6 +275,7 @@ export const PostThread = (props: PostThreadProps) => {
             ref={(ref) => {
               fileinputRef.current = ref || undefined;
             }}
+            hidden
           />
         </div>
 
@@ -266,7 +285,7 @@ export const PostThread = (props: PostThreadProps) => {
             onChange={(e) => setKeyId(e.target.value)}
             defaultValue={privateKeys[0]?.getKeyID().toHex()}
             required
-            className="w-8/10 w-full p-2 overflow-hidden"
+            className="w-8/10 w-full p-2 overflow-hidden bg-gray-100"
           >
             {privateKeys.map((key, i) => (
               <option key={i} value={key.getFingerprint()}>
@@ -276,7 +295,11 @@ export const PostThread = (props: PostThreadProps) => {
               </option>
             ))}
           </select>
-          <button className="px-4" type="submit" disabled={loading}>
+          <button
+            className="px-4 bg-yellow-300"
+            type="submit"
+            disabled={loading}
+          >
             {loading ? "Posting..." : "Post"}
           </button>
         </div>

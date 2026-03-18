@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import * as openpgp from "openpgp";
 import { ActionButton } from "../ActionButton/ActionButton";
 import Link from "next/link";
@@ -191,7 +191,7 @@ function KeyDrawer() {
   return (
     <div className="fixed bottom-0 right-0 bg-white p-4 shadow-lg">
       <h4 onClick={() => setOpen((x) => !x)}>
-        {open ? "⮟" : "⮝"} Key mananger{" "}
+        {open ? "⌄" : "^"} Key mananger{" "}
         {open ? (
           <Link href="/generate-keys">
             <ActionButton label="Generate Key" />
