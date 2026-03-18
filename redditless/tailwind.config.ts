@@ -6,11 +6,23 @@ const config: Config = {
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./layouts/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "../ui-components/src/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   safelist: [
     {
       pattern: /text-.*/g,
     },
+    // Add common classes that might be used in ui-components
+    "shadow-lg",
+    "border-gray-300",
+    "rounded-lg",
+    "bg-white",
+    "z-50",
+    "fixed",
+    "bottom-4",
+    "right-4",
+    "p-4",
+    "max-w-sm",
   ],
   theme: {
     screens: {
@@ -28,10 +40,6 @@ const config: Config = {
 
       "2xl": "1536px",
       // => @media (min-width: 1536px) { ... }
-    },
-    extend: {
-      colors: {
-      },
     },
   },
   plugins: [

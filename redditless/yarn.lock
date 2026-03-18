@@ -1748,6 +1748,13 @@ ansi-styles@^4.1.0:
   dependencies:
     color-convert "^2.0.1"
 
+api-wrapper@../api-wrapper:
+  version "1.0.0"
+  dependencies:
+    debug "^4.4.0"
+    openpgp "^6.1.0"
+    smol-toml "^1.3.1"
+
 "api-wrapper@file:../api-wrapper":
   version "1.0.0"
   dependencies:
@@ -4132,7 +4139,7 @@ mrmime@^2.0.0:
 
 ms@^2.1.1, ms@^2.1.3:
   version "2.1.3"
-  resolved "https://registry.npmjs.org/ms/-/ms-2.1.3.tgz"
+  resolved "https://registry.yarnpkg.com/ms/-/ms-2.1.3.tgz#574c8138ce1d2b5861f0b44579dbadd60c6615b2"
   integrity sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==
 
 nano-css@^5.6.2:
@@ -5343,7 +5350,7 @@ typescript@^5:
 "ui-components@file:../ui-components":
   version "0.1.0"
   dependencies:
-    api-wrapper "file:../../../../../.cache/yarn/v6/npm-ui-components-0.1.0-e0316d1b-244d-40bb-916a-ae9ed0ded5ca-1773793830089/node_modules/api-wrapper"
+    api-wrapper "file:../../../../../.cache/yarn/v6/npm-ui-components-0.1.0-599bc09b-efd5-400d-b563-a84f1f719170-1773846789266/node_modules/api-wrapper"
     openpgp "^5.11.2"
     react-use "^17.6.0"
     smol-toml "^1.3.0"

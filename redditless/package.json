@@ -11,7 +11,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "api-wrapper": "file:../api-wrapper",
+    "api-wrapper": "../api-wrapper",
     "next": "16.1.6",
     "openpgp": "^5.11.2",
     "react": "19.2.3",
