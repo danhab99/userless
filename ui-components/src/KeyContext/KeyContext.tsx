@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import * as openpgp from "openpgp";
 import { ActionButton } from "../ActionButton/ActionButton";
 import Link from "next/link";
@@ -187,11 +188,39 @@ function KeyDrawer() {
   const allKeys = uniqueKeys([decryptedKeys, privateKeys]);
 
   const [open, setOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
-  return (
-    <div className="fixed bottom-0 right-0 bg-white p-4 shadow-lg">
-      <h4 onClick={() => setOpen((x) => !x)}>
-        {open ? "⌄" : "^"} Key mananger{" "}
+  // Ensure we only render on client side to avoid hydration issues
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return null;
+  }
+
+  const keyManagerContent = (
+    <div 
+      className="bg-white p-4 shadow-lg border border-gray-300 rounded-lg max-w-sm"
+      style={{
+        position: 'fixed',
+        bottom: '16px',
+        right: '16px',
+        zIndex: 9999,
+        backgroundColor: '#ffffff',
+        padding: '16px',
+        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+        border: '1px solid #d1d5db',
+        borderRadius: '8px',
+        maxWidth: '24rem',
+      }}
+    >
+      <h4 
+        onClick={() => setOpen((x) => !x)}
+        className="cursor-pointer select-none mb-2 flex items-center gap-2"
+      >
+        <span>{open ? "⌄" : "^"}</span>
+        <span>Key manager</span>
         {open ? (
           <Link href="/generate-keys">
             <ActionButton label="Generate Key" />
@@ -204,17 +233,21 @@ function KeyDrawer() {
             <KeyRow sk={sk} key={i} />
           ))}
           <div className="pt-2">
-            <label>Add keys</label>
+            <label className="block text-sm font-medium mb-1">Add keys</label>
             <input
               type="file"
               multiple
               onChange={(e) => addKey(e.target.files)}
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
             />
           </div>
         </>
       ) : null}
     </div>
   );
+
+  // Use createPortal to render directly to document.body
+  return createPortal(keyManagerContent, document.body);
 }
 
 export function usePrivateKeys() {
