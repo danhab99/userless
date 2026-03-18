@@ -1,5 +1,5 @@
 import { fetchText } from "./fetch";
-import { Banner, Thread, UserlessConfig } from "./types";
+import { Banner, ResolvedThread, Thread, UserlessConfig } from "./types";
 import { DELIMITER } from "./const";
 import { parse } from "smol-toml";
 import { debug } from "./debug";
@@ -12,7 +12,7 @@ export function createClient(config: UserlessConfig | string) {
   return {
     getBanner: () => getBanner(url),
     thread: (id: string) => getThread(url, id),
-    resolveThread: (id: string) => resolveThread(getThread(url, id)),
+    resolveThread: (r: Thread) => resolveThread(r),
     getKey: (keyId: string) => ({
       getArmored: () => getArmoredKey(url, keyId),
       getThreads: (skip?: number, take?: number) => getThreadsForKey(url, keyId, skip, take),

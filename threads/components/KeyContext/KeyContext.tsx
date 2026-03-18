@@ -1,9 +1,19 @@
-export {
-  KeyContextProvider,
-  usePrivateKeys,
-  useAddPrivateKey,
-  useMasterKey,
-} from "ui-components";
+"use client";
+import React, { useState, useCallback, useEffect } from "react";
+import * as openpgp from "openpgp";
+import { ActionButton } from "../ActionButton/ActionButton";
+import Link from "next/link";
+import {
+  createStateContext,
+  useAsync,
+  useAsyncRetry,
+  useDeepCompareEffect,
+  useLocalStorage,
+  useSessionStorage,
+  useShallowCompareEffect,
+} from "react-use";
+import { Hash } from "../Hash/Hash";
+import { getServer } from "../../lib/userless";
 
 const [usePrivateKeysState, PrivateKeysStateProvider] = createStateContext<
   openpgp.PrivateKey[]
@@ -25,9 +35,8 @@ function uniqueKeys(keys: openpgp.PrivateKey[][]) {
     (k, i) =>
       allKeys.findIndex(
         (o) => o.getKeyID().toHex() === k.getKeyID().toHex(),
-    ) === i,
+      ) === i,
   );
-  
 }
 
 export const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
@@ -53,13 +62,10 @@ function MasterLoader() {
   const { value: testMessage } = useAsync(async () => {
     const server = getServer();
     const banner = await server.getBanner();
-
     const test = banner.info.challenge;
-
     const msg = await openpgp.readMessage({
       armoredMessage: test,
     });
-
     return msg;
   }, []);
 
@@ -75,16 +81,13 @@ function MasterLoader() {
                     message: testMessage,
                     decryptionKeys: [pk],
                   });
-                  console.log("This key is admin", pk);
                   resolve(true);
                 } catch (e: any) {
-                  console.error("Decrypt error", e);
                   resolve(false);
                 }
               }),
           ),
         );
-
         const masterKeys = privateKeys.filter((_, i) => masks[i]);
         setMasters(masterKeys);
       })();
@@ -144,9 +147,7 @@ function KeyDrawer() {
 
   const addKey = useCallback(
     async (files: FileList | null) => {
-      if (!files) {
-        return;
-      }
+      if (!files) return;
 
       for (let i = 0; i < files.length; i++) {
         const file = files.item(i);
@@ -164,7 +165,6 @@ function KeyDrawer() {
             const addKeys = newKeyRing.filter(
               (x) => !existingKeyIds.includes(x.getKeyID().toHex()),
             );
-
             return [...oldKeyRing, ...addKeys];
           });
         } catch (e) {
@@ -175,14 +175,14 @@ function KeyDrawer() {
     },
     [setPrivateKeys],
   );
-  const allKeys = uniqueKeys([decryptedKeys, privateKeys]);
 
+  const allKeys = uniqueKeys([decryptedKeys, privateKeys]);
   const [open, setOpen] = useState(false);
 
   return (
     <div className="fixed bottom-0 right-0 bg-white p-4 shadow-lg">
       <h4 onClick={() => setOpen((x) => !x)}>
-        {open ? "⮟" : "⮝"} Key mananger{" "}
+        {open ? "⮟" : "⮝"} Key manager{" "}
         {open ? (
           <Link href="/generate-keys">
             <ActionButton label="Generate Key" />
@@ -222,15 +222,6 @@ export function useAddPrivateKey(): (sk: openpgp.PrivateKey) => void {
   );
 }
 
-function keyBodyString(
-  primaryUser: openpgp.PrimaryUser,
-  pgKey: openpgp.PrivateKey,
-): string {
-  const keyid = pgKey.getKeyID().toHex();
-
-  return `${primaryUser?.user.userID?.name}(${keyid})<${primaryUser?.user.userID?.email}>`;
-}
-
 function KeyRow(props: { sk: openpgp.PrivateKey }) {
   const { sk } = props;
   const keyId = sk.getKeyID().toHex();
@@ -247,9 +238,7 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
 
   const unlock = useCallback(async () => {
     const primaryUser = await sk.getPrimaryUser();
-    const password = prompt(
-      `Password to decrypt ${keyBodyString(primaryUser, sk)}`,
-    );
+    const password = prompt(`Password to decrypt ${keyId}`);
     const decryptedKey = await openpgp.decryptKey({
       privateKey: sk,
       passphrase: password ?? "",
@@ -257,27 +246,24 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
 
     setDecryptedKeys((prev) => {
       const keys = prev.reduce(
-        (coll, sk) => {
-          return {
-            ...coll,
-            [sk.getKeyID().toHex()]: sk,
-          };
-        },
+        (coll, sk) => ({
+          ...coll,
+          [sk.getKeyID().toHex()]: sk,
+        }),
         {} as Record<string, openpgp.PrivateKey>,
       );
 
       keys[sk.getKeyID().toHex()] = decryptedKey;
-
       return Object.values(keys);
     });
-  }, [setDecryptedKeys]);
+  }, [setDecryptedKeys, keyId]);
 
   const registered = useAsyncRetry(async () => {
     try {
       const server = getServer();
-      await server.getKey(keyId).getArmored()
+      await server.getKey(keyId).getArmored();
       return true;
-    } catch(e) {
+    } catch (e) {
       return false;
     }
   }, [keyId]);
@@ -332,3 +318,6 @@ function KeyRow(props: { sk: openpgp.PrivateKey }) {
     </div>
   );
 }
+
+
+

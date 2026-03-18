@@ -5,7 +5,7 @@ import Centered from "@/components/Centered/Centered";
 import * as openpgp from "openpgp";
 import { ThreadCardFromHash } from "@/components/ThreadCard/ThreadCardServer";
 import { getServer } from "@/lib/userless";
-import { Thread } from "api-wrapper";
+import { ResolvedThread } from "api-wrapper";
 
 type KeyPageParams = {
   params: Promise<{
@@ -18,7 +18,7 @@ const collectInfo = async (params: Awaited<KeyPageParams["params"]>): Promise<{
   user: openpgp.UserIDPacket,
   timestamp: Date,
   armored: string,
-  threads: Thread[],
+  threads: ResolvedThread[],
 }> => {
   const server = getServer();
 
@@ -33,6 +33,8 @@ const collectInfo = async (params: Awaited<KeyPageParams["params"]>): Promise<{
   const timestamp = pk.getCreationTime();
 
   const threads = await publickey.getThreads();
+
+  threads.map(thread => server.resolveThread(thread))
 
   const user = (await pk.getPrimaryUser()).user.userID!;
   return { user, timestamp, armored, threads };

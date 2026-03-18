@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -12,8 +12,7 @@
   },
   "dependencies": {
     "@prisma/client": "5.18.0",
-    "api-wrapper": "file:../api-wrapper",
-    "ui-components": "file:../ui-components",
+    "api-wrapper": "../api-wrapper",
     "mailto-link": "^2.0.0",
     "minio": "^8.0.1",
     "next": "15.0.1",
@@ -52,6 +51,7 @@
   },
   "resolutions": {
     "@types/react": "npm:types-react@19.0.0-rc.1",
-    "@types/react-dom": "npm:types-react-dom@19.0.0-rc.1"
+    "@types/react-dom": "npm:types-react-dom@19.0.0-rc.1",
+    "openpgp": "^5.11.2"
   }
 }
