@@ -101,7 +101,7 @@ export async function fetchContent(
   args?: Record<string, any>
 ): Promise<Content> {
   const text = await fetchText(url, path, args);
-  return createContent(text);
+  return await createContent(text);
 }
 
 export async function fetchFrom(

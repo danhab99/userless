@@ -9,6 +9,7 @@ export type Content = {
   readonly info?: Record<string, any>;
   readonly body: string;
   readonly original: string;
+  readonly timestamp: Date;
 };
 
 export type ThreadByHash = {
@@ -23,6 +24,14 @@ export type ThreadByRef = {
   ref: string;
 };
 
+export type Owner = {
+  timestamp: Date;
+  name: string;
+  email: string;
+  comment: string;
+  fingerprint: string;
+};
+
 export type Thread = ThreadByHash | ThreadByRef;
 
 export interface ResolvedThread {
@@ -32,7 +41,7 @@ export interface ResolvedThread {
   getPolicy(): Promise<Info>;
   getReplies(skip?: number, take?: number): Promise<ResolvedThread[]>;
   getParents(count?: number): Promise<ResolvedThread[]>;
-  getOwner(): Promise<string>;
+  getOwner(): Promise<Owner>;
 }
 
 export interface UserlessConfig {
