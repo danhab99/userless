@@ -18,6 +18,13 @@ const config: StorybookConfig = {
   ],
   viteFinal: (config) => {
     config.plugins = [tailwindcss(), ...(config.plugins ?? [])];
+    
+    // Define React as external to prevent bundling issues
+    config.define = {
+      ...config.define,
+      global: 'globalThis',
+    };
+    
     return config;
   },
 };

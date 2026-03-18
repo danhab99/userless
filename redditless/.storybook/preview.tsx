@@ -3,9 +3,6 @@ import React from 'react'
 import { KeyContextProvider } from 'ui-components'
 import '../app/globals.css'
 
-// Make React available globally for ui-components
-;(globalThis as any).React = React
-
 const preview: Preview = {
   decorators: [
     (Story, context) => {
