@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getServer } from "@/lib/userless";
+import { getServer } from "ui-components";
 
 export async function Header(props: React.PropsWithChildren) {
   const server = getServer();

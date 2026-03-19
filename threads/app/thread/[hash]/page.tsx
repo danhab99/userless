@@ -1,5 +1,5 @@
 import { ThreadCardFromHash } from "@/components/ThreadCard/ThreadCardServer";
-import { getServer } from "@/lib/userless";
+import { getServer } from "ui-components";
 import { Metadata } from "next";
 import * as openpgp from "openpgp";
 

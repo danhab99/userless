@@ -1,11 +1,11 @@
 "use client";
-import { useMasterKey } from "../KeyContext/KeyContext";
+import { useMasterKey } from "ui-components";
 import { createStateContext, useAsyncRetry } from "react-use";
-import { server } from "@/lib/userless";
+import { getServer } from "ui-components";
 import { Thread } from "api-wrapper";
 import { AdminAction } from "../AdminAction/AdminAction";
 import { ThreadCardProps } from "../ThreadCard/ThreadCard";
-import { ActionButton } from "../ActionButton/ActionButton";
+import { ActionButton } from "ui-components";
 import clsx from "clsx";
 import style from "./ThreadControls.module.css";
 
@@ -28,7 +28,7 @@ export const ThreadControls = ({ thread }: ThreadControlsProps) => {
 
   const { value: policy } = useAsyncRetry(async () => {
     if (master && thread?.hash) {
-      return server.getThread(thread.hash).getPolicy();
+      return getServer().getThread(thread.hash).getPolicy();
     }
   }, [master, thread?.hash]);
 

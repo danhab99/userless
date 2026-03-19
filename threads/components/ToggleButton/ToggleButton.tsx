@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { ActionButton } from "@/components/ActionButton/ActionButton";
+import { ActionButton } from "ui-components";
 
 export type ToggleButtonProps = {
   falseLabel?: string;

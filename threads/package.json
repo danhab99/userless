@@ -26,7 +26,8 @@
     "react-use": "^17.6.0",
     "rehype-highlight": "^7.0.0",
     "remark-gfm": "^4.0.0",
-    "smol-toml": "^1.3.0"
+    "smol-toml": "^1.3.0",
+    "ui-components": "file:../ui-components"
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^3.2.2",

@@ -1,5 +1,5 @@
-import { PostThread } from "@/components/PostThread/PostThread";
-import { getServer } from "@/lib/userless";
+import { PostThread } from "ui-components";
+import { getServer } from "ui-components";
 import ThreadBody from "@/components/ThreadBody/ThreadBody";
 import { ThreadCardFromHash } from "@/components/ThreadCard/ThreadCardServer";
 

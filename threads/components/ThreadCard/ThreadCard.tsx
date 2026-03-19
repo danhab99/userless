@@ -2,16 +2,16 @@
 import SigVerify from "@/components/SigVerify/SigVerify";
 import mailto from "mailto-link";
 import ThreadBody from "@/components/ThreadBody/ThreadBody";
-import { PostThread } from "@/components/PostThread/PostThread";
+import { PostThread } from "ui-components";
 import { useToggleButton } from "@/components/ToggleButton/ToggleButton";
 import Link from "next/link";
-import { Hash } from "@/components/Hash/Hash";
-import { useMasterKey } from "@/components/KeyContext/KeyContext";
-import { ActionButton } from "@/components/ActionButton/ActionButton";
+import { Hash } from "ui-components";
+import { useMasterKey } from "ui-components";
+import { ActionButton } from "ui-components";
 import { useAsyncFn, useAsyncRetry } from "react-use";
 import * as openpgp from "openpgp";
 import toml from "smol-toml";
-import { getServer } from "@/lib/userless";
+import { getServer } from "ui-components";
 
 export type ThreadCardProps = {
   threadText: string;

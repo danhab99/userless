@@ -1,6 +1,5 @@
 "use client";
-import { useMasterKey } from "../KeyContext/KeyContext";
-import { ActionButton } from "../ActionButton/ActionButton";
+import { useMasterKey, ActionButton } from "ui-components";
 import {  useAsyncFn } from "react-use";
 import * as openpgp from "openpgp";
 import toml from "smol-toml";

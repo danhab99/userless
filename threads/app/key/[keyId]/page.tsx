@@ -4,7 +4,7 @@ import Markdown from "react-markdown";
 import Centered from "@/components/Centered/Centered";
 import * as openpgp from "openpgp";
 import { ThreadCardFromHash } from "@/components/ThreadCard/ThreadCardServer";
-import { getServer } from "@/lib/userless";
+import { getServer } from "ui-components";
 import { ResolvedThread } from "api-wrapper";
 
 type KeyPageParams = {

@@ -4,7 +4,7 @@ import * as openpgp from "openpgp";
 import { useState } from "react";
 import { useShallowCompareEffect } from "react-use";
 import dynamic from "next/dynamic";
-import { getServer } from "@/lib/userless";
+import { getServer } from "ui-components";
 
 type SigVerifyProps = {
   content: string | ArrayBuffer;

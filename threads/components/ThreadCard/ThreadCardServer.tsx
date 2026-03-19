@@ -1,5 +1,5 @@
 "use server";
-import { getServer } from "@/lib/userless";
+import { getServer } from "ui-components";
 import { ThreadCard } from "./ThreadCard";
 import * as openpgp from "openpgp";
 import { spoofArmoredSignature } from "@/lib/utils";
