@@ -42,52 +42,56 @@ type Action =
       decryptedKeys: openpgp.PrivateKey[];
     };
 
+const DefaultKeyState = {
+  decryptedKeys: [],
+  privateKeys: [],
+  initialized: false,
+  allKeys: [],
+};
+
 const KeyContextState = createContext<
   [State, React.ActionDispatch<[action: Action]>]
->([] as any);
+>([DefaultKeyState, () => {}] as any);
+
+export function usePrivateKeys() {
+  const [s] = useContext(KeyContextState);
+  return s.decryptedKeys;
+}
 
 export const KeyContextProvider = (props: React.PropsWithChildren<{}>) => {
-  const r = useReducer(
-    (state: State, action: Action) => {
-      const n = { ...state };
+  const r = useReducer((state: State, action: Action) => {
+    const n = { ...state };
 
-      switch (action.action) {
-        case "create":
-          n.privateKeys = [...n.privateKeys, action.privateKey];
-          n.initialized = true;
-          break;
-        case "delete":
-          const d = (x: openpgp.PrivateKey) =>
-            x.getFingerprint() != action.fingerprint;
-          n.decryptedKeys = n.decryptedKeys.filter(d);
-          n.privateKeys = n.privateKeys.filter(d);
-          break;
-        case "unlock":
-          n.decryptedKeys = [...state.decryptedKeys, action.decryptedKey];
-          break;
-        case "load":
-          n.decryptedKeys = action.decryptedKeys;
-          n.privateKeys = action.privateKeys;
+    switch (action.action) {
+      case "create":
+        n.privateKeys = [...n.privateKeys, action.privateKey];
+        n.initialized = true;
+        break;
+      case "delete":
+        const d = (x: openpgp.PrivateKey) =>
+          x.getFingerprint() != action.fingerprint;
+        n.decryptedKeys = n.decryptedKeys.filter(d);
+        n.privateKeys = n.privateKeys.filter(d);
+        break;
+      case "unlock":
+        n.decryptedKeys = [...state.decryptedKeys, action.decryptedKey];
+        break;
+      case "load":
+        n.decryptedKeys = action.decryptedKeys;
+        n.privateKeys = action.privateKeys;
 
-          n.initialized = true;
+        n.initialized = true;
 
-          break;
-      }
+        break;
+    }
 
-      n.allKeys = [...n.decryptedKeys, ...n.privateKeys].filter(
-        (x, i, arr) =>
-          i <= arr.findIndex((y) => x.getFingerprint() === y.getFingerprint()),
-      );
+    n.allKeys = [...n.decryptedKeys, ...n.privateKeys].filter(
+      (x, i, arr) =>
+        i <= arr.findIndex((y) => x.getFingerprint() === y.getFingerprint()),
+    );
 
-      return n;
-    },
-    {
-      decryptedKeys: [],
-      privateKeys: [],
-      initialized: false,
-      allKeys: [],
-    },
-  );
+    return n;
+  }, DefaultKeyState);
 
   const [state, dispatch] = r;
 
@@ -189,7 +193,7 @@ const useUnlockKey = () => {
           decryptedKey,
         });
       } catch (e) {
-        alert(`Unable to decrypt key ${e}`)
+        alert(`Unable to decrypt key ${e}`);
       }
     }
   };
