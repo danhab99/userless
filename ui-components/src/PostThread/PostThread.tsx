@@ -25,7 +25,7 @@ const MATCH_SHA256 = /[a-fA-F0-9]{64}/gm;
 function arrayBufferToHex(buffer: ArrayBuffer) {
   // Create a Uint8Array view of the ArrayBuffer
   const uint8Array = new Uint8Array(buffer);
-  
+
   // Use Array.from and map to convert each byte to a padded hex string, then join
   const hexString = Array.from(uint8Array)
     .map(byte => byte.toString(16).padStart(2, '0'))
@@ -267,6 +267,12 @@ export const PostThread = (props: PostThreadProps) => {
             label="Add File"
             color="text-blue-500"
             onClick={() => fileinputRef.current?.click()}
+          />
+          <ActionButton label="Bold" color="text-gray-500" onClick={() => {}} />
+          <ActionButton
+            label="Italics"
+            color="text-gray-500"
+            onClick={() => {}}
           />
           <input
             multiple

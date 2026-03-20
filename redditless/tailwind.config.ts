@@ -8,22 +8,7 @@ const config: Config = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "../ui-components/src/**/*.{js,ts,jsx,tsx,mdx}",
   ],
-  safelist: [
-    {
-      pattern: /text-.*/g,
-    },
-    // Add common classes that might be used in ui-components
-    "shadow-lg",
-    "border-gray-300",
-    "rounded-lg",
-    "bg-white",
-    "z-50",
-    "fixed",
-    "bottom-4",
-    "right-4",
-    "p-4",
-    "max-w-sm",
-  ],
+  // Remove safelist - let Tailwind v4 auto-detect from source scanning
   theme: {
     screens: {
       sm: "640px",

@@ -265,15 +265,7 @@ function KeyDrawer() {
 
   const keyManagerContent = (
     <div
-      className="p-4 max-w-sm shadow-lg bg-gray-50"
-      style={{
-        position: "fixed",
-        bottom: "0px",
-        right: "0px",
-        zIndex: 9999,
-        padding: "16px",
-        maxWidth: "32rem",
-      }}
+      className="fixed bottom-0 right-0 z-50 p-4 max-w-sm shadow-lg bg-gray-50"
     >
       <h4
         onClick={() => setOpen((x) => !x)}

@@ -13,6 +13,13 @@
   --color-advertise: green;
 }
 
+/* ─── Utility classes for ui-components ─────────────────────────── */
+@layer utilities {
+  .text-username { color: var(--color-username); }
+  .text-right { text-align: right; }
+  .hidden { display: none; }
+}
+
 /* ─── Shared layout utilities ────────────────────────────────── */
 /*
  * .centered and .centered-widths are used by PostThreadNarrow.
