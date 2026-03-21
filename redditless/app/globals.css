@@ -12,15 +12,27 @@
   .bottom-0 { bottom: 0px; }
   .right-0 { right: 0px; }
   .z-50 { z-index: 50; }
+  .p-1 { padding: 0.25rem; }
+  .p-2 { padding: 0.5rem; }
   .p-4 { padding: 1rem; }
+  .px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
+  .px-4 { padding-left: 1rem; padding-right: 1rem; }
   .max-w-sm { max-width: 24rem; }
+  .w-full { width: 100%; }
+  .w-8\/10 { width: 80%; }
   .shadow-lg { 
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   }
+  .shadow-xl {
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  }
+  .bg-white { background-color: rgb(255 255 255); }
   .bg-gray-50 { background-color: rgb(249 250 251); }
   .bg-gray-100 { background-color: rgb(243 244 246); }
   .bg-red-500 { background-color: rgb(239 68 68); }
   .bg-yellow-300 { background-color: rgb(253 224 71); }
+  .border { border-width: 1px; }
+  .border-gray-300 { border-color: rgb(209 213 219); }
   .text-white { color: rgb(255 255 255); }
   .text-gray-800 { color: rgb(31 41 55); }
   .text-cyan-600 { color: rgb(8 145 178); }
@@ -35,8 +47,33 @@
   .select-none { user-select: none; }
   .mb-2 { margin-bottom: 0.5rem; }
   .flex { display: flex; }
+  .flex-1 { flex: 1 1 0%; }
+  .flex-col { flex-direction: column; }
+  .flex-row { flex-direction: row; }
   .items-center { align-items: center; }
   .gap-2 { gap: 0.5rem; }
+  
+  /* Hash component utilities */
+  .inline-block { display: inline-block; }
+  .w-\[8ch\] { width: 8ch; }
+  .font-mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace; }
+  .hover\:w-full:hover { width: 100%; }
+  .overflow-hidden { overflow: hidden; }
+  .whitespace-nowrap { white-space: nowrap; }
+  .align-middle { vertical-align: middle; }
+  
+  /* PostThread component utilities */
+  .truncate { 
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .text-ellipsis { text-overflow: ellipsis; }
+  
+  /* Responsive utilities */
+  @media (min-width: 768px) {
+    .md\:flex-row { flex-direction: row; }
+  }
 }
 
 /* ─── Design tokens shared with ui-components ─────────────────── */

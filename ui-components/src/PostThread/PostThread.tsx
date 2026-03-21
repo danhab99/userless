@@ -257,7 +257,7 @@ export const PostThread = (props: PostThreadProps) => {
           }}
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          className="w-full p-1"
+          className="w-full p-1 bg-white border border-gray-300"
           rows={10}
           required
         />
