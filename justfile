@@ -13,3 +13,15 @@ run-threads:
 
 run-redditless:
   just run-node redditless
+
+clean:
+  -rm -rf **/.next
+  -rm -rf **/node_modules
+
+build-all:
+  cd api-wrapper && yarn install && yarn build
+  cd ui-components && yarn install
+  cd threads && yarn install
+  cd redditless && yarn install
+
+reset: clean build-all
