@@ -3,7 +3,7 @@ import clsx from "clsx";
 import style from "./Thread.module.css";
 import { CommentProps, Comment } from "../Comment/Comment";
 import Markdown from "react-markdown";
-import { ActionButton } from "ui-components";
+import { ActionButton, Hash } from "ui-components";
 import { Reply } from "../Reply/Reply";
 
 export type ThreadProps = {
@@ -28,6 +28,9 @@ export async function Thread(props: ThreadProps) {
   return (
     <div>
       <div className="bg-cyan-100 p-4">
+        <small>
+          <Hash content={props.hash} />
+        </small>
         <h2 className="text-4xl underline bold pb-6">{title}</h2>
 
         <Markdown>{body}</Markdown>
