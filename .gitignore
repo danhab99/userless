@@ -3,4 +3,7 @@
 server/vendor
 server/server
 result
-ui-components/node_modules
+node_modules
+.cache
+.envrc
+.direnv
