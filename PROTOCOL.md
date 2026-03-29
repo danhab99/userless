@@ -45,6 +45,16 @@ The protocol is also designed to be **generic**. The same wire format can repres
 | Reddit community | A thread ref pointing to the community's root thread |
 | Blog post | A root thread with rich Markdown body |
 
+### Write vs. Read
+
+The Userless protocol has two distinct halves:
+
+- **The read side is fixed and non-negotiable.** The wire format for threads (cleartext-signed OpenPGP messages), the hash derivation algorithm (SHA256 of the full cleartext-signed message), the TOML/Markdown structure, and the HTTP API shapes described in this document are hard requirements. Any conforming Userless client or server must implement these exactly.
+
+- **The write side is intentionally loosely defined.** Rules around registration, posting, and policy management are **entirely freeform**. This reference implementation reflects one set of opinions — requiring a master key to edit key policies, requiring the original signing key to edit a thread's policy, etc. — but these are *this implementation's* choices, not protocol mandates. Server operators are free to define their own acceptance rules, policy structures, and moderation logic.
+
+Userless is designed to be **minimal and easy to implement**. This codebase is a reference example. Other developers are actively encouraged to build their own servers, clients, and tooling with different rules and workflows. The only invariants that matter across implementations are the read-side wire formats and hash computations listed in this document.
+
 ---
 
 ## 2. Identity: Keys Instead of Accounts
@@ -235,18 +245,18 @@ The server reads the **signer fingerprint directly from the signature packet** �
 
 ## 4. The Thread Hash
 
-Every thread is identified by its **hash**: the lowercase hex-encoded SHA256 digest of the plaintext body (i.e. the text that was actually signed — everything between the PGP header line and the signature block).
+Every thread is identified by its **hash**: the lowercase hex-encoded SHA256 digest of the **full cleartext-signed message** (i.e. the entire armored PGP cleartext message as posted, including the PGP header line, hash armor header, plaintext body, and signature block).
 
 ```
-hash = hex(SHA256(plaintext_body))
+hash = hex(SHA256(clearsign_message))
 ```
 
 Key properties:
 
-- **Content-addressed**: the same plaintext always produces the same hash, regardless of which key signed it or when.
-- **Immutable**: editing content produces a completely different hash — it becomes a different thread entirely.
+- **Content-addressed**: the same signed message always produces the same hash.
+- **Immutable**: editing content (or re-signing it) produces a completely different hash — it becomes a different thread entirely.
 - **Deduplicated**: posting identical content twice returns `409 Conflict` with the existing hash.
-- **Portable**: a thread from server A carries the same hash on server B, because the hash is derived from content alone.
+- **Portable**: a thread from server A carries the same hash on server B, because the hash is derived from the complete signed message.
 
 ### Posting a thread
 
@@ -394,7 +404,7 @@ isMaster = false
 | `maxFileSize` | `1000000` | Maximum upload size in bytes |
 | `isMaster` | `false` | Marks an administrative key |
 
-Updating a key policy requires a **cleartext-signed TOML body** sent as a `PATCH` request. The signing key must be authorized to edit the policy (e.g. it must be the key's own policy or the editor must have admin rights):
+Updating a key policy requires a **cleartext-signed TOML body** sent as a `PATCH` request. The signing key must be a **master key** (i.e. `isMaster = true` in the database). Regular keys cannot edit their own or others' key policies:
 
 ```bash
 cat > policy_update.txt <<EOF
@@ -431,7 +441,7 @@ advertise = false
 | `policyEditors` | `[]` | Fingerprints of keys allowed to modify this policy |
 | `advertise` | `false` | Whether this thread appears on the server banner frontpage |
 
-Updating a thread policy works the same way — sign a TOML body and `PATCH` it:
+Updating a thread policy works the same way — sign a TOML body and `PATCH` it. The signing key must be the **same key that originally signed the thread**:
 
 ```bash
 cat > thread_policy.txt <<EOF
@@ -878,9 +888,12 @@ Update a key's policy.
 | **Response body** | empty |
 | **Status 200** | Policy updated |
 | **Status 400** | Invalid signed message or invalid TOML |
+| **Status 403** | Signing key is not a master key |
 | **Status 404** | Key not found |
 
 Recognised TOML fields: `revoked`, `allowedToPost`, `canStartThreads`, `isMaster`, `allowedToUploadFiles`. Only fields present in the body are updated.
+
+The signing key must have `isMaster = true`. Regular keys, including the key whose policy is being modified, cannot edit key policies.
 
 ---
 
@@ -891,7 +904,7 @@ Submit a new cleartext-signed thread.
 | | |
 |---|---|
 | **Request body** | Full armored cleartext-signed message |
-| **Response body** | Lowercase hex SHA256 hash of the thread plaintext |
+| **Response body** | Lowercase hex SHA256 hash of the full cleartext-signed message |
 | **Status 201** | Thread accepted and stored |
 | **Status 400** | Empty body, malformed cleartext message, or policy rejected it |
 | **Status 401** | Signing key not registered, revoked, or not permitted to post |
@@ -977,9 +990,12 @@ Update a thread's policy.
 | **Response body** | empty |
 | **Status 200** | Policy updated |
 | **Status 400** | Invalid signed message or invalid TOML |
+| **Status 403** | Signing key is not the key that originally signed the thread |
 | **Status 404** | Thread not found |
 
 Recognised TOML fields: `visible`, `acceptsReplies`, `encryptFor`, `policyEditors`, `advertise`. Only fields present in the body are updated.
+
+The signing key must be the same key that originally signed the thread.
 
 ---
 
