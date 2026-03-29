@@ -49,7 +49,7 @@ The protocol is also designed to be **generic**. The same wire format can repres
 
 The Userless protocol has two distinct halves:
 
-- **The read side is fixed and non-negotiable.** The wire format for threads (cleartext-signed OpenPGP messages), the hash derivation algorithm (SHA256 of the full cleartext-signed message), the TOML/Markdown structure, and the HTTP API shapes described in this document are hard requirements. Any conforming Userless client or server must implement these exactly.
+- **The read side is fixed and non-negotiable.** The wire format for threads (cleartext-signed OpenPGP messages), the hash derivation algorithm (SHA256 of the full cleartext-signed message), the TOML/Markdown structure, the banner format and parsing algorithm, and the HTTP API shapes described in this document are hard requirements. Any conforming Userless client or server must implement these exactly.
 
 - **The write side is intentionally loosely defined.** Rules around registration, posting, and policy management are **entirely freeform**. This reference implementation reflects one set of opinions — requiring a master key to edit key policies, requiring the original signing key to edit a thread's policy, etc. — but these are *this implementation's* choices, not protocol mandates. Server operators are free to define their own acceptance rules, policy structures, and moderation logic.
 
@@ -615,13 +615,27 @@ The server:
 
 ## 11. Server Discovery (Banner)
 
-The **banner** is the entry point to any Userless server. It is the first thing a client should fetch, and it describes everything the server is capable of.
+The **banner** is the mandatory entry point to any Userless server. **Every conforming client MUST fetch the banner as its first request** before using any other endpoint. The banner tells the client exactly what capabilities the server exposes, which endpoints are active, and where to find content.
 
 ```bash
 curl http://localhost:4444/
 ```
 
-The response body follows the same format as a thread — TOML metadata, then `==========`, then a human-readable Markdown description of the server:
+### Format
+
+The banner response body uses the same delimiter-split format as a thread body — TOML metadata, then `==========` on its own line, then a human-readable Markdown description of the server. Unlike thread content, the banner is **not PGP-signed** — it is a plain-text document generated dynamically by the server at startup.
+
+The exact byte layout is:
+
+```
+{TOML block}
+
+==========  ← exactly ten equals signs, no other characters on this line
+
+{Markdown block}
+```
+
+A complete example:
 
 ```
 [keys]
@@ -656,6 +670,16 @@ args = [
 
 A Userless instance for discussing things.
 ```
+
+### Parsing (required)
+
+A conforming client MUST parse the banner response as follows:
+
+1. Receive the full response body as a UTF-8 string.
+2. Split on the first occurrence of a line that contains **exactly** `==========` (ten equals signs, no other characters, no leading or trailing whitespace).
+3. Everything **before** the delimiter is the **TOML block** — parse it as TOML to obtain the server capability map.
+4. Everything **after** the delimiter is the **Markdown block** — a human-readable server description intended for display.
+5. The client MUST consult the capability map before calling any other endpoint. Do not assume an endpoint exists; check the corresponding flag first (e.g. `keys.enabled`, `threads.enabled`, `files.enabled`).
 
 ### TOML Fields
 
@@ -693,6 +717,25 @@ curl -v http://localhost:4444/thread/r/programming
 curl -L http://localhost:4444/thread/r/programming
 # → full thread content
 ```
+
+### Client Flow
+
+The correct startup sequence for any Userless client is:
+
+```
+1. GET /                         → parse banner TOML
+2. if threads.enabled:
+     use /thread/* endpoints
+3. if keys.enabled:
+     use /key/* endpoints
+4. if files.enabled:
+     use /file/* endpoints, use files.bucket for direct S3 URLs
+5. if search.threads or search.keys:
+     use /search/* endpoints (check search.args for which parameters are accepted)
+6. Render threads.frontpage as the home page
+```
+
+Any client that skips the banner fetch and hard-codes assumptions about endpoint availability is non-conforming.
 
 ---
 
@@ -786,13 +829,15 @@ Complete reference for every endpoint. All request and response bodies are plain
 
 ### `GET /`
 
-Returns the server banner.
+Returns the server banner. This is the **required first call** for any conforming Userless client. The response body is a plain-text (unsigned) document in the same TOML-delimiter-Markdown format as thread content.
 
 | | |
 |---|---|
 | **Request body** | none |
-| **Response** | TOML metadata + `==========` + Markdown text |
+| **Response** | TOML capability map + `==========` + Markdown description |
 | **Status** | `200` |
+
+The TOML block describes which endpoints and features are active on this server. Clients MUST parse it and check the relevant flags before making any other request. See [§11 Server Discovery (Banner)](#11-server-discovery-banner) for the full parsing algorithm and field reference.
 
 ---
 
