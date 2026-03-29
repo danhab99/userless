@@ -51,9 +51,9 @@ The Userless protocol has two distinct halves:
 
 - **The read side is fixed and non-negotiable.** The wire format for threads (cleartext-signed OpenPGP messages), the hash derivation algorithm (SHA256 of the full cleartext-signed message), the TOML/Markdown structure, the banner format and parsing algorithm, and the HTTP API shapes described in this document are hard requirements. Any conforming Userless client or server must implement these exactly.
 
-- **The write side is intentionally loosely defined.** Rules around registration, posting, and policy management are **entirely freeform**. This reference implementation reflects one set of opinions — requiring a master key to edit key policies, requiring the original signing key to edit a thread's policy, etc. — but these are *this implementation's* choices, not protocol mandates. Server operators are free to define their own acceptance rules, policy structures, and moderation logic.
+- **The write side defines endpoint shapes and wire behaviors**, but the *implementation* is intentionally freeform. The three write endpoints — `POST /post`, `POST /register`, and `POST /upload` — have defined request/response formats documented in this spec that all implementations must conform to. You are not required to use this Go server; you are actively encouraged to write your own. The acceptance and rejection logic (who can post, how policies are assigned, what moderation rules apply) is the part that is implementation-specific and is left to the operator.
 
-Userless is designed to be **minimal and easy to implement**. This codebase is a reference example. Other developers are actively encouraged to build their own servers, clients, and tooling with different rules and workflows. The only invariants that matter across implementations are the read-side wire formats and hash computations listed in this document.
+Userless is designed to be **minimal and easy to implement**. This codebase is a reference example. Other developers are actively encouraged to build their own servers, clients, and tooling. The wire formats and API shapes in this document are the contract; the internal logic is yours to define.
 
 ---
 
@@ -569,47 +569,48 @@ curl http://localhost:4444/files
 
 ## 10. Sponsored Keys *(planned)*
 
-> **This feature is not yet implemented.** It is documented here as a protocol design.
+> **This feature is not yet implemented in the reference server.** It is documented here as a protocol design.
 
-A user may wish to post anonymously — indistinguishable from any stranger to the rest of the user base — while still being accountable to the server's administrators (e.g. to allow ban evasion detection or emergency deanonymization).
+A **sponsored key** is a second GPG key pair that a user registers by sending a cleartext-signed copy of the new public key — signed with their existing, already-registered key — to `POST /register`. The act of signing the registration is called **sponsoring** the key.
 
-The mechanism is a **linked anonymous key**: a second GPG key pair generated solely for anonymous use, registered alongside a cryptographic claim that it is controlled by the same person as an existing ("parent") key. The link is stored server-side but never exposed through any public API.
+When the server receives a sponsored registration it:
 
-### Registration
+1. Verifies the outer cleartext signature using the sponsoring (parent) key, which must already be registered.
+2. Extracts and registers the inner public key as a normal key.
+3. **Copies the sponsoring key's policy permissions** (e.g. `allowedToPost`, `canStartThreads`, `allowedToUploadFiles`) to the newly registered key so it inherits the same rights.
+4. Stores the `sponsoringKeyId → sponsoredKeyId` link in a **server-only table** that is never exposed through any public endpoint.
 
-Instead of a plain `POST /register` with just a public key, the user submits a cleartext-signed registration claim:
+### Wire Format
 
-1. Generate a fresh anonymous key pair (e.g. with a throwaway name/email).
-2. Write a registration claim body containing the anonymous public key block, signed by the **parent key**.
+Instead of a plain armored public key, the request body is a cleartext-signed message whose plaintext content is the armored public key block:
 
 ```
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA512
 
 -----BEGIN PGP PUBLIC KEY BLOCK-----
-<armored anonymous public key>
+<armored sponsored public key>
 -----END PGP PUBLIC KEY BLOCK-----
 -----BEGIN PGP SIGNATURE-----
-<signature by parent key>
+<signature by the sponsoring key>
 -----END PGP SIGNATURE-----
 ```
 
-The server:
-1. Verifies the outer cleartext signature using the parent key (which must already be registered).
-2. Extracts and registers the inner anonymous public key as a normal key.
-3. Stores the `parentKeyId → anonymousKeyId` link in a **server-only table** never queried by public endpoints.
+### Use Case
+
+A user who wants to participate anonymously — indistinguishable from a stranger to the rest of the user base — generates a fresh GPG key pair and sponsors it with their known key. All posts from the new key appear to be from an anonymous stranger. However:
+
+- The server admin can always resolve the `sponsoringKeyId → sponsoredKeyId` link via direct database access.
+- Revoking the sponsoring key's policy can optionally cascade to all of its sponsored keys (behavior is implementation-defined).
+- This gives admins the ability to deanonymize a user if necessary (e.g. for moderation or legal compliance).
+
+> **Warning:** Using sponsored keys gives the server operator the ability to link your anonymous identity to your real key. Use this feature only on servers whose operators you trust.
 
 ### Privacy Guarantees
 
-- The public API — `/keys`, `/key/:id`, `/key/:id/threads` — reveals nothing about the link.
-- The anonymous key looks like any other registered key to all other users.
-- Only the server (via direct database access or a privileged admin endpoint) can resolve the link.
-
-### Accountability
-
-- The server admin can always determine which parent key spawned a given anonymous key.
-- Revoking the parent key policy (`revoked = true`) can optionally cascade to all of its linked anonymous keys.
-- The link provides a hard audit trail without exposing it socially.
+- The public API — `/keys`, `/key/:id`, `/key/:id/threads` — reveals nothing about the sponsorship link.
+- The sponsored key looks like any other registered key to all other users.
+- Only the server admin (via direct database access) can resolve the link.
 
 ---
 
@@ -843,7 +844,9 @@ The TOML block describes which endpoints and features are active on this server.
 
 ### `POST /register`
 
-Register a new OpenPGP public key.
+Register a new OpenPGP public key. Supports two modes:
+
+**Plain registration** — request body is a raw armored public key:
 
 | | |
 |---|---|
@@ -852,6 +855,19 @@ Register a new OpenPGP public key.
 | **Status 201** | Key registered |
 | **Status 400** | Body is not a valid armored key, or contains more than one key |
 | **Status 409** | A key with this fingerprint is already registered |
+
+**Sponsored registration** *(planned)* — request body is a cleartext-signed message whose plaintext is the armored public key, signed by an already-registered sponsoring key:
+
+| | |
+|---|---|
+| **Request body** | Cleartext-signed message (`-----BEGIN PGP SIGNED MESSAGE-----` … `-----END PGP SIGNATURE-----`) with the armored public key as the signed plaintext |
+| **Response body** | empty |
+| **Status 201** | Key registered with permissions copied from the sponsoring key |
+| **Status 400** | Invalid cleartext message or embedded key |
+| **Status 401** | Sponsoring key not registered or revoked |
+| **Status 409** | A key with this fingerprint is already registered |
+
+The server detects which mode is used by inspecting the first line of the request body. See [§10 Sponsored Keys](#10-sponsored-keys-planned) for full details.
 
 ---
 
