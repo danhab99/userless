@@ -82,7 +82,7 @@ func (h *hub) serveWS(w http.ResponseWriter, r *http.Request) {
 		}
 
 		switch pkt.Action {
-		case "new_peer", "emergency":
+		case "new_peer", "emergency", "rtc_offer", "rtc_answer", "rtc_ice":
 			log.Printf("broadcast action=%s from %s", pkt.Action, r.RemoteAddr)
 			h.broadcast(msg, conn)
 		default:
