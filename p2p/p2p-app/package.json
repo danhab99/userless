@@ -15,6 +15,7 @@
     "clsx": "^2.1.1",
     "json-rpc-2.0": "^1.7.1",
     "lucide-react": "^0.473.0",
+    "openpgp": "https://github.com/danhab99/openpgpjs.git#dan/user-images",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-markdown": "^10.1.0",
