@@ -43,6 +43,50 @@ Since p2p is not moderatable, in the event an individual discovers some illicit 
 }
 ```
 
+### WebRTC Signaling
+
+These three packets are used to bootstrap a WebRTC peer connection. They are point-to-point: the lobby server routes each packet only to the peer identified by `to`, not broadcast. The `from` field lets the recipient know who to reply to.
+
+**Offer** — sent by the peer who initiates the connection after receiving a `new_peer` announcement. Includes `services` so the callee knows what the caller can provide without needing a separate announcement.
+
+```jsonc
+{
+  "action": "rtc_offer",
+  "payload": {
+    "from": "<pgp fingerprint of sender>",
+    "to": "<pgp fingerprint of recipient>",
+    "sdp": "<SDP offer string>",
+    "services": [ "threads", "files", "pks" ],
+  },
+}
+```
+
+**Answer** — sent by the callee in response to an offer.
+
+```jsonc
+{
+  "action": "rtc_answer",
+  "payload": {
+    "from": "<pgp fingerprint of sender>",
+    "to": "<pgp fingerprint of recipient>",
+    "sdp": "<SDP answer string>",
+  },
+}
+```
+
+**ICE candidate** — sent by either side as network candidates are discovered. Multiple may be sent.
+
+```jsonc
+{
+  "action": "rtc_ice",
+  "payload": {
+    "from": "<pgp fingerprint of sender>",
+    "to": "<pgp fingerprint of recipient>",
+    "candidate": { /* RTCIceCandidateInit */ },
+  },
+}
+```
+
 ## WebRTC P2P
 
 ```jsonc
@@ -67,7 +111,7 @@ Since p2p is not moderatable, in the event an individual discovers some illicit 
 
 ```jsonc
 {
-  "action": "getAllThreads",
+  "action": "getThread",
   "payload": {
     "hash": "",
   },
