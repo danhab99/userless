@@ -1,0 +1,26 @@
+# syntax=docker/dockerfile:1
+ARG APP_DIR=p2p/p2p-app
+
+FROM node:20-alpine AS deps
+WORKDIR /app/${APP_DIR}
+
+# Copy package manifest for the selected Vite project
+COPY ${APP_DIR}/package.json ${VITE_APP_DIR}/yarn.lock ./
+RUN corepack enable && yarn install --immutable
+
+FROM node:20-alpine AS builder
+ARG APP_DIR=p2p/p2p-app
+WORKDIR /app/${APP_DIR}
+COPY ${APP_DIR} ./
+COPY --from=deps /app/${APP_DIR}/node_modules ./node_modules
+RUN corepack enable && yarn build
+
+FROM node:20-alpine AS runner
+ARG APP_DIR=p2p/p2p-app
+WORKDIR /app/${APP_DIR}
+ENV NODE_ENV=production
+COPY --from=builder /app/${APP_DIR}/package.json ./package.json
+COPY --from=builder /app/${APP_DIR}/dist ./dist
+COPY --from=builder /app/${APP_DIR}/node_modules ./node_modules
+EXPOSE 4173
+CMD ["yarn", "preview", "--host", "0.0.0.0"]

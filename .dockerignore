@@ -1,0 +1,15 @@
+node_modules
+.next
+.dist
+.git
+.vscode
+.env
+*.log
+*.md
+.storybook
+coverage
+**/notes
+**/example_configs
+**/*.sh
+**/README*
+**/test*

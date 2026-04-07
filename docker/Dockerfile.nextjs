@@ -1,0 +1,30 @@
+# syntax=docker/dockerfile:1
+# Build context must be the repo root.
+# Usage: docker build -f docker/Dockerfile.nextjs --build-arg APP_DIR=centralized/threads .
+ARG APP_DIR=centralized/threads
+
+FROM node:20-alpine AS deps
+WORKDIR /app
+
+COPY centralized /app/centralized
+WORKDIR /app/${APP_DIR}
+RUN corepack enable && yarn install --immutable
+
+FROM node:20-alpine AS builder
+ARG APP_DIR=centralized/threads
+WORKDIR /app
+COPY centralized /app/centralized
+COPY --from=deps /app/${APP_DIR}/node_modules /app/${APP_DIR}/node_modules
+WORKDIR /app/${APP_DIR}
+RUN corepack enable && yarn build
+
+FROM node:20-alpine AS runner
+ARG APP_DIR=centralized/threads
+WORKDIR /app/${APP_DIR}
+ENV NODE_ENV=production
+COPY --from=builder /app/${APP_DIR}/package.json ./package.json
+COPY --from=builder /app/${APP_DIR}/public ./public
+COPY --from=builder /app/${APP_DIR}/.next ./.next
+COPY --from=builder /app/${APP_DIR}/node_modules ./node_modules
+EXPOSE 3000
+CMD ["yarn", "start"]
