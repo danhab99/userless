@@ -7,19 +7,29 @@ import {
 
 export type Hash = string;
 export type Thread = { content: string };
+
 export type PublicKey = { fingerprint: string; armored: string };
-export type Fingerprint = string;
 
 export type Service = "threads" | "files" | "pks";
 export type Services = Array<Service>;
 
-/** The RPC methods a peer can serve. Implement these to share your local data. */
+
+export const DEFAULT_PAGE_SIZE = 100;
+
+
+export const FILE_CHUNK_SIZE = 192 * 1024;
+
+export type FileChunk = {
+  data: string;
+  total: number;
+};
+
 export type Methods = {
-  getAllThreads(): Hash[];
+  getAllThreads(params: { skip?: number; take?: number }): Hash[];
   getThread(params: { hash: Hash }): Thread;
-  getFile(params: { hash: Hash }): ArrayBuffer;
-  getAllPublicKeys(): PublicKey[];
-  getPublicKeys(params: { fingerprint: Fingerprint }): PublicKey;
+  getFile(params: { hash: Hash; offset: number; length: number }): FileChunk;
+  getAllPublicKeys(params: { skip?: number; take?: number }): PublicKey[];
+  getPublicKeys(params: { fingerprint: string }): PublicKey;
 };
 
 type EmergencyPayload = {
@@ -31,7 +41,7 @@ type EmergencyPayload = {
 };
 
 type LobbyPacket =
-  | { action: "new_peer"; payload: { fingerprint: string; services: Services } }
+  | { action: "new_peer"; payload: { sessionId: string; services: Services } }
   | { action: "emergency"; payload: EmergencyPayload }
   | {
       action: "rtc_offer";
@@ -43,14 +53,47 @@ type LobbyPacket =
       payload: { from: string; to: string; candidate: RTCIceCandidateInit };
     };
 
+async function fetchAll<T>(
+  fetch: (skip: number) => Promise<T[]>,
+  take = DEFAULT_PAGE_SIZE,
+): Promise<T[]> {
+  const all: T[] = [];
+  let skip = 0;
+  while (true) {
+    const page = await fetch(skip);
+    all.push(...page);
+    if (page.length < take) break;
+    skip += take;
+  }
+  return all;
+}
+
+function base64ToBytes(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function concatBytes(chunks: Uint8Array[]): Uint8Array {
+  const total = chunks.reduce((n, c) => n + c.byteLength, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return out;
+}
+
 export class Peer {
-  readonly fingerprint: string;
+  readonly id: string;
   readonly services: Services;
 
   private rpc: TypedJSONRPCClient<Methods>;
 
-  constructor(fingerprint: string, services: Services, dc: RTCDataChannel) {
-    this.fingerprint = fingerprint;
+  constructor(id: string, services: Services, dc: RTCDataChannel) {
+    this.id = id;
     this.services = services;
 
     this.rpc = new JSONRPCClient((req) => {
@@ -66,23 +109,52 @@ export class Peer {
     };
   }
 
-  getAllThreads(): PromiseLike<Hash[]> {
-    return this.rpc.request("getAllThreads", undefined);
+  getAllThreads(params: { skip?: number; take?: number } = {}): Promise<Hash[]> {
+    return this.rpc.request("getAllThreads", params);
   }
 
-  getThread(params: { hash: Hash }): PromiseLike<Thread> {
+  getAllThreadsAll(): Promise<Hash[]> {
+    return fetchAll((skip) => this.getAllThreads({ skip, take: DEFAULT_PAGE_SIZE }));
+  }
+
+  getThread(params: { hash: Hash }): Promise<Thread> {
     return this.rpc.request("getThread", params);
   }
 
-  getFile(params: { hash: Hash }): PromiseLike<ArrayBuffer> {
+  getFile(params: { hash: Hash; offset: number; length: number }): Promise<FileChunk> {
     return this.rpc.request("getFile", params);
   }
 
-  getAllPublicKeys(): PromiseLike<PublicKey[]> {
-    return this.rpc.request("getAllPublicKeys", undefined);
+  async fetchFile(hash: Hash, chunkSize = FILE_CHUNK_SIZE): Promise<Uint8Array> {
+    let offset = 0;
+    let total = Infinity;
+    const chunks: Uint8Array[] = [];
+
+    while (offset < total) {
+      const { data, total: fileTotal } = await this.getFile({
+        hash,
+        offset,
+        length: chunkSize,
+      });
+      total = fileTotal;
+      const bytes = base64ToBytes(data);
+      chunks.push(bytes);
+      offset += bytes.byteLength;
+      if (bytes.byteLength === 0) break; // guard against empty chunks
+    }
+
+    return concatBytes(chunks);
   }
 
-  getPublicKeys(params: { fingerprint: Fingerprint }): PromiseLike<PublicKey> {
+  getAllPublicKeys(params: { skip?: number; take?: number } = {}): Promise<PublicKey[]> {
+    return this.rpc.request("getAllPublicKeys", params);
+  }
+
+  getAllPublicKeysAll(): Promise<PublicKey[]> {
+    return fetchAll((skip) => this.getAllPublicKeys({ skip, take: DEFAULT_PAGE_SIZE }));
+  }
+
+  getPublicKeys(params: { fingerprint: string }): Promise<PublicKey> {
     return this.rpc.request("getPublicKeys", params);
   }
 }
@@ -95,23 +167,21 @@ export class Server {
   private pendingIce = new Map<string, RTCIceCandidateInit[]>();
   private peers = new Map<string, Peer>();
 
-  private myFingerprint: string;
+  private readonly sessionId = crypto.randomUUID();
   private myServices: Services;
   private rpcServer: TypedJSONRPCServer<Methods>;
 
   onPeerConnected: (peer: Peer) => void = () => {};
 
-  onPeerDisconnected: (fingerprint: string) => void = () => {};
+  onPeerDisconnected: (id: string) => void = () => {};
 
   onEmergency: (payload: EmergencyPayload) => void = () => {};
 
   constructor(
     lobbyUrl: string,
-    fingerprint: string,
     services: Services,
     methods: Partial<Methods> = {},
   ) {
-    this.myFingerprint = fingerprint;
     this.myServices = services;
     this.rpcServer = this.buildRpcServer(methods);
 
@@ -136,7 +206,7 @@ export class Server {
     }
     this.sendLobby({
       action: "new_peer",
-      payload: { fingerprint: this.myFingerprint, services: this.myServices },
+      payload: { sessionId: this.sessionId, services: this.myServices },
     });
   }
 
@@ -147,18 +217,18 @@ export class Server {
   private handleLobbyPacket(packet: LobbyPacket) {
     switch (packet.action) {
       case "new_peer":
-        this.initiateOffer(packet.payload.fingerprint, packet.payload.services);
+        this.initiateOffer(packet.payload.sessionId, packet.payload.services);
         break;
       case "rtc_offer":
-        if (packet.payload.to !== this.myFingerprint) break;
+        if (packet.payload.to !== this.sessionId) break;
         this.handleOffer(packet.payload.from, packet.payload.sdp, packet.payload.services);
         break;
       case "rtc_answer":
-        if (packet.payload.to !== this.myFingerprint) break;
+        if (packet.payload.to !== this.sessionId) break;
         this.handleAnswer(packet.payload.from, packet.payload.sdp);
         break;
       case "rtc_ice":
-        if (packet.payload.to !== this.myFingerprint) break;
+        if (packet.payload.to !== this.sessionId) break;
         this.handleIce(packet.payload.from, packet.payload.candidate);
         break;
       case "emergency":
@@ -167,17 +237,17 @@ export class Server {
     }
   }
 
-  private createPC(remoteFingerprint: string): RTCPeerConnection {
+  private createPC(remoteSessionId: string): RTCPeerConnection {
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-    this.pcs.set(remoteFingerprint, pc);
+    this.pcs.set(remoteSessionId, pc);
 
     pc.onicecandidate = ({ candidate }) => {
       if (candidate) {
         this.sendLobby({
           action: "rtc_ice",
           payload: {
-            from: this.myFingerprint,
-            to: remoteFingerprint,
+            from: this.sessionId,
+            to: remoteSessionId,
             candidate: candidate.toJSON(),
           },
         });
@@ -186,13 +256,13 @@ export class Server {
 
     pc.onconnectionstatechange = () => {
       const state = pc.connectionState;
-      console.log("[p2p] connection state", remoteFingerprint, state);
+      console.log("[p2p] connection state", remoteSessionId, state);
       if (state === "failed" || state === "closed" || state === "disconnected") {
         pc.close();
-        this.pcs.delete(remoteFingerprint);
-        this.pendingIce.delete(remoteFingerprint);
-        if (this.peers.delete(remoteFingerprint)) {
-          this.onPeerDisconnected(remoteFingerprint);
+        this.pcs.delete(remoteSessionId);
+        this.pendingIce.delete(remoteSessionId);
+        if (this.peers.delete(remoteSessionId)) {
+          this.onPeerDisconnected(remoteSessionId);
         }
       }
     };
@@ -201,7 +271,7 @@ export class Server {
   }
 
   private registerPeer(peer: Peer) {
-    this.peers.set(peer.fingerprint, peer);
+    this.peers.set(peer.id, peer);
     this.onPeerConnected(peer);
   }
 
@@ -212,14 +282,14 @@ export class Server {
     };
   }
 
-  private async initiateOffer(remoteFingerprint: string, services: Services) {
-    if (this.pcs.has(remoteFingerprint)) return;
-    const pc = this.createPC(remoteFingerprint);
+  private async initiateOffer(remoteSessionId: string, services: Services) {
+    if (this.pcs.has(remoteSessionId)) return;
+    const pc = this.createPC(remoteSessionId);
 
     const clientDc = pc.createDataChannel("rpc-client");
     const serverDc = pc.createDataChannel("rpc-server");
 
-    clientDc.onopen = () => this.registerPeer(new Peer(remoteFingerprint, services, clientDc));
+    clientDc.onopen = () => this.registerPeer(new Peer(remoteSessionId, services, clientDc));
     serverDc.onopen = () => this.attachServerChannel(serverDc);
 
     const offer = await pc.createOffer();
@@ -228,63 +298,61 @@ export class Server {
     this.sendLobby({
       action: "rtc_offer",
       payload: {
-        from: this.myFingerprint,
-        to: remoteFingerprint,
+        from: this.sessionId,
+        to: remoteSessionId,
         sdp: offer.sdp!,
         services: this.myServices,
       },
     });
   }
 
-  private async handleOffer(remoteFingerprint: string, sdp: string, services: Services) {
-    const pc = this.createPC(remoteFingerprint);
+  private async handleOffer(remoteSessionId: string, sdp: string, services: Services) {
+    const pc = this.createPC(remoteSessionId);
 
     pc.ondatachannel = ({ channel }) => {
       if (channel.label === "rpc-server") {
-        // caller's server channel → we are the client on it
-        channel.onopen = () => this.registerPeer(new Peer(remoteFingerprint, services, channel));
+        channel.onopen = () => this.registerPeer(new Peer(remoteSessionId, services, channel));
       } else if (channel.label === "rpc-client") {
-        // caller's client channel → we are the server on it
         channel.onopen = () => this.attachServerChannel(channel);
       }
     };
 
     await pc.setRemoteDescription({ type: "offer", sdp });
-    await this.drainPendingIce(remoteFingerprint, pc);
+    await this.drainPendingIce(remoteSessionId, pc);
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
 
     this.sendLobby({
       action: "rtc_answer",
-      payload: { from: this.myFingerprint, to: remoteFingerprint, sdp: answer.sdp! },
+      payload: { from: this.sessionId, to: remoteSessionId, sdp: answer.sdp! },
     });
   }
 
-  private async handleAnswer(remoteFingerprint: string, sdp: string) {
-    const pc = this.pcs.get(remoteFingerprint);
+  private async handleAnswer(remoteSessionId: string, sdp: string) {
+    const pc = this.pcs.get(remoteSessionId);
     if (!pc) return;
     await pc.setRemoteDescription({ type: "answer", sdp });
-    await this.drainPendingIce(remoteFingerprint, pc);
+    await this.drainPendingIce(remoteSessionId, pc);
   }
 
-  private async handleIce(remoteFingerprint: string, candidate: RTCIceCandidateInit) {
-    const pc = this.pcs.get(remoteFingerprint);
+  private async handleIce(remoteSessionId: string, candidate: RTCIceCandidateInit) {
+    const pc = this.pcs.get(remoteSessionId);
     if (!pc) return;
 
     if (!pc.remoteDescription) {
-      const queue = this.pendingIce.get(remoteFingerprint) ?? [];
+      const queue = this.pendingIce.get(remoteSessionId) ?? [];
       queue.push(candidate);
-      this.pendingIce.set(remoteFingerprint, queue);
+      this.pendingIce.set(remoteSessionId, queue);
       return;
     }
 
     await pc.addIceCandidate(new RTCIceCandidate(candidate));
   }
 
-  private async drainPendingIce(remoteFingerprint: string, pc: RTCPeerConnection) {
-    const queued = this.pendingIce.get(remoteFingerprint);
+  private async drainPendingIce(remoteSessionId: string, pc: RTCPeerConnection) {
+    const queued = this.pendingIce.get(remoteSessionId);
     if (!queued) return;
-    this.pendingIce.delete(remoteFingerprint);
+    this.pendingIce.delete(remoteSessionId);
     for (const candidate of queued) {
       await pc.addIceCandidate(new RTCIceCandidate(candidate));
     }

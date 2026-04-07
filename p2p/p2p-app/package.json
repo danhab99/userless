@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
+    "idb": "^8.0.3",
     "json-rpc-2.0": "^1.7.1",
     "lucide-react": "^0.473.0",
     "openpgp": "https://github.com/danhab99/openpgpjs.git#dan/user-images",
