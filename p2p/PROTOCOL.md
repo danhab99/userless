@@ -20,7 +20,7 @@ The announcement packet informs the listener that a new peer is available
 {
   "action": "new_peer",
   "payload": {
-    "fingerprint": "",
+    "sessionId": "<random UUID, ephemeral — used only for WebRTC signaling routing>",
     "services": [ "threads", "files", "pks" ],
   },
 }
@@ -47,14 +47,14 @@ Since p2p is not moderatable, in the event an individual discovers some illicit 
 
 These three packets are used to bootstrap a WebRTC peer connection. They are point-to-point: the lobby server routes each packet only to the peer identified by `to`, not broadcast. The `from` field lets the recipient know who to reply to.
 
-**Offer** — sent by the peer who initiates the connection after receiving a `new_peer` announcement. Includes `services` so the callee knows what the caller can provide without needing a separate announcement.
+**Offer** — sent by the peer who initiates the connection after receiving a `new_peer` announcement. Includes `services` so the callee knows what the caller can provide.
 
 ```jsonc
 {
   "action": "rtc_offer",
   "payload": {
-    "from": "<pgp fingerprint of sender>",
-    "to": "<pgp fingerprint of recipient>",
+    "from": "<caller's sessionId>",
+    "to": "<recipient's sessionId>",
     "sdp": "<SDP offer string>",
     "services": [ "threads", "files", "pks" ],
   },
@@ -67,8 +67,8 @@ These three packets are used to bootstrap a WebRTC peer connection. They are poi
 {
   "action": "rtc_answer",
   "payload": {
-    "from": "<pgp fingerprint of sender>",
-    "to": "<pgp fingerprint of recipient>",
+    "from": "<callee's sessionId>",
+    "to": "<caller's sessionId>",
     "sdp": "<SDP answer string>",
   },
 }
@@ -80,8 +80,8 @@ These three packets are used to bootstrap a WebRTC peer connection. They are poi
 {
   "action": "rtc_ice",
   "payload": {
-    "from": "<pgp fingerprint of sender>",
-    "to": "<pgp fingerprint of recipient>",
+    "from": "<sender's sessionId>",
+    "to": "<recipient's sessionId>",
     "candidate": { /* RTCIceCandidateInit */ },
   },
 }
@@ -89,63 +89,83 @@ These three packets are used to bootstrap a WebRTC peer connection. They are poi
 
 ## WebRTC P2P
 
-```jsonc
-{
-  "action": "",
-  "payload": {
-  },
-}
-```
+All calls once a DataChannel is open use [JSON-RPC 2.0](https://www.jsonrpc.org/specification) over text messages.
 
-### getAllThreads() -> [Hash]
+Each peer connection opens two named DataChannels so both sides can simultaneously act as client and server:
+- `rpc-client` — the caller's outgoing requests; the callee acts as server on this channel
+- `rpc-server` — the caller's incoming requests; the callee acts as client on this channel
 
-```jsonc
-{
-  "action": "getAllThreads",
-  "payload": {
-  },
-}
-```
+---
 
-### getThread(hash) -> Thread
+### Paging
+
+Methods that return lists are alphabetically sorted and use skip/take. The caller increments `skip` by `take` until the returned array is shorter than `take`, which signals the end of the list.
 
 ```jsonc
-{
-  "action": "getThread",
-  "payload": {
-    "hash": "",
-  },
-}
+// Request params
+{ "skip": 0, "take": 100 }
+
+// Response — just an array, no wrapper
+[ "item1", "item2", "..." ]
 ```
 
-### getFile(hash) -> File
+The default and recommended `take` is `100`.
+
+---
+
+### getAllThreads
 
 ```jsonc
-{
-  "action": "getFile",
-  "payload": {
-    "hash": "",
-  },
-}
+// Request params
+{ "skip": 0, "take": 100 }
+
+// Response
+[ "<hash>", "..." ]  // alphabetically sorted; shorter than `take` means end of list
 ```
 
-### getAllPublicKeys() -> [Key]
+### getThread
 
 ```jsonc
-{
-  "action": "getAllPublicKeys",
-  "payload": {
-  },
-}
+// Request params
+{ "hash": "<sha256 hex>" }
+
+// Response
+{ "content": "<markdown string>" }
 ```
 
-### getPublicKeys(fingerprint) -> Key
+### getFile
+
+Files are transferred in chunks to stay within the DataChannel 256 KB message limit. Callers loop with increasing `offset` values until `offset >= total`.
+
+`data` is **base64-encoded** raw bytes.
 
 ```jsonc
-{
-  "action": "getPublicKeys",
-  "payload": {
-    "fingerprint": "",
-  },
-}
+// Request params
+{ "hash": "<sha256 hex>", "offset": 0, "length": 196608 }
+
+// Response
+{ "data": "<base64 string>", "total": 1048576 }
 ```
+
+Recommended `length` per request: `196608` (192 KB).
+
+### getAllPublicKeys
+
+```jsonc
+// Request params
+{ "skip": 0, "take": 100 }
+
+// Response
+[ { "fingerprint": "", "armored": "" }, "..." ]  // alphabetically sorted by fingerprint; shorter than `take` means end of list
+```
+
+### getPublicKeys
+
+```jsonc
+// Request params
+{ "fingerprint": "<pgp fingerprint>" }
+
+// Response
+{ "fingerprint": "", "armored": "<ascii-armored public key>" }
+```
+
