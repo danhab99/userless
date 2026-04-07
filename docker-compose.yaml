@@ -8,16 +8,16 @@ services:
     volumes:
       - ./notes/minio:/data
     environment:
-      MINIO_ROOT_USER: root
-      MINIO_ROOT_PASSWORD: password
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-root}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-password}
 
   postgres:
     image: postgres:16 # Use a specific, recent Postgres image version
     restart: always
     environment:
-      POSTGRES_USER: myuser
-      POSTGRES_PASSWORD: mypassword
-      POSTGRES_DB: mydatabase
+      POSTGRES_USER: ${POSTGRES_USER:-myuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mypassword}
+      POSTGRES_DB: ${POSTGRES_DB:-mydatabase}
     ports:
       - "5432:5432"
     volumes:
