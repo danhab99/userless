@@ -45,3 +45,5 @@ export const Test: Story = {
   }
 };
 EOF
+
+touch "$1/$1.module.css"
