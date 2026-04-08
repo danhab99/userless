@@ -13,9 +13,7 @@ export type PublicKey = { fingerprint: string; armored: string };
 export type Service = "threads" | "files" | "pks";
 export type Services = Array<Service>;
 
-
 export const DEFAULT_PAGE_SIZE = 100;
-
 
 export const FILE_CHUNK_SIZE = 192 * 1024;
 
@@ -25,11 +23,18 @@ export type FileChunk = {
 };
 
 export type Methods = {
-  getAllThreads(params: { skip?: number; take?: number }): Hash[];
-  getThread(params: { hash: Hash }): Thread;
-  getFile(params: { hash: Hash; offset: number; length: number }): FileChunk;
-  getAllPublicKeys(params: { skip?: number; take?: number }): PublicKey[];
-  getPublicKeys(params: { fingerprint: string }): PublicKey;
+  getAllThreads(params: { skip?: number; take?: number }): Promise<Hash[]>;
+  getThread(params: { hash: Hash }): Promise<Thread>;
+  getFile(params: {
+    hash: Hash;
+    offset: number;
+    length: number;
+  }): Promise<FileChunk>;
+  getAllPublicKeys(params: {
+    skip?: number;
+    take?: number;
+  }): Promise<PublicKey[]>;
+  getPublicKeys(params: { fingerprint: string }): Promise<PublicKey>;
 };
 
 type EmergencyPayload = {
@@ -109,23 +114,34 @@ export class Peer {
     };
   }
 
-  getAllThreads(params: { skip?: number; take?: number } = {}): Promise<Hash[]> {
+  getAllThreads(
+    params: { skip?: number; take?: number } = {},
+  ): Promise<Hash[]> {
     return this.rpc.request("getAllThreads", params);
   }
 
   getAllThreadsAll(): Promise<Hash[]> {
-    return fetchAll((skip) => this.getAllThreads({ skip, take: DEFAULT_PAGE_SIZE }));
+    return fetchAll((skip) =>
+      this.getAllThreads({ skip, take: DEFAULT_PAGE_SIZE }),
+    );
   }
 
   getThread(params: { hash: Hash }): Promise<Thread> {
     return this.rpc.request("getThread", params);
   }
 
-  getFile(params: { hash: Hash; offset: number; length: number }): Promise<FileChunk> {
+  getFile(params: {
+    hash: Hash;
+    offset: number;
+    length: number;
+  }): Promise<FileChunk> {
     return this.rpc.request("getFile", params);
   }
 
-  async fetchFile(hash: Hash, chunkSize = FILE_CHUNK_SIZE): Promise<Uint8Array> {
+  async fetchFile(
+    hash: Hash,
+    chunkSize = FILE_CHUNK_SIZE,
+  ): Promise<Uint8Array> {
     let offset = 0;
     let total = Infinity;
     const chunks: Uint8Array[] = [];
@@ -146,12 +162,16 @@ export class Peer {
     return concatBytes(chunks);
   }
 
-  getAllPublicKeys(params: { skip?: number; take?: number } = {}): Promise<PublicKey[]> {
+  getAllPublicKeys(
+    params: { skip?: number; take?: number } = {},
+  ): Promise<PublicKey[]> {
     return this.rpc.request("getAllPublicKeys", params);
   }
 
   getAllPublicKeysAll(): Promise<PublicKey[]> {
-    return fetchAll((skip) => this.getAllPublicKeys({ skip, take: DEFAULT_PAGE_SIZE }));
+    return fetchAll((skip) =>
+      this.getAllPublicKeys({ skip, take: DEFAULT_PAGE_SIZE }),
+    );
   }
 
   getPublicKeys(params: { fingerprint: string }): Promise<PublicKey> {
@@ -221,7 +241,11 @@ export class Server {
         break;
       case "rtc_offer":
         if (packet.payload.to !== this.sessionId) break;
-        this.handleOffer(packet.payload.from, packet.payload.sdp, packet.payload.services);
+        this.handleOffer(
+          packet.payload.from,
+          packet.payload.sdp,
+          packet.payload.services,
+        );
         break;
       case "rtc_answer":
         if (packet.payload.to !== this.sessionId) break;
@@ -257,7 +281,11 @@ export class Server {
     pc.onconnectionstatechange = () => {
       const state = pc.connectionState;
       console.log("[p2p] connection state", remoteSessionId, state);
-      if (state === "failed" || state === "closed" || state === "disconnected") {
+      if (
+        state === "failed" ||
+        state === "closed" ||
+        state === "disconnected"
+      ) {
         pc.close();
         this.pcs.delete(remoteSessionId);
         this.pendingIce.delete(remoteSessionId);
@@ -289,7 +317,8 @@ export class Server {
     const clientDc = pc.createDataChannel("rpc-client");
     const serverDc = pc.createDataChannel("rpc-server");
 
-    clientDc.onopen = () => this.registerPeer(new Peer(remoteSessionId, services, clientDc));
+    clientDc.onopen = () =>
+      this.registerPeer(new Peer(remoteSessionId, services, clientDc));
     serverDc.onopen = () => this.attachServerChannel(serverDc);
 
     const offer = await pc.createOffer();
@@ -306,12 +335,17 @@ export class Server {
     });
   }
 
-  private async handleOffer(remoteSessionId: string, sdp: string, services: Services) {
+  private async handleOffer(
+    remoteSessionId: string,
+    sdp: string,
+    services: Services,
+  ) {
     const pc = this.createPC(remoteSessionId);
 
     pc.ondatachannel = ({ channel }) => {
       if (channel.label === "rpc-server") {
-        channel.onopen = () => this.registerPeer(new Peer(remoteSessionId, services, channel));
+        channel.onopen = () =>
+          this.registerPeer(new Peer(remoteSessionId, services, channel));
       } else if (channel.label === "rpc-client") {
         channel.onopen = () => this.attachServerChannel(channel);
       }
@@ -335,7 +369,10 @@ export class Server {
     await this.drainPendingIce(remoteSessionId, pc);
   }
 
-  private async handleIce(remoteSessionId: string, candidate: RTCIceCandidateInit) {
+  private async handleIce(
+    remoteSessionId: string,
+    candidate: RTCIceCandidateInit,
+  ) {
     const pc = this.pcs.get(remoteSessionId);
     if (!pc) return;
 
@@ -349,7 +386,10 @@ export class Server {
     await pc.addIceCandidate(new RTCIceCandidate(candidate));
   }
 
-  private async drainPendingIce(remoteSessionId: string, pc: RTCPeerConnection) {
+  private async drainPendingIce(
+    remoteSessionId: string,
+    pc: RTCPeerConnection,
+  ) {
     const queued = this.pendingIce.get(remoteSessionId);
     if (!queued) return;
     this.pendingIce.delete(remoteSessionId);
@@ -358,7 +398,9 @@ export class Server {
     }
   }
 
-  private buildRpcServer(methods: Partial<Methods>): TypedJSONRPCServer<Methods> {
+  private buildRpcServer(
+    methods: Partial<Methods>,
+  ): TypedJSONRPCServer<Methods> {
     const server: TypedJSONRPCServer<Methods> = new JSONRPCServer();
     for (const [name, fn] of Object.entries(methods)) {
       server.addMethod(name, fn as any);
@@ -366,4 +408,3 @@ export class Server {
     return server;
   }
 }
-

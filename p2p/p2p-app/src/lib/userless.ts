@@ -1,6 +1,18 @@
-import { Peer, Server, Hash, PublicKey, type Thread } from "./p2p";
+import {
+  Peer,
+  Server,
+  Hash,
+  PublicKey,
+  type Thread,
+  type FileChunk,
+} from "./p2p";
 import { openDB, type DBSchema, IDBPDatabase } from "idb";
 import * as openpgp from "openpgp";
+
+type DBFile = {
+  content: ArrayBuffer;
+  signature: ArrayBuffer;
+};
 
 interface UserlessDB extends DBSchema {
   threads: {
@@ -13,18 +25,21 @@ interface UserlessDB extends DBSchema {
   };
   file: {
     key: Hash;
-    value: ArrayBuffer;
+    value: DBFile,
   };
 }
 
 const fileregex = /!\[[^\]]*\]\(userless:\/\/.*\/files\/[^\)]+\)/g.compile();
+const CHUNK_SIZE = 1e5;
 
 export class Userless {
   private server: Server;
   private db: IDBPDatabase<UserlessDB>;
-  private peers: Peer[];
+  private peers: Peer[] = [];
 
-  constructor(url: string) {
+  async constructor(url: string) {
+    openDB<UserlessDB>("userless").then(d => { this.db = d });
+
     this.server = new Server(url, [], {
       // getAllPublicKeys = iterate("publickey",
       getAllPublicKeys: async (params) => {
@@ -90,8 +105,6 @@ export class Userless {
     };
   }
 
-  private async getDB() {}
-
   private async scanPeerForThreads(peer: Peer) {
     const TAKE = 50;
     let lastTake = TAKE;
@@ -152,11 +165,91 @@ export class Userless {
     );
   }
 
-  private async queryPeersForFile(hash: Hash) {
-    const peerWhoHashFile = await Promise.race(
-      this.peers.map((peer) => {
-        return peer.getFile({ hash, length: 1, offset: 0 });
+  private async queryPeers<T>(
+    db: (x: T | undefined) => Promise<T | undefined>,
+    query: (p: Peer) => Promise<boolean>,
+    get: (p: Peer) => Promise<T | undefined>,
+  ): Promise<T | undefined> {
+    const d = await db(undefined);
+
+    if (d) {
+      return d;
+    }
+
+    const validPeer = await Promise.all(
+      this.peers.map(async (peer) => {
+        const ans = await query(peer);
+        return ans ? peer : undefined;
       }),
+    );
+
+    const peer = validPeer.filter((x) => x)[0];
+
+    if (peer) {
+      const content = await get(peer);
+      await db(content);
+      return content;
+    } else {
+      return undefined;
+    }
+  }
+
+  public queryPeersForFile(hash: string) {
+    return this.queryPeers<ArrayBuffer>(
+      async (save) => {
+        if (save) {
+          this.db.put("file", save, hash);
+        }
+
+        const a = await this.db.get("file", hash);
+        return a;
+      },
+      async (p) =>
+        (await p.getFile({ hash, length: 1, offset: 0 })) ? true : false,
+      async (p) => {
+        let buff = new Uint8Array();
+        let chunk: FileChunk = {
+          data: "",
+          total: Number.POSITIVE_INFINITY,
+        };
+        let offset = 0;
+
+        while (chunk.total >= CHUNK_SIZE) {
+          chunk = await p.getFile({
+            hash,
+            length: CHUNK_SIZE,
+            offset: buff.length,
+          });
+          buff.set(chunk.data, offset);
+          offset += chunk.data.length;
+        }
+
+        return buff.buffer;
+      },
+    );
+  }
+
+  public queryPeersForThread(hash: string) {
+    return this.queryPeers(
+      async () => {
+        return this.db.get("threads", hash);
+      },
+      async (p) => ((await p.getThread({ hash })) ? true : false),
+      async (p) => {
+        return p.getThread({ hash });
+      },
+    );
+  }
+
+  public queryPeersForPublicKeys(fingerprint: string) {
+    return this.queryPeers(
+      async () => {
+        return this.db.get("publickey", fingerprint);
+      },
+      async (p) => ((await p.getPublicKeys({ fingerprint })) ? true : false),
+      async (p) => {
+        return p.getPublicKeys({ fingerprint });
+      },
     );
   }
 }
