@@ -45,6 +45,16 @@ The protocol is also designed to be **generic**. The same wire format can repres
 | Reddit community | A thread ref pointing to the community's root thread |
 | Blog post | A root thread with rich Markdown body |
 
+### Write vs. Read
+
+The Userless protocol has two distinct halves:
+
+- **The read side is fixed and non-negotiable.** The wire format for threads (cleartext-signed OpenPGP messages), the hash derivation algorithm (SHA256 of the full cleartext-signed message), the TOML/Markdown structure, the banner format and parsing algorithm, and the HTTP API shapes described in this document are hard requirements. Any conforming Userless client or server must implement these exactly.
+
+- **The write side defines endpoint shapes and wire behaviors**, but the *implementation* is intentionally freeform. The three write endpoints — `POST /post`, `POST /register`, and `POST /upload` — have defined request/response formats documented in this spec that all implementations must conform to. You are not required to use this Go server; you are actively encouraged to write your own. The acceptance and rejection logic (who can post, how policies are assigned, what moderation rules apply) is the part that is implementation-specific and is left to the operator.
+
+Userless is designed to be **minimal and easy to implement**. This codebase is a reference example. Other developers are actively encouraged to build their own servers, clients, and tooling. The wire formats and API shapes in this document are the contract; the internal logic is yours to define.
+
 ---
 
 ## 2. Identity: Keys Instead of Accounts
@@ -235,18 +245,18 @@ The server reads the **signer fingerprint directly from the signature packet** �
 
 ## 4. The Thread Hash
 
-Every thread is identified by its **hash**: the lowercase hex-encoded SHA256 digest of the plaintext body (i.e. the text that was actually signed — everything between the PGP header line and the signature block).
+Every thread is identified by its **hash**: the lowercase hex-encoded SHA256 digest of the **full cleartext-signed message** (i.e. the entire armored PGP cleartext message as posted, including the PGP header line, hash armor header, plaintext body, and signature block).
 
 ```
-hash = hex(SHA256(plaintext_body))
+hash = hex(SHA256(clearsign_message))
 ```
 
 Key properties:
 
-- **Content-addressed**: the same plaintext always produces the same hash, regardless of which key signed it or when.
-- **Immutable**: editing content produces a completely different hash — it becomes a different thread entirely.
+- **Content-addressed**: the same signed message always produces the same hash.
+- **Immutable**: editing content (or re-signing it) produces a completely different hash — it becomes a different thread entirely.
 - **Deduplicated**: posting identical content twice returns `409 Conflict` with the existing hash.
-- **Portable**: a thread from server A carries the same hash on server B, because the hash is derived from content alone.
+- **Portable**: a thread from server A carries the same hash on server B, because the hash is derived from the complete signed message.
 
 ### Posting a thread
 
@@ -394,7 +404,7 @@ isMaster = false
 | `maxFileSize` | `1000000` | Maximum upload size in bytes |
 | `isMaster` | `false` | Marks an administrative key |
 
-Updating a key policy requires a **cleartext-signed TOML body** sent as a `PATCH` request. The signing key must be authorized to edit the policy (e.g. it must be the key's own policy or the editor must have admin rights):
+Updating a key policy requires a **cleartext-signed TOML body** sent as a `PATCH` request. The signing key must be a **master key** (i.e. `isMaster = true` in the database). Regular keys cannot edit their own or others' key policies:
 
 ```bash
 cat > policy_update.txt <<EOF
@@ -431,7 +441,7 @@ advertise = false
 | `policyEditors` | `[]` | Fingerprints of keys allowed to modify this policy |
 | `advertise` | `false` | Whether this thread appears on the server banner frontpage |
 
-Updating a thread policy works the same way — sign a TOML body and `PATCH` it:
+Updating a thread policy works the same way — sign a TOML body and `PATCH` it. The signing key must be the **same key that originally signed the thread**:
 
 ```bash
 cat > thread_policy.txt <<EOF
@@ -559,59 +569,74 @@ curl http://localhost:4444/files
 
 ## 10. Sponsored Keys *(planned)*
 
-> **This feature is not yet implemented.** It is documented here as a protocol design.
+> **This feature is not yet implemented in the reference server.** It is documented here as a protocol design.
 
-A user may wish to post anonymously — indistinguishable from any stranger to the rest of the user base — while still being accountable to the server's administrators (e.g. to allow ban evasion detection or emergency deanonymization).
+A **sponsored key** is a second GPG key pair that a user registers by sending a cleartext-signed copy of the new public key — signed with their existing, already-registered key — to `POST /register`. The act of signing the registration is called **sponsoring** the key.
 
-The mechanism is a **linked anonymous key**: a second GPG key pair generated solely for anonymous use, registered alongside a cryptographic claim that it is controlled by the same person as an existing ("parent") key. The link is stored server-side but never exposed through any public API.
+When the server receives a sponsored registration it:
 
-### Registration
+1. Verifies the outer cleartext signature using the sponsoring (parent) key, which must already be registered.
+2. Extracts and registers the inner public key as a normal key.
+3. **Copies the sponsoring key's policy permissions** (e.g. `allowedToPost`, `canStartThreads`, `allowedToUploadFiles`) to the newly registered key so it inherits the same rights.
+4. Stores the `sponsoringKeyId → sponsoredKeyId` link in a **server-only table** that is never exposed through any public endpoint.
 
-Instead of a plain `POST /register` with just a public key, the user submits a cleartext-signed registration claim:
+### Wire Format
 
-1. Generate a fresh anonymous key pair (e.g. with a throwaway name/email).
-2. Write a registration claim body containing the anonymous public key block, signed by the **parent key**.
+Instead of a plain armored public key, the request body is a cleartext-signed message whose plaintext content is the armored public key block:
 
 ```
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA512
 
 -----BEGIN PGP PUBLIC KEY BLOCK-----
-<armored anonymous public key>
+<armored sponsored public key>
 -----END PGP PUBLIC KEY BLOCK-----
 -----BEGIN PGP SIGNATURE-----
-<signature by parent key>
+<signature by the sponsoring key>
 -----END PGP SIGNATURE-----
 ```
 
-The server:
-1. Verifies the outer cleartext signature using the parent key (which must already be registered).
-2. Extracts and registers the inner anonymous public key as a normal key.
-3. Stores the `parentKeyId → anonymousKeyId` link in a **server-only table** never queried by public endpoints.
+### Use Case
+
+A user who wants to participate anonymously — indistinguishable from a stranger to the rest of the user base — generates a fresh GPG key pair and sponsors it with their known key. All posts from the new key appear to be from an anonymous stranger. However:
+
+- The server admin can always resolve the `sponsoringKeyId → sponsoredKeyId` link via direct database access.
+- Revoking the sponsoring key's policy can optionally cascade to all of its sponsored keys (behavior is implementation-defined).
+- This gives admins the ability to deanonymize a user if necessary (e.g. for moderation or legal compliance).
+
+> **Warning:** Using sponsored keys gives the server operator the ability to link your anonymous identity to your real key. Use this feature only on servers whose operators you trust.
 
 ### Privacy Guarantees
 
-- The public API — `/keys`, `/key/:id`, `/key/:id/threads` — reveals nothing about the link.
-- The anonymous key looks like any other registered key to all other users.
-- Only the server (via direct database access or a privileged admin endpoint) can resolve the link.
-
-### Accountability
-
-- The server admin can always determine which parent key spawned a given anonymous key.
-- Revoking the parent key policy (`revoked = true`) can optionally cascade to all of its linked anonymous keys.
-- The link provides a hard audit trail without exposing it socially.
+- The public API — `/keys`, `/key/:id`, `/key/:id/threads` — reveals nothing about the sponsorship link.
+- The sponsored key looks like any other registered key to all other users.
+- Only the server admin (via direct database access) can resolve the link.
 
 ---
 
 ## 11. Server Discovery (Banner)
 
-The **banner** is the entry point to any Userless server. It is the first thing a client should fetch, and it describes everything the server is capable of.
+The **banner** is the mandatory entry point to any Userless server. **Every conforming client MUST fetch the banner as its first request** before using any other endpoint. The banner tells the client exactly what capabilities the server exposes, which endpoints are active, and where to find content.
 
 ```bash
 curl http://localhost:4444/
 ```
 
-The response body follows the same format as a thread — TOML metadata, then `==========`, then a human-readable Markdown description of the server:
+### Format
+
+The banner response body uses the same delimiter-split format as a thread body — TOML metadata, then `==========` on its own line, then a human-readable Markdown description of the server. Unlike thread content, the banner is **not PGP-signed** — it is a plain-text document generated dynamically by the server at startup.
+
+The exact byte layout is:
+
+```
+{TOML block}
+
+==========  ← exactly ten equals signs, no other characters on this line
+
+{Markdown block}
+```
+
+A complete example:
 
 ```
 [keys]
@@ -646,6 +671,16 @@ args = [
 
 A Userless instance for discussing things.
 ```
+
+### Parsing (required)
+
+A conforming client MUST parse the banner response as follows:
+
+1. Receive the full response body as a UTF-8 string.
+2. Split on the first occurrence of a line that contains **exactly** `==========` (ten equals signs, no other characters, no leading or trailing whitespace).
+3. Everything **before** the delimiter is the **TOML block** — parse it as TOML to obtain the server capability map.
+4. Everything **after** the delimiter is the **Markdown block** — a human-readable server description intended for display.
+5. The client MUST consult the capability map before calling any other endpoint. Do not assume an endpoint exists; check the corresponding flag first (e.g. `keys.enabled`, `threads.enabled`, `files.enabled`).
 
 ### TOML Fields
 
@@ -683,6 +718,25 @@ curl -v http://localhost:4444/thread/r/programming
 curl -L http://localhost:4444/thread/r/programming
 # → full thread content
 ```
+
+### Client Flow
+
+The correct startup sequence for any Userless client is:
+
+```
+1. GET /                         → parse banner TOML
+2. if threads.enabled:
+     use /thread/* endpoints
+3. if keys.enabled:
+     use /key/* endpoints
+4. if files.enabled:
+     use /file/* endpoints, use files.bucket for direct S3 URLs
+5. if search.threads or search.keys:
+     use /search/* endpoints (check search.args for which parameters are accepted)
+6. Render threads.frontpage as the home page
+```
+
+Any client that skips the banner fetch and hard-codes assumptions about endpoint availability is non-conforming.
 
 ---
 
@@ -776,19 +830,23 @@ Complete reference for every endpoint. All request and response bodies are plain
 
 ### `GET /`
 
-Returns the server banner.
+Returns the server banner. This is the **required first call** for any conforming Userless client. The response body is a plain-text (unsigned) document in the same TOML-delimiter-Markdown format as thread content.
 
 | | |
 |---|---|
 | **Request body** | none |
-| **Response** | TOML metadata + `==========` + Markdown text |
+| **Response** | TOML capability map + `==========` + Markdown description |
 | **Status** | `200` |
+
+The TOML block describes which endpoints and features are active on this server. Clients MUST parse it and check the relevant flags before making any other request. See [§11 Server Discovery (Banner)](#11-server-discovery-banner) for the full parsing algorithm and field reference.
 
 ---
 
 ### `POST /register`
 
-Register a new OpenPGP public key.
+Register a new OpenPGP public key. Supports two modes:
+
+**Plain registration** — request body is a raw armored public key:
 
 | | |
 |---|---|
@@ -797,6 +855,19 @@ Register a new OpenPGP public key.
 | **Status 201** | Key registered |
 | **Status 400** | Body is not a valid armored key, or contains more than one key |
 | **Status 409** | A key with this fingerprint is already registered |
+
+**Sponsored registration** *(planned)* — request body is a cleartext-signed message whose plaintext is the armored public key, signed by an already-registered sponsoring key:
+
+| | |
+|---|---|
+| **Request body** | Cleartext-signed message (`-----BEGIN PGP SIGNED MESSAGE-----` … `-----END PGP SIGNATURE-----`) with the armored public key as the signed plaintext |
+| **Response body** | empty |
+| **Status 201** | Key registered with permissions copied from the sponsoring key |
+| **Status 400** | Invalid cleartext message or embedded key |
+| **Status 401** | Sponsoring key not registered or revoked |
+| **Status 409** | A key with this fingerprint is already registered |
+
+The server detects which mode is used by inspecting the first line of the request body. See [§10 Sponsored Keys](#10-sponsored-keys-planned) for full details.
 
 ---
 
@@ -878,9 +949,12 @@ Update a key's policy.
 | **Response body** | empty |
 | **Status 200** | Policy updated |
 | **Status 400** | Invalid signed message or invalid TOML |
+| **Status 403** | Signing key is not a master key |
 | **Status 404** | Key not found |
 
 Recognised TOML fields: `revoked`, `allowedToPost`, `canStartThreads`, `isMaster`, `allowedToUploadFiles`. Only fields present in the body are updated.
+
+The signing key must have `isMaster = true`. Regular keys, including the key whose policy is being modified, cannot edit key policies.
 
 ---
 
@@ -891,7 +965,7 @@ Submit a new cleartext-signed thread.
 | | |
 |---|---|
 | **Request body** | Full armored cleartext-signed message |
-| **Response body** | Lowercase hex SHA256 hash of the thread plaintext |
+| **Response body** | Lowercase hex SHA256 hash of the full cleartext-signed message |
 | **Status 201** | Thread accepted and stored |
 | **Status 400** | Empty body, malformed cleartext message, or policy rejected it |
 | **Status 401** | Signing key not registered, revoked, or not permitted to post |
@@ -977,9 +1051,12 @@ Update a thread's policy.
 | **Response body** | empty |
 | **Status 200** | Policy updated |
 | **Status 400** | Invalid signed message or invalid TOML |
+| **Status 403** | Signing key is not the key that originally signed the thread |
 | **Status 404** | Thread not found |
 
 Recognised TOML fields: `visible`, `acceptsReplies`, `encryptFor`, `policyEditors`, `advertise`. Only fields present in the body are updated.
+
+The signing key must be the same key that originally signed the thread.
 
 ---
 
