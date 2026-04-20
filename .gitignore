@@ -4,6 +4,10 @@ server/vendor
 server/server
 result
 node_modules
-.cache
-.envrc
-.direnv
+# k8s secrets — copy secret.env.example → secret.env and fill in values
+k8s/secret.env
+
+# Terraform — copy terraform.tfvars.example → terraform.tfvars and fill in values
+terraform/terraform.tfvars
+terraform/.terraform
+.cache/

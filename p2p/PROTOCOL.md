@@ -53,8 +53,8 @@ These three packets are used to bootstrap a WebRTC peer connection. They are poi
 {
   "action": "rtc_offer",
   "payload": {
-    "from": "<pgp fingerprint of sender>",
-    "to": "<pgp fingerprint of recipient>",
+    "from": "<peer fingerprint of sender>",
+    "to": "<peer fingerprint of recipient>",
     "sdp": "<SDP offer string>",
     "services": [ "threads", "files", "pks" ],
   },
@@ -67,8 +67,8 @@ These three packets are used to bootstrap a WebRTC peer connection. They are poi
 {
   "action": "rtc_answer",
   "payload": {
-    "from": "<pgp fingerprint of sender>",
-    "to": "<pgp fingerprint of recipient>",
+    "from": "<peer fingerprint of sender>",
+    "to": "<peer fingerprint of recipient>",
     "sdp": "<SDP answer string>",
   },
 }
@@ -80,8 +80,8 @@ These three packets are used to bootstrap a WebRTC peer connection. They are poi
 {
   "action": "rtc_ice",
   "payload": {
-    "from": "<pgp fingerprint of sender>",
-    "to": "<pgp fingerprint of recipient>",
+    "from": "<peer fingerprint of sender>",
+    "to": "<peer fingerprint of recipient>",
     "candidate": { /* RTCIceCandidateInit */ },
   },
 }
@@ -100,6 +100,8 @@ Each peer connection opens two named DataChannels so both sides can simultaneous
 ### Paging
 
 Methods that return lists use cursor-based paging. Pass the `next_cursor` from one response as `cursor` in the next request. When `next_cursor` is absent the last page has been reached.
+
+Current implementation detail: `cursor` is an opaque string that currently encodes a numeric offset. Peers should treat it as opaque and only pass it back unchanged.
 
 ```jsonc
 // Request

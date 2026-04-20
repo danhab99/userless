@@ -42,6 +42,14 @@ A Next.js web application for browsing and interacting with Userless content:
 
 **Technology**: Next.js, React, TypeScript, Tailwind CSS
 
+### 4. Redditless (`/redditless`)
+An alternative Next.js web application with a Reddit-style layout for the same Userless backend:
+- Threaded comment view with upvote-style layout
+- Designed for community/subreddit-style use cases
+- Shares the same API wrapper as `/threads`
+
+**Technology**: Next.js, React, TypeScript, Tailwind CSS
+
 ## How It Works
 
 1. **Registration**: Users generate an OpenPGP key pair and send their public key to the server
@@ -54,8 +62,8 @@ A Next.js web application for browsing and interacting with Userless content:
 
 ### Prerequisites
 - Docker and Docker Compose (for MinIO and PostgreSQL)
-- Go 1.x or later
-- Node.js and Yarn
+- Go 1.23 or later
+- Node.js 22+ and Yarn
 - An OpenPGP key pair
 
 ### Quick Start
@@ -112,6 +120,10 @@ userless/
 │   ├── app/            # Next.js app directory
 │   ├── components/     # React components
 │   └── lib/            # Utility libraries
+├── redditless/         # Alternative Reddit-style Next.js web UI
+│   ├── app/            # Next.js app directory
+│   ├── components/     # React components
+│   └── lib/            # Utility libraries
 ├── notes/              # Data directory (gitignored)
 │   ├── minio/          # MinIO storage
 │   └── postgres_data/  # PostgreSQL data
@@ -125,7 +137,7 @@ userless/
 ```bash
 cd server
 go mod download
-go run . --config-path=./example_configs/dev.toml
+go run . --config-path=./example_configs/basic.toml
 ```
 
 ### API Wrapper Development
@@ -137,7 +149,13 @@ yarn build
 
 ### Web UI Development
 ```bash
+# threads UI
 cd threads
+yarn install
+yarn dev
+
+# or the Reddit-style UI
+cd redditless
 yarn install
 yarn dev
 ```
@@ -165,11 +183,11 @@ While not yet implemented, the protocol is designed to support federation where 
 
 ## Contributing
 
-This is an experimental protocol. Contributions, ideas, and feedback are welcome!
+This is an experimental protocol. Contributions, ideas, and feedback are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code conventions, and how to submit a pull request.
 
 ## License
 
-[License information to be added]
+MIT. See the [LICENSE](LICENSE) file for details.
 
 ## Future Work
 

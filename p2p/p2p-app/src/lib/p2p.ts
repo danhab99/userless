@@ -267,7 +267,28 @@ export class Peer {
   }
 }
 
-const ICE_SERVERS: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
+function buildIceServers(): RTCIceServer[] {
+  const servers: RTCIceServer[] = [
+    { urls: "stun:stun.l.google.com:19302" },
+  ];
+
+  // Add TURN servers from environment variables if configured
+  const turnUrl = import.meta.env.VITE_TURN_URL;
+  const turnUsername = import.meta.env.VITE_TURN_USERNAME;
+  const turnPassword = import.meta.env.VITE_TURN_PASSWORD;
+
+  if (turnUrl) {
+    servers.push({
+      urls: turnUrl,
+      username: turnUsername || undefined,
+      credential: turnPassword || undefined,
+    });
+  }
+
+  return servers;
+}
+
+const ICE_SERVERS: RTCIceServer[] = buildIceServers();
 
 export class Server {
   private readonly ws: WebSocket;

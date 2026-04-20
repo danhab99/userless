@@ -18,6 +18,7 @@ import {
 type DBFile = {
   content: ArrayBuffer;
   signature: ArrayBuffer;
+  sourceThreadHash?: Hash;
 };
 
 type BookmarkRecord = {
@@ -25,7 +26,7 @@ type BookmarkRecord = {
   createdAt: string;
 };
 
-type AuditLogRecord = {
+export type AuditLogRecord = {
   timestamp: string;
   event: string;
   details?: string;
@@ -72,6 +73,25 @@ export type UserlessSnapshot = TransferStats & {
   keyCount: number;
 };
 
+export type ReplyDraftRecord = {
+  parentHash: Hash;
+  body: string;
+  createdAt: string;
+};
+
+export type PublicKeyDetail = {
+  fingerprint: string;
+  armor: string;
+  userId: string;
+  threadCount: number;
+};
+
+export type FileDetail = {
+  hash: Hash;
+  size: number;
+  sourceThreadHash?: Hash;
+};
+
 const FILE_REGEX = /!\[[^\]]*\]\(userless:\/\/.*\/files\/[^\)]+\)/g;
 const CHUNK_SIZE = FILE_CHUNK_SIZE;
 
@@ -111,6 +131,22 @@ function toPageResult<T>(items: T[], offset: number, limit: number): PageResult<
     items,
     next_cursor: items.length < limit ? undefined : String(offset + items.length),
   };
+}
+
+function extractReplyTarget(body: string): string | undefined {
+  const patterns = [
+    /reply_to\s*:\s*([a-f0-9]{8,64})/i,
+    /in-reply-to\s*:\s*([a-f0-9]{8,64})/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = body.match(pattern);
+    if (match?.[1]) {
+      return match[1].toLowerCase();
+    }
+  }
+
+  return undefined;
 }
 
 export class Userless {
@@ -250,7 +286,7 @@ export class Userless {
     }
   }
 
-  private async scanThreadForFilesAndKeys(thread: Thread) {
+  private async scanThreadForFilesAndKeys(thread: Thread, threadHash: Hash) {
     const msg = await openpgp.readCleartextMessage({
       cleartextMessage: thread.content,
     });
@@ -283,11 +319,32 @@ export class Userless {
         if (hash) {
           const fileExists = !!(await this.db.get("file", hash));
           if (!fileExists) {
-            await this.queryPeersForFile(hash);
+            await this.queryPeersForFileWithSource(hash, threadHash);
           }
         }
       }
     }
+  }
+
+  private async queryPeersForFileWithSource(hash: string, sourceThreadHash: Hash): Promise<DBFile | undefined> {
+    await this.ensureDB();
+
+    return this.queryPeers(
+      () => this.db.get("file", hash),
+      async (peer) => {
+        const bytes = await peer.fetchFile(hash, CHUNK_SIZE);
+        const copy = new Uint8Array(bytes);
+        return {
+          content: copy.buffer,
+          signature: new ArrayBuffer(0),
+          sourceThreadHash,
+        };
+      },
+      async (file) => {
+        await this.db.put("file", file, hash);
+        await this.appendAuditLog("file_cached", hash);
+      },
+    );
   }
 
   private async queryPeers<T>(
@@ -328,6 +385,7 @@ export class Userless {
         return {
           content: copy.buffer,
           signature: new ArrayBuffer(0),
+          sourceThreadHash: undefined,
         };
       },
       async (file) => {
@@ -387,6 +445,17 @@ export class Userless {
     return this.db.getAll("auditlog");
   }
 
+  public async saveReplyDraft(parentHash: Hash, body: string): Promise<ReplyDraftRecord> {
+    const record: ReplyDraftRecord = {
+      parentHash,
+      body,
+      createdAt: new Date().toISOString(),
+    };
+
+    await this.appendAuditLog("reply_draft_saved", JSON.stringify(record));
+    return record;
+  }
+
   public async getAllPeers(): Promise<Peer[]> {
     return this.getPeersInternal();
   }
@@ -409,7 +478,7 @@ export class Userless {
     const cached = await this.db.get("threads", hash);
     const thread = cached ?? (await this.queryPeersForThread(hash));
     if (thread) {
-      await this.scanThreadForFilesAndKeys(thread);
+      await this.scanThreadForFilesAndKeys(thread, hash);
     }
 
     return thread;
@@ -453,6 +522,103 @@ export class Userless {
       items: await Promise.all(page.items.map((hash) => this.resolveThread(hash))),
       next_cursor: page.next_cursor,
     };
+  }
+
+  public async getReplyThreads(parentHash: Hash): Promise<ResolvedThread[]> {
+    const lowerHash = parentHash.toLowerCase();
+    const matching: ResolvedThread[] = [];
+    let cursor: string | undefined;
+
+    while (true) {
+      const page = await this.listResolvedThreads(cursor, DEFAULT_PAGE_SIZE);
+      for (const thread of page.items) {
+        if (thread.hash.toLowerCase() === lowerHash) {
+          continue;
+        }
+
+        const target = extractReplyTarget(thread.body);
+        if (target === lowerHash) {
+          matching.push(thread);
+        }
+      }
+
+      if (!page.next_cursor) {
+        break;
+      }
+      cursor = page.next_cursor;
+    }
+
+    return matching;
+  }
+
+  public async getAllPublicKeysDetailed(): Promise<PublicKeyDetail[]> {
+    await this.ensureDB();
+    const keys = await this.db.getAll("publickey");
+    const allKeys = await this.db.getAllKeys("publickey");
+    const details: PublicKeyDetail[] = [];
+
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      const fingerprint = allKeys[i] as string;
+
+      let userId = "";
+      try {
+        const parsedKey = await openpgp.readKey({ armoredKey: key.armored });
+        userId = parsedKey.getUserIDs()[0] || "";
+      } catch {
+        // Use empty userId if parsing fails
+      }
+
+      details.push({
+        fingerprint,
+        armor: key.armored,
+        userId,
+        threadCount: 0,
+      });
+    }
+
+    return details;
+  }
+
+  public async getThreadsByPublicKey(fingerprint: string): Promise<ResolvedThread[]> {
+    await this.ensureDB();
+    const matching: ResolvedThread[] = [];
+    let cursor: string | undefined;
+
+    while (true) {
+      const page = await this.listResolvedThreads(cursor, DEFAULT_PAGE_SIZE);
+      for (const thread of page.items) {
+        if (thread.owner.fingerprint.toLowerCase() === fingerprint.toLowerCase()) {
+          matching.push(thread);
+        }
+      }
+
+      if (!page.next_cursor) {
+        break;
+      }
+      cursor = page.next_cursor;
+    }
+
+    return matching;
+  }
+
+  public async getAllFilesDetailed(): Promise<FileDetail[]> {
+    await this.ensureDB();
+    const keys = (await this.db.getAllKeys("file")) as Hash[];
+    const details: FileDetail[] = [];
+
+    for (const hash of keys) {
+      const file = await this.db.get("file", hash);
+      if (file) {
+        details.push({
+          hash,
+          size: file.content.byteLength,
+          sourceThreadHash: file.sourceThreadHash,
+        });
+      }
+    }
+
+    return details;
   }
 
   public async getSnapshot(): Promise<UserlessSnapshot> {
