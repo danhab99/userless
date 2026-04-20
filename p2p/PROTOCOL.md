@@ -20,7 +20,7 @@ The announcement packet informs the listener that a new peer is available
 {
   "action": "new_peer",
   "payload": {
-    "sessionId": "<random UUID, ephemeral — used only for WebRTC signaling routing>",
+    "fingerprint": "",
     "services": [ "threads", "files", "pks" ],
   },
 }
@@ -47,14 +47,14 @@ Since p2p is not moderatable, in the event an individual discovers some illicit 
 
 These three packets are used to bootstrap a WebRTC peer connection. They are point-to-point: the lobby server routes each packet only to the peer identified by `to`, not broadcast. The `from` field lets the recipient know who to reply to.
 
-**Offer** — sent by the peer who initiates the connection after receiving a `new_peer` announcement. Includes `services` so the callee knows what the caller can provide.
+**Offer** — sent by the peer who initiates the connection after receiving a `new_peer` announcement. Includes `services` so the callee knows what the caller can provide without needing a separate announcement.
 
 ```jsonc
 {
   "action": "rtc_offer",
   "payload": {
-    "from": "<caller's sessionId>",
-    "to": "<recipient's sessionId>",
+    "from": "<pgp fingerprint of sender>",
+    "to": "<pgp fingerprint of recipient>",
     "sdp": "<SDP offer string>",
     "services": [ "threads", "files", "pks" ],
   },
@@ -67,8 +67,8 @@ These three packets are used to bootstrap a WebRTC peer connection. They are poi
 {
   "action": "rtc_answer",
   "payload": {
-    "from": "<callee's sessionId>",
-    "to": "<caller's sessionId>",
+    "from": "<pgp fingerprint of sender>",
+    "to": "<pgp fingerprint of recipient>",
     "sdp": "<SDP answer string>",
   },
 }
@@ -80,8 +80,8 @@ These three packets are used to bootstrap a WebRTC peer connection. They are poi
 {
   "action": "rtc_ice",
   "payload": {
-    "from": "<sender's sessionId>",
-    "to": "<recipient's sessionId>",
+    "from": "<pgp fingerprint of sender>",
+    "to": "<pgp fingerprint of recipient>",
     "candidate": { /* RTCIceCandidateInit */ },
   },
 }
@@ -99,17 +99,17 @@ Each peer connection opens two named DataChannels so both sides can simultaneous
 
 ### Paging
 
-Methods that return lists are alphabetically sorted and use skip/take. The caller increments `skip` by `take` until the returned array is shorter than `take`, which signals the end of the list.
+Methods that return lists use cursor-based paging. Pass the `next_cursor` from one response as `cursor` in the next request. When `next_cursor` is absent the last page has been reached.
 
 ```jsonc
-// Request params
-{ "skip": 0, "take": 100 }
+// Request
+{ "cursor": "<opaque string>", "limit": 100 }
 
-// Response — just an array, no wrapper
-[ "item1", "item2", "..." ]
+// Response
+{ "items": [ /* ... */ ], "next_cursor": "<opaque string or absent>" }
 ```
 
-The default and recommended `take` is `100`.
+The default and recommended `limit` is `100`. Implementations may cap or ignore `limit`.
 
 ---
 
@@ -117,10 +117,10 @@ The default and recommended `take` is `100`.
 
 ```jsonc
 // Request params
-{ "skip": 0, "take": 100 }
+{ "cursor": "<optional>", "limit": 100 }
 
 // Response
-[ "<hash>", "..." ]  // alphabetically sorted; shorter than `take` means end of list
+{ "items": [ "<hash>", "..." ], "next_cursor": "<optional>" }
 ```
 
 ### getThread
@@ -153,10 +153,10 @@ Recommended `length` per request: `196608` (192 KB).
 
 ```jsonc
 // Request params
-{ "skip": 0, "take": 100 }
+{ "cursor": "<optional>", "limit": 100 }
 
 // Response
-[ { "fingerprint": "", "armored": "" }, "..." ]  // alphabetically sorted by fingerprint; shorter than `take` means end of list
+{ "items": [ { "fingerprint": "", "armored": "" }, "..." ], "next_cursor": "<optional>" }
 ```
 
 ### getPublicKeys
