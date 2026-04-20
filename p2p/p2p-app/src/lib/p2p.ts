@@ -7,14 +7,12 @@ import {
 
 export type Hash = string;
 export type Thread = { content: string };
-
 export type PublicKey = { fingerprint: string; armored: string };
 
 export type Service = "threads" | "files" | "pks";
 export type Services = Array<Service>;
 
 export const DEFAULT_PAGE_SIZE = 100;
-
 export const FILE_CHUNK_SIZE = 192 * 1024;
 
 export type FileChunk = {
@@ -46,7 +44,7 @@ type EmergencyPayload = {
 };
 
 type LobbyPacket =
-  | { action: "new_peer"; payload: { sessionId: string; services: Services } }
+  | { action: "new_peer"; payload: { fingerprint: string; services: Services } }
   | { action: "emergency"; payload: EmergencyPayload }
   | {
       action: "rtc_offer";
@@ -58,66 +56,151 @@ type LobbyPacket =
       payload: { from: string; to: string; candidate: RTCIceCandidateInit };
     };
 
+export type TransferStats = {
+  uploadedBytes: number;
+  downloadedBytes: number;
+};
+
+export function normalizeLobbyUrl(rawUrl: string): string {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) {
+    throw new Error("Lobby URL is empty");
+  }
+
+  const defaultProtocol = window.location.protocol === "https:" ? "wss://" : "ws://";
+  const candidate = /^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(trimmed)
+    ? trimmed
+    : `${defaultProtocol}${trimmed}`;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(candidate, window.location.href);
+  } catch {
+    throw new Error(`Invalid lobby URL: ${trimmed}`);
+  }
+
+  if (parsed.protocol === "http:") {
+    parsed.protocol = "ws:";
+  } else if (parsed.protocol === "https:") {
+    parsed.protocol = "wss:";
+  }
+
+  if (parsed.protocol !== "ws:" && parsed.protocol !== "wss:") {
+    throw new Error(`Lobby URL must use ws:// or wss://: ${parsed.toString()}`);
+  }
+
+  if (parsed.pathname === "/") {
+    parsed.pathname = "/lobby";
+  }
+
+  return parsed.toString();
+}
+
 async function fetchAll<T>(
-  fetch: (skip: number) => Promise<T[]>,
+  fetchPage: (skip: number) => Promise<T[]>,
   take = DEFAULT_PAGE_SIZE,
 ): Promise<T[]> {
   const all: T[] = [];
   let skip = 0;
+
   while (true) {
-    const page = await fetch(skip);
+    const page = await fetchPage(skip);
     all.push(...page);
-    if (page.length < take) break;
+    if (page.length < take) {
+      break;
+    }
     skip += take;
   }
+
   return all;
+}
+
+function countPayloadBytes(payload: string): number {
+  return new TextEncoder().encode(payload).byteLength;
 }
 
 function base64ToBytes(b64: string): Uint8Array {
   const binary = atob(b64);
   const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
   return bytes;
 }
 
 function concatBytes(chunks: Uint8Array[]): Uint8Array {
-  const total = chunks.reduce((n, c) => n + c.byteLength, 0);
-  const out = new Uint8Array(total);
+  const total = chunks.reduce((size, chunk) => size + chunk.byteLength, 0);
+  const result = new Uint8Array(total);
   let offset = 0;
+
   for (const chunk of chunks) {
-    out.set(chunk, offset);
+    result.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  return out;
+
+  return result;
 }
+
+type PeerAccounting = {
+  onSend?: (bytes: number) => void;
+  onReceive?: (bytes: number) => void;
+};
 
 export class Peer {
   readonly id: string;
   readonly services: Services;
 
-  private rpc: TypedJSONRPCClient<Methods>;
+  private readonly rpc: TypedJSONRPCClient<Methods>;
 
-  constructor(id: string, services: Services, dc: RTCDataChannel) {
+  constructor(
+    id: string,
+    services: Services,
+    dc: RTCDataChannel,
+    accounting: PeerAccounting = {},
+  ) {
     this.id = id;
     this.services = services;
 
     this.rpc = new JSONRPCClient((req) => {
-      if (dc.readyState === "open") {
-        dc.send(JSON.stringify(req));
-        return Promise.resolve();
+      if (dc.readyState !== "open") {
+        return Promise.reject(new Error("data channel not open"));
       }
-      return Promise.reject(new Error("data channel not open"));
+
+      const payload = JSON.stringify(req);
+      accounting.onSend?.(countPayloadBytes(payload));
+      dc.send(payload);
+
+      return Promise.resolve();
     });
 
-    dc.onmessage = (ev) => {
-      this.rpc.receive(JSON.parse(ev.data));
-    };
+    dc.addEventListener("message", (event) => {
+      if (typeof event.data !== "string") {
+        return;
+      }
+
+      accounting.onReceive?.(countPayloadBytes(event.data));
+      this.rpc.receive(JSON.parse(event.data));
+    });
+  }
+
+  private request<K extends keyof Methods>(
+    method: K,
+    params: Parameters<Methods[K]>[0],
+  ): ReturnType<Methods[K]> {
+    return Promise.resolve(
+      (this.rpc.request as (methodName: K, methodParams: Parameters<Methods[K]>[0]) => unknown)(
+        method,
+        params,
+      ),
+    ) as ReturnType<Methods[K]>;
   }
 
   getAllThreads(
     params: { skip?: number; take?: number } = {},
   ): Promise<Hash[]> {
-    return this.rpc.request("getAllThreads", params);
+    return this.request("getAllThreads", params);
   }
 
   getAllThreadsAll(): Promise<Hash[]> {
@@ -127,7 +210,7 @@ export class Peer {
   }
 
   getThread(params: { hash: Hash }): Promise<Thread> {
-    return this.rpc.request("getThread", params);
+    return this.request("getThread", params);
   }
 
   getFile(params: {
@@ -135,7 +218,7 @@ export class Peer {
     offset: number;
     length: number;
   }): Promise<FileChunk> {
-    return this.rpc.request("getFile", params);
+    return this.request("getFile", params);
   }
 
   async fetchFile(
@@ -143,20 +226,25 @@ export class Peer {
     chunkSize = FILE_CHUNK_SIZE,
   ): Promise<Uint8Array> {
     let offset = 0;
-    let total = Infinity;
+    let total = Number.POSITIVE_INFINITY;
     const chunks: Uint8Array[] = [];
 
     while (offset < total) {
-      const { data, total: fileTotal } = await this.getFile({
+      const { data, total: nextTotal } = await this.getFile({
         hash,
         offset,
         length: chunkSize,
       });
-      total = fileTotal;
+
+      total = nextTotal;
+
       const bytes = base64ToBytes(data);
+      if (bytes.byteLength === 0) {
+        break;
+      }
+
       chunks.push(bytes);
       offset += bytes.byteLength;
-      if (bytes.byteLength === 0) break; // guard against empty chunks
     }
 
     return concatBytes(chunks);
@@ -165,7 +253,7 @@ export class Peer {
   getAllPublicKeys(
     params: { skip?: number; take?: number } = {},
   ): Promise<PublicKey[]> {
-    return this.rpc.request("getAllPublicKeys", params);
+    return this.request("getAllPublicKeys", params);
   }
 
   getAllPublicKeysAll(): Promise<PublicKey[]> {
@@ -175,26 +263,26 @@ export class Peer {
   }
 
   getPublicKeys(params: { fingerprint: string }): Promise<PublicKey> {
-    return this.rpc.request("getPublicKeys", params);
+    return this.request("getPublicKeys", params);
   }
 }
 
 const ICE_SERVERS: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
 
 export class Server {
-  private ws: WebSocket;
-  private pcs = new Map<string, RTCPeerConnection>();
-  private pendingIce = new Map<string, RTCIceCandidateInit[]>();
-  private peers = new Map<string, Peer>();
+  private readonly ws: WebSocket;
+  private readonly pcs = new Map<string, RTCPeerConnection>();
+  private readonly pendingIce = new Map<string, RTCIceCandidateInit[]>();
+  private readonly peers = new Map<string, Peer>();
+  private readonly peerId = crypto.randomUUID();
+  private readonly myServices: Services;
+  private readonly rpcServer: TypedJSONRPCServer<Methods>;
 
-  private readonly sessionId = crypto.randomUUID();
-  private myServices: Services;
-  private rpcServer: TypedJSONRPCServer<Methods>;
+  private uploadedBytes = 0;
+  private downloadedBytes = 0;
 
   onPeerConnected: (peer: Peer) => void = () => {};
-
   onPeerDisconnected: (id: string) => void = () => {};
-
   onEmergency: (payload: EmergencyPayload) => void = () => {};
 
   constructor(
@@ -205,18 +293,38 @@ export class Server {
     this.myServices = services;
     this.rpcServer = this.buildRpcServer(methods);
 
-    this.ws = new WebSocket(lobbyUrl);
-    this.ws.onopen = () => console.log("[p2p] lobby connected", lobbyUrl);
-    this.ws.onclose = () => console.log("[p2p] lobby disconnected", lobbyUrl);
-    this.ws.onerror = (err) => console.error("[p2p] lobby error", err);
-    this.ws.onmessage = (ev) => {
-      const packet: LobbyPacket = JSON.parse(ev.data);
-      this.handleLobbyPacket(packet);
-    };
+    const normalizedLobbyUrl = normalizeLobbyUrl(lobbyUrl);
+
+    this.ws = new WebSocket(normalizedLobbyUrl);
+    this.ws.addEventListener("open", () => {
+      console.log("[p2p] lobby connected", normalizedLobbyUrl);
+      this.announce();
+    });
+    this.ws.addEventListener("close", () => {
+      console.log("[p2p] lobby disconnected", normalizedLobbyUrl);
+    });
+    this.ws.addEventListener("error", (error) => {
+      console.error("[p2p] lobby error", error);
+    });
+    this.ws.addEventListener("message", (event) => {
+      if (typeof event.data !== "string") {
+        return;
+      }
+
+      this.downloadedBytes += countPayloadBytes(event.data);
+      this.handleLobbyPacket(JSON.parse(event.data) as LobbyPacket);
+    });
   }
 
   getPeers(): Peer[] {
     return Array.from(this.peers.values());
+  }
+
+  getTransferStats(): TransferStats {
+    return {
+      uploadedBytes: this.uploadedBytes,
+      downloadedBytes: this.downloadedBytes,
+    };
   }
 
   announce() {
@@ -224,36 +332,48 @@ export class Server {
       this.ws.addEventListener("open", () => this.announce(), { once: true });
       return;
     }
+
     this.sendLobby({
       action: "new_peer",
-      payload: { sessionId: this.sessionId, services: this.myServices },
+      payload: { fingerprint: this.peerId, services: this.myServices },
     });
   }
 
-  private sendLobby(p: LobbyPacket) {
-    this.ws.send(JSON.stringify(p));
+  private sendLobby(packet: LobbyPacket) {
+    const payload = JSON.stringify(packet);
+    this.uploadedBytes += countPayloadBytes(payload);
+    this.ws.send(payload);
   }
 
   private handleLobbyPacket(packet: LobbyPacket) {
     switch (packet.action) {
       case "new_peer":
-        this.initiateOffer(packet.payload.sessionId, packet.payload.services);
+        if (packet.payload.fingerprint === this.peerId) {
+          break;
+        }
+        void this.initiateOffer(packet.payload.fingerprint, packet.payload.services);
         break;
       case "rtc_offer":
-        if (packet.payload.to !== this.sessionId) break;
-        this.handleOffer(
+        if (packet.payload.to !== this.peerId) {
+          break;
+        }
+        void this.handleOffer(
           packet.payload.from,
           packet.payload.sdp,
           packet.payload.services,
         );
         break;
       case "rtc_answer":
-        if (packet.payload.to !== this.sessionId) break;
-        this.handleAnswer(packet.payload.from, packet.payload.sdp);
+        if (packet.payload.to !== this.peerId) {
+          break;
+        }
+        void this.handleAnswer(packet.payload.from, packet.payload.sdp);
         break;
       case "rtc_ice":
-        if (packet.payload.to !== this.sessionId) break;
-        this.handleIce(packet.payload.from, packet.payload.candidate);
+        if (packet.payload.to !== this.peerId) {
+          break;
+        }
+        void this.handleIce(packet.payload.from, packet.payload.candidate);
         break;
       case "emergency":
         this.onEmergency(packet.payload);
@@ -261,39 +381,40 @@ export class Server {
     }
   }
 
-  private createPC(remoteSessionId: string): RTCPeerConnection {
+  private createPC(remotePeerId: string): RTCPeerConnection {
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-    this.pcs.set(remoteSessionId, pc);
+    this.pcs.set(remotePeerId, pc);
 
-    pc.onicecandidate = ({ candidate }) => {
-      if (candidate) {
-        this.sendLobby({
-          action: "rtc_ice",
-          payload: {
-            from: this.sessionId,
-            to: remoteSessionId,
-            candidate: candidate.toJSON(),
-          },
-        });
+    pc.addEventListener("icecandidate", ({ candidate }) => {
+      if (!candidate) {
+        return;
       }
-    };
 
-    pc.onconnectionstatechange = () => {
-      const state = pc.connectionState;
-      console.log("[p2p] connection state", remoteSessionId, state);
+      this.sendLobby({
+        action: "rtc_ice",
+        payload: {
+          from: this.peerId,
+          to: remotePeerId,
+          candidate: candidate.toJSON(),
+        },
+      });
+    });
+
+    pc.addEventListener("connectionstatechange", () => {
       if (
-        state === "failed" ||
-        state === "closed" ||
-        state === "disconnected"
+        pc.connectionState === "failed" ||
+        pc.connectionState === "closed" ||
+        pc.connectionState === "disconnected"
       ) {
         pc.close();
-        this.pcs.delete(remoteSessionId);
-        this.pendingIce.delete(remoteSessionId);
-        if (this.peers.delete(remoteSessionId)) {
-          this.onPeerDisconnected(remoteSessionId);
+        this.pcs.delete(remotePeerId);
+        this.pendingIce.delete(remotePeerId);
+
+        if (this.peers.delete(remotePeerId)) {
+          this.onPeerDisconnected(remotePeerId);
         }
       }
-    };
+    });
 
     return pc;
   }
@@ -304,22 +425,49 @@ export class Server {
   }
 
   private attachServerChannel(dc: RTCDataChannel) {
-    dc.onmessage = async (ev) => {
-      const response = await this.rpcServer.receive(JSON.parse(ev.data));
-      if (response) dc.send(JSON.stringify(response));
-    };
+    dc.addEventListener("message", async (event) => {
+      if (typeof event.data !== "string") {
+        return;
+      }
+
+      this.downloadedBytes += countPayloadBytes(event.data);
+      const response = await this.rpcServer.receive(JSON.parse(event.data));
+      if (!response || dc.readyState !== "open") {
+        return;
+      }
+
+      const payload = JSON.stringify(response);
+      this.uploadedBytes += countPayloadBytes(payload);
+      dc.send(payload);
+    });
   }
 
-  private async initiateOffer(remoteSessionId: string, services: Services) {
-    if (this.pcs.has(remoteSessionId)) return;
-    const pc = this.createPC(remoteSessionId);
+  private createPeer(remotePeerId: string, services: Services, dc: RTCDataChannel) {
+    return new Peer(remotePeerId, services, dc, {
+      onSend: (bytes) => {
+        this.uploadedBytes += bytes;
+      },
+      onReceive: (bytes) => {
+        this.downloadedBytes += bytes;
+      },
+    });
+  }
 
+  private async initiateOffer(remotePeerId: string, services: Services) {
+    if (this.pcs.has(remotePeerId)) {
+      return;
+    }
+
+    const pc = this.createPC(remotePeerId);
     const clientDc = pc.createDataChannel("rpc-client");
     const serverDc = pc.createDataChannel("rpc-server");
 
-    clientDc.onopen = () =>
-      this.registerPeer(new Peer(remoteSessionId, services, clientDc));
-    serverDc.onopen = () => this.attachServerChannel(serverDc);
+    clientDc.addEventListener("open", () => {
+      this.registerPeer(this.createPeer(remotePeerId, services, clientDc));
+    });
+    serverDc.addEventListener("open", () => {
+      this.attachServerChannel(serverDc);
+    });
 
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -327,84 +475,102 @@ export class Server {
     this.sendLobby({
       action: "rtc_offer",
       payload: {
-        from: this.sessionId,
-        to: remoteSessionId,
-        sdp: offer.sdp!,
+        from: this.peerId,
+        to: remotePeerId,
+        sdp: offer.sdp ?? "",
         services: this.myServices,
       },
     });
   }
 
   private async handleOffer(
-    remoteSessionId: string,
+    remotePeerId: string,
     sdp: string,
     services: Services,
   ) {
-    const pc = this.createPC(remoteSessionId);
+    const existing = this.pcs.get(remotePeerId);
+    const pc = existing ?? this.createPC(remotePeerId);
 
     pc.ondatachannel = ({ channel }) => {
       if (channel.label === "rpc-server") {
-        channel.onopen = () =>
-          this.registerPeer(new Peer(remoteSessionId, services, channel));
-      } else if (channel.label === "rpc-client") {
-        channel.onopen = () => this.attachServerChannel(channel);
+        channel.addEventListener("open", () => {
+          this.registerPeer(this.createPeer(remotePeerId, services, channel));
+        });
+        return;
+      }
+
+      if (channel.label === "rpc-client") {
+        channel.addEventListener("open", () => {
+          this.attachServerChannel(channel);
+        });
       }
     };
 
     await pc.setRemoteDescription({ type: "offer", sdp });
-    await this.drainPendingIce(remoteSessionId, pc);
+    await this.drainPendingIce(remotePeerId, pc);
+
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
 
     this.sendLobby({
       action: "rtc_answer",
-      payload: { from: this.sessionId, to: remoteSessionId, sdp: answer.sdp! },
+      payload: {
+        from: this.peerId,
+        to: remotePeerId,
+        sdp: answer.sdp ?? "",
+      },
     });
   }
 
-  private async handleAnswer(remoteSessionId: string, sdp: string) {
-    const pc = this.pcs.get(remoteSessionId);
-    if (!pc) return;
+  private async handleAnswer(remotePeerId: string, sdp: string) {
+    const pc = this.pcs.get(remotePeerId);
+    if (!pc) {
+      return;
+    }
+
     await pc.setRemoteDescription({ type: "answer", sdp });
-    await this.drainPendingIce(remoteSessionId, pc);
+    await this.drainPendingIce(remotePeerId, pc);
   }
 
-  private async handleIce(
-    remoteSessionId: string,
-    candidate: RTCIceCandidateInit,
-  ) {
-    const pc = this.pcs.get(remoteSessionId);
-    if (!pc) return;
+  private async handleIce(remotePeerId: string, candidate: RTCIceCandidateInit) {
+    const pc = this.pcs.get(remotePeerId);
+    if (!pc) {
+      return;
+    }
 
     if (!pc.remoteDescription) {
-      const queue = this.pendingIce.get(remoteSessionId) ?? [];
+      const queue = this.pendingIce.get(remotePeerId) ?? [];
       queue.push(candidate);
-      this.pendingIce.set(remoteSessionId, queue);
+      this.pendingIce.set(remotePeerId, queue);
       return;
     }
 
     await pc.addIceCandidate(new RTCIceCandidate(candidate));
   }
 
-  private async drainPendingIce(
-    remoteSessionId: string,
-    pc: RTCPeerConnection,
-  ) {
-    const queued = this.pendingIce.get(remoteSessionId);
-    if (!queued) return;
-    this.pendingIce.delete(remoteSessionId);
+  private async drainPendingIce(remotePeerId: string, pc: RTCPeerConnection) {
+    const queued = this.pendingIce.get(remotePeerId);
+    if (!queued) {
+      return;
+    }
+
+    this.pendingIce.delete(remotePeerId);
     for (const candidate of queued) {
       await pc.addIceCandidate(new RTCIceCandidate(candidate));
     }
   }
 
-  private buildRpcServer(
-    methods: Partial<Methods>,
-  ): TypedJSONRPCServer<Methods> {
+  private buildRpcServer(methods: Partial<Methods>): TypedJSONRPCServer<Methods> {
     const server: TypedJSONRPCServer<Methods> = new JSONRPCServer();
-    for (const [name, fn] of Object.entries(methods)) {
-      server.addMethod(name, fn as any);
+    const methodNames = Object.keys(methods) as Array<keyof Methods>;
+
+    for (const methodName of methodNames) {
+      const handler = methods[methodName];
+      if (handler) {
+        server.addMethod(methodName, handler as any);
+      }
     }
+
     return server;
   }
 }

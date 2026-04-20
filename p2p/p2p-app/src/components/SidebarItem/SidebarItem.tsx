@@ -9,6 +9,8 @@ export type SidebarItemProps = {
   timestamp: Date;
 
   body: string;
+  selected?: boolean;
+  onClick?: () => void;
 };
 
 const PREVIEW_LINE_LENGTH = 25;
@@ -31,7 +33,12 @@ export function SidebarItem(props: SidebarItemProps) {
 
   return (
     <div
-      className={clsx([style.SidebarItem, "bg-gray-100 p-4 r-2 rounded-lg"])}
+      className={clsx([
+        style.SidebarItem,
+        "bg-gray-100 p-4 r-2 rounded-lg cursor-pointer border border-transparent",
+        props.selected && "border-blue-500 bg-blue-50",
+      ])}
+      onClick={props.onClick}
     >
       <div className="text-xs">
         <span className="text-red-600">{props.ownerName}</span>
