@@ -641,6 +641,82 @@ export class Userless {
       downloadedBytes: transfer.downloadedBytes,
     };
   }
+
+  public async getOrCreateSigningKey(): Promise<openpgp.PrivateKey> {
+    const stored = localStorage.getItem("userless_signing_key");
+    if (stored) {
+      try {
+        const key = await openpgp.readPrivateKey({ armoredKey: stored });
+        return key;
+      } catch {
+        // Fall through to generate new key
+      }
+    }
+
+    // Generate a new key
+    const key = await openpgp.generateKey({
+      type: "rsa",
+      rsaBits: 2048,
+      userIDs: [{ name: "Userless User", email: "user@userless.local" }],
+      format: "armored",
+    });
+
+    const privateKey = await openpgp.readPrivateKey({ armoredKey: key.privateKey as string });
+    localStorage.setItem("userless_signing_key", key.privateKey as string);
+
+    return privateKey;
+  }
+
+  public async createThread(body: string): Promise<Hash> {
+    await this.ensureDB();
+
+    const signingKey = await this.getOrCreateSigningKey();
+
+    const cleartextMessage = await openpgp.createCleartextMessage({
+      text: body,
+    });
+
+    const signedMessage = await openpgp.sign({
+      message: cleartextMessage,
+      signingKeys: signingKey,
+    });
+
+    const thread: Thread = {
+      content: signedMessage,
+    };
+
+    // Hash the content to create a deterministic hash
+    const hashBuffer = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(signedMessage)
+    );
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+
+    await this.db.put("threads", thread, hash);
+    await this.appendAuditLog("thread_created", hash);
+
+    return hash;
+  }
+
+  public async addFile(name: string, data: ArrayBuffer): Promise<Hash> {
+    await this.ensureDB();
+
+    // Hash the file content to create a deterministic hash
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+
+    const file: DBFile = {
+      content: data,
+      signature: new ArrayBuffer(0),
+    };
+
+    await this.db.put("file", file, hash);
+    await this.appendAuditLog("file_added", `${name} (${hash})`);
+
+    return hash;
+  }
 }
 
 let singleton: Userless | undefined;

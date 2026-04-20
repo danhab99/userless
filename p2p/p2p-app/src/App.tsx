@@ -3,6 +3,8 @@ import Markdown from "react-markdown";
 import { StatusBar } from "./components/StatusBar/StatusBar";
 import { UserlessSidebar } from "./components/Sidebar/UserlessSidebar";
 import { useUserless } from "./components/UserlessProvider/UserlessProvider";
+import { CreateThreadDialog } from "./components/CreateThreadDialog/CreateThreadDialog";
+import { CreateThreadButton } from "./components/CreateThreadButton/CreateThreadButton";
 import type { ResolvedThread, PublicKeyDetail, FileDetail, AuditLogRecord } from "./lib/userless";
 
 type PageType = "threads" | "keys" | "files" | "audit";
@@ -25,6 +27,9 @@ function App() {
   
   const [files, setFiles] = useState<FileDetail[]>([]);
   const [auditLog, setAuditLog] = useState<AuditLogRecord[]>([]);
+
+  const [createThreadDialogOpen, setCreateThreadDialogOpen] = useState(false);
+  const [threadCreationRefreshCounter, setThreadCreationRefreshCounter] = useState(0);
 
   const selectedHash = selectedThread?.hash;
   const selectedIsBookmarked = useMemo(
@@ -193,6 +198,7 @@ function App() {
             <UserlessSidebar
               selectedHash={selectedThread?.hash}
               onSelectThread={setSelectedThread}
+              refreshCounter={threadCreationRefreshCounter}
             />
           </aside>
 
@@ -435,6 +441,19 @@ function App() {
         threadCount={context?.snapshot.threadCount ?? 0}
         uploadSpeed={context?.snapshot.uploadSpeed ?? 0}
       />
+
+      <CreateThreadButton onClick={() => setCreateThreadDialogOpen(true)} />
+
+      {context && (
+        <CreateThreadDialog
+          isOpen={createThreadDialogOpen}
+          onClose={() => setCreateThreadDialogOpen(false)}
+          onThreadCreated={() => {
+            setThreadCreationRefreshCounter((c) => c + 1);
+          }}
+          userless={context.userless}
+        />
+      )}
     </main>
   );
 }

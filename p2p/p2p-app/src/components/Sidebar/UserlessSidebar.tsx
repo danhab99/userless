@@ -6,6 +6,7 @@ import { Sidebar } from "./Sidebar";
 export type UserlessSidebarProps = {
   selectedHash?: string;
   onSelectThread: (thread: ResolvedThread) => void;
+  refreshCounter?: number;
 };
 
 const PAGE_SIZE = 100;
@@ -20,7 +21,7 @@ export function UserlessSidebar(props: UserlessSidebarProps) {
     setThreads([]);
     setHasMore(true);
     setCursor(undefined);
-  }, [context?.userless]);
+  }, [context?.userless, props.refreshCounter]);
 
   useEffect(() => {
     if (!context || threads.length > 0 || !hasMore) {
