@@ -135,19 +135,19 @@ function App() {
   };
 
   return (
-    <main className="flex h-screen flex-col bg-stone-100 text-stone-900">
-      <header className="border-b border-stone-300 bg-stone-50 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-stone-600">
+    <main className="flex h-screen flex-col">
+      <header className="border-b text-sm font-semibold uppercase tracking-[0.2em]">
         Userless P2P
       </header>
 
-      <nav className="border-b border-stone-300 bg-stone-50 px-4 flex gap-1">
+      <nav className="border-b flex gap-1">
         <button
           type="button"
           onClick={() => setCurrentPage("threads")}
-          className={`px-3 py-2 text-xs font-medium uppercase tracking-wider ${
+          className={`text-xs font-medium uppercase tracking-wider ${
             currentPage === "threads"
-              ? "border-b-2 border-stone-800 text-stone-800"
-              : "text-stone-600 hover:text-stone-800"
+              ? "border-b-2"
+              : ""
           }`}
         >
           Threads
@@ -155,10 +155,10 @@ function App() {
         <button
           type="button"
           onClick={() => setCurrentPage("keys")}
-          className={`px-3 py-2 text-xs font-medium uppercase tracking-wider ${
+          className={`text-xs font-medium uppercase tracking-wider ${
             currentPage === "keys"
-              ? "border-b-2 border-stone-800 text-stone-800"
-              : "text-stone-600 hover:text-stone-800"
+              ? "border-b-2"
+              : ""
           }`}
         >
           Keys ({publicKeys.length})
@@ -166,10 +166,10 @@ function App() {
         <button
           type="button"
           onClick={() => setCurrentPage("files")}
-          className={`px-3 py-2 text-xs font-medium uppercase tracking-wider ${
+          className={`text-xs font-medium uppercase tracking-wider ${
             currentPage === "files"
-              ? "border-b-2 border-stone-800 text-stone-800"
-              : "text-stone-600 hover:text-stone-800"
+              ? "border-b-2"
+              : ""
           }`}
         >
           Files ({files.length})
@@ -177,10 +177,10 @@ function App() {
         <button
           type="button"
           onClick={() => setCurrentPage("audit")}
-          className={`px-3 py-2 text-xs font-medium uppercase tracking-wider ${
+          className={`text-xs font-medium uppercase tracking-wider ${
             currentPage === "audit"
-              ? "border-b-2 border-stone-800 text-stone-800"
-              : "text-stone-600 hover:text-stone-800"
+              ? "border-b-2"
+              : ""
           }`}
         >
           Audit
@@ -189,16 +189,16 @@ function App() {
 
       {currentPage === "threads" && (
         <div className="grid grow grid-cols-[22rem_1fr] overflow-hidden">
-          <aside className="overflow-y-auto border-r border-stone-300 bg-white p-3">
+          <aside className="overflow-y-auto border-r">
             <UserlessSidebar
               selectedHash={selectedThread?.hash}
               onSelectThread={setSelectedThread}
             />
           </aside>
 
-          <section className="overflow-y-auto p-6">
+          <section className="overflow-y-auto">
             {selectedThread ? (
-              <article className="mx-auto flex max-w-3xl flex-col gap-4 rounded-xl border border-stone-300 bg-white p-6 shadow-sm">
+              <article className="mx-auto flex max-w-3xl flex-col gap-4 rounded-xl border">
                 <div>
                   <div className="text-xs uppercase tracking-[0.2em] text-stone-500">
                     {selectedThread.owner.name}
@@ -211,24 +211,24 @@ function App() {
                   </h1>
                   <button
                     type="button"
-                    className="mt-3 rounded-md border border-stone-300 px-3 py-1 text-xs font-medium text-stone-700 hover:bg-stone-100"
+                    className="mt-3 rounded-md border text-xs font-medium"
                     onClick={toggleBookmark}
                   >
                     {selectedIsBookmarked ? "Remove bookmark" : "Add bookmark"}
                   </button>
                 </div>
 
-                <div className="prose max-w-none prose-stone">
+                  <div className="prose max-w-none">
                   <Markdown>{selectedThread.body}</Markdown>
                 </div>
 
-                <section className="rounded-lg border border-stone-200 bg-stone-50 p-3">
-                  <h2 className="text-sm font-semibold text-stone-700">Compose Reply</h2>
-                  <p className="mt-1 text-xs text-stone-500">
+                <section className="rounded-lg border">
+                  <h2 className="text-sm font-semibold">Compose Reply</h2>
+                  <p className="mt-1 text-xs">
                     Include <code>reply_to: {selectedThread.hash}</code> in your thread body to link replies.
                   </p>
                   <textarea
-                    className="mt-2 h-28 w-full rounded-md border border-stone-300 bg-white p-2 text-sm"
+                    className="mt-2 h-28 w-full rounded-md border text-sm"
                     placeholder={`reply_to: ${selectedThread.hash}\n\nYour reply...`}
                     value={replyText}
                     onChange={(event) => setReplyText(event.target.value)}
@@ -237,33 +237,33 @@ function App() {
                     <button
                       type="button"
                       disabled={replySaving || !replyText.trim()}
-                      className="rounded-md bg-stone-800 px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
+                      className="rounded-md text-xs font-medium disabled:opacity-50"
                       onClick={saveReplyDraft}
                     >
                       {replySaving ? "Saving..." : "Save Reply Draft"}
                     </button>
-                    {replyNotice ? <span className="text-xs text-stone-600">{replyNotice}</span> : null}
+                    {replyNotice ? <span className="text-xs">{replyNotice}</span> : null}
                   </div>
                 </section>
 
-                <section className="rounded-lg border border-stone-200 bg-white p-3">
-                  <h2 className="text-sm font-semibold text-stone-700">Replies</h2>
+                <section className="rounded-lg border">
+                  <h2 className="text-sm font-semibold">Replies</h2>
                   {replyThreads.length === 0 ? (
-                    <p className="mt-2 text-xs text-stone-500">No replies discovered yet.</p>
+                    <p className="mt-2 text-xs">No replies discovered yet.</p>
                   ) : (
                     <div className="mt-2 space-y-3">
                       {replyThreads.map((reply) => (
                         <button
                           key={reply.hash}
                           type="button"
-                          className="w-full rounded-md border border-stone-200 bg-stone-50 p-3 text-left hover:bg-stone-100"
+                          className="w-full rounded-md border text-left"
                           onClick={() => setSelectedThread(reply)}
                         >
-                          <div className="text-[10px] uppercase tracking-[0.18em] text-stone-500">
+                          <div className="text-[10px] uppercase tracking-[0.18em]">
                             {reply.owner.name} {reply.owner.email ? `<${reply.owner.email}>` : ""}
                           </div>
-                          <div className="mt-1 text-xs font-semibold text-stone-700">{reply.hash}</div>
-                          <div className="mt-2 line-clamp-3 text-xs text-stone-600">{reply.body}</div>
+                          <div className="mt-1 text-xs font-semibold">{reply.hash}</div>
+                          <div className="mt-2 line-clamp-3 text-xs">{reply.body}</div>
                         </button>
                       ))}
                     </div>
@@ -271,7 +271,7 @@ function App() {
                 </section>
               </article>
             ) : (
-              <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-stone-300 bg-white text-sm text-stone-500">
+              <div className="flex h-full items-center justify-center rounded-xl border border-dashed text-sm">
                 No threads discovered yet.
               </div>
             )}
@@ -281,40 +281,37 @@ function App() {
 
       {currentPage === "keys" && (
         <div className="grid grow grid-cols-[22rem_1fr] overflow-hidden">
-          <aside className="overflow-y-auto border-r border-stone-300 bg-white p-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-stone-700">Public Keys</h2>
+          <aside className="overflow-y-auto border-r">
+            <h2 className="text-xs font-semibold uppercase tracking-wider">Public Keys</h2>
             <div className="mt-3 space-y-2">
               {publicKeys.length === 0 ? (
-                <p className="text-xs text-stone-500">No public keys discovered.</p>
+                <p className="text-xs">No public keys discovered.</p>
               ) : (
                 publicKeys.map((key) => (
                   <button
                     key={key.fingerprint}
                     type="button"
                     onClick={() => setSelectedFingerprint(key.fingerprint)}
-                    className={`w-full rounded-md border p-2 text-left text-xs ${
-                      selectedFingerprint === key.fingerprint
-                        ? "border-stone-400 bg-stone-100"
-                        : "border-stone-200 bg-stone-50 hover:bg-stone-100"
-                    }`}
+                    className={`w-full rounded-md border text-left text-xs
+                    `}
                   >
-                    <div className="font-mono text-[10px] text-stone-600">{key.fingerprint.slice(0, 16)}</div>
-                    <div className="mt-1 text-xs text-stone-700">{key.userId || "(no user ID)"}</div>
+                    <div className="font-mono text-[10px]">{key.fingerprint.slice(0, 16)}</div>
+                    <div className="mt-1 text-xs">{key.userId || "(no user ID)"}</div>
                   </button>
                 ))
               )}
             </div>
           </aside>
 
-          <section className="overflow-y-auto p-6">
+          <section className="overflow-y-auto">
             {selectedFingerprint ? (
               <div className="mx-auto max-w-3xl">
                 <div className="mb-4">
-                  <h2 className="text-lg font-semibold text-stone-800">Threads Signed by Key</h2>
-                  <p className="mt-1 text-xs text-stone-600">{selectedFingerprint}</p>
+                  <h2 className="text-lg font-semibold">Threads Signed by Key</h2>
+                  <p className="mt-1 text-xs">{selectedFingerprint}</p>
                 </div>
                 {selectedKeyThreads.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-stone-300 bg-white p-6 text-center text-sm text-stone-500">
+                  <div className="rounded-xl border border-dashed text-center text-sm">
                     No threads found signed by this key.
                   </div>
                 ) : (
@@ -327,18 +324,18 @@ function App() {
                           setCurrentPage("threads");
                           setSelectedThread(thread);
                         }}
-                        className="w-full rounded-md border border-stone-200 bg-white p-4 text-left hover:bg-stone-50"
+                        className="w-full rounded-md border text-left"
                       >
-                        <div className="text-[10px] uppercase tracking-[0.18em] text-stone-500">{thread.owner.name}</div>
-                        <div className="mt-2 font-mono text-xs text-stone-600">{thread.hash}</div>
-                        <div className="mt-2 line-clamp-2 text-sm text-stone-700">{thread.body}</div>
+                        <div className="text-[10px] uppercase tracking-[0.18em]">{thread.owner.name}</div>
+                        <div className="mt-2 font-mono text-xs">{thread.hash}</div>
+                        <div className="mt-2 line-clamp-2 text-sm">{thread.body}</div>
                       </button>
                     ))}
                   </div>
                 )}
               </div>
             ) : (
-              <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-stone-300 bg-white text-sm text-stone-500">
+              <div className="flex h-full items-center justify-center rounded-xl border border-dashed text-sm">
                 Select a public key to view threads.
               </div>
             )}
@@ -347,30 +344,30 @@ function App() {
       )}
 
       {currentPage === "files" && (
-        <section className="overflow-y-auto p-6">
+        <section className="overflow-y-auto">
           <div className="mx-auto max-w-4xl">
-            <h2 className="text-lg font-semibold text-stone-800">Downloaded Files</h2>
-            <p className="mt-1 text-xs text-stone-600">Files cached from peer threads</p>
+            <h2 className="text-lg font-semibold">Downloaded Files</h2>
+            <p className="mt-1 text-xs">Files cached from peer threads</p>
             {files.length === 0 ? (
-              <div className="mt-6 rounded-xl border border-dashed border-stone-300 bg-white p-6 text-center text-sm text-stone-500">
+              <div className="mt-6 rounded-xl border border-dashed text-center text-sm">
                 No files downloaded yet.
               </div>
             ) : (
-              <div className="mt-4 overflow-x-auto rounded-lg border border-stone-300">
+              <div className="mt-4 overflow-x-auto rounded-lg border">
                 <table className="w-full text-xs">
-                  <thead className="bg-stone-100 border-b border-stone-300">
+                  <thead className="border-b">
                     <tr>
-                      <th className="px-4 py-2 text-left font-semibold text-stone-700">Hash</th>
-                      <th className="px-4 py-2 text-right font-semibold text-stone-700">Size</th>
-                      <th className="px-4 py-2 text-left font-semibold text-stone-700">Source Thread</th>
+                      <th className="text-left font-semibold">Hash</th>
+                      <th className="text-right font-semibold">Size</th>
+                      <th className="text-left font-semibold">Source Thread</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-stone-200">
+                  <tbody className="divide-y">
                     {files.map((file) => (
-                      <tr key={file.hash} className="hover:bg-stone-50">
-                        <td className="px-4 py-3 font-mono text-stone-600">{file.hash.slice(0, 16)}</td>
-                        <td className="px-4 py-3 text-right text-stone-600">{(file.size / 1024).toFixed(1)} KB</td>
-                        <td className="px-4 py-3 font-mono text-[10px] text-stone-500">{file.sourceThreadHash?.slice(0, 16) ?? "—"}</td>
+                      <tr key={file.hash}>
+                        <td className="font-mono">{file.hash.slice(0, 16)}</td>
+                        <td className="text-right">{(file.size / 1024).toFixed(1)} KB</td>
+                        <td className="font-mono text-[10px]">{file.sourceThreadHash?.slice(0, 16) ?? "—"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -382,12 +379,12 @@ function App() {
       )}
 
       {currentPage === "audit" && (
-        <section className="overflow-y-auto p-6">
+        <section className="overflow-y-auto">
           <div className="mx-auto max-w-4xl">
-            <h2 className="text-lg font-semibold text-stone-800">Audit Log</h2>
-            <p className="mt-1 text-xs text-stone-600">System events and peer activity</p>
+            <h2 className="text-lg font-semibold">Audit Log</h2>
+            <p className="mt-1 text-xs">System events and peer activity</p>
             {auditLog.length === 0 ? (
-              <div className="mt-6 rounded-xl border border-dashed border-stone-300 bg-white p-6 text-center text-sm text-stone-500">
+              <div className="mt-6 rounded-xl border border-dashed text-center text-sm">
                 No events recorded yet.
               </div>
             ) : (
@@ -400,24 +397,24 @@ function App() {
                     return (
                       <div
                         key={idx}
-                        className={`rounded-md border p-3 text-xs ${
+                        className={`rounded-md border text-xs ${
                           isEmergency
-                            ? "border-red-300 bg-red-50"
-                            : "border-stone-200 bg-white"
+                            ? "border-red-300"
+                            : ""
                         }`}
                       >
                         <div className="flex items-start justify-between">
                           <div>
-                            <span className={`font-semibold ${isEmergency ? "text-red-700" : "text-stone-700"}`}>
+                            <span className={`font-semibold ${isEmergency ? "text-red-700" : ""}`}>
                               {entry.event}
                             </span>
-                            <span className="ml-2 text-stone-500">
+                            <span className="ml-2">
                               {new Date(entry.timestamp).toLocaleString()}
                             </span>
                           </div>
                         </div>
                         {entry.details && (
-                          <div className="mt-1 font-mono text-[10px] text-stone-600 break-all">
+                          <div className="mt-1 font-mono text-[10px] break-all">
                             {entry.details.length > 100 ? `${entry.details.slice(0, 100)}…` : entry.details}
                           </div>
                         )}
