@@ -20,18 +20,25 @@ export type FileChunk = {
   total: number;
 };
 
+export type PageParams = {
+  cursor?: string;
+  limit?: number;
+};
+
+export type PageResult<T> = {
+  items: T[];
+  next_cursor?: string;
+};
+
 export type Methods = {
-  getAllThreads(params: { skip?: number; take?: number }): Promise<Hash[]>;
+  getAllThreads(params: PageParams): Promise<PageResult<Hash>>;
   getThread(params: { hash: Hash }): Promise<Thread>;
   getFile(params: {
     hash: Hash;
     offset: number;
     length: number;
   }): Promise<FileChunk>;
-  getAllPublicKeys(params: {
-    skip?: number;
-    take?: number;
-  }): Promise<PublicKey[]>;
+  getAllPublicKeys(params: PageParams): Promise<PageResult<PublicKey>>;
   getPublicKeys(params: { fingerprint: string }): Promise<PublicKey>;
 };
 
@@ -97,19 +104,18 @@ export function normalizeLobbyUrl(rawUrl: string): string {
 }
 
 async function fetchAll<T>(
-  fetchPage: (skip: number) => Promise<T[]>,
-  take = DEFAULT_PAGE_SIZE,
+  fetchPage: (cursor?: string) => Promise<PageResult<T>>,
 ): Promise<T[]> {
   const all: T[] = [];
-  let skip = 0;
+  let cursor: string | undefined;
 
   while (true) {
-    const page = await fetchPage(skip);
-    all.push(...page);
-    if (page.length < take) {
+    const page = await fetchPage(cursor);
+    all.push(...page.items);
+    if (!page.next_cursor) {
       break;
     }
-    skip += take;
+    cursor = page.next_cursor;
   }
 
   return all;
@@ -197,16 +203,12 @@ export class Peer {
     ) as ReturnType<Methods[K]>;
   }
 
-  getAllThreads(
-    params: { skip?: number; take?: number } = {},
-  ): Promise<Hash[]> {
+  getAllThreads(params: PageParams = {}): Promise<PageResult<Hash>> {
     return this.request("getAllThreads", params);
   }
 
   getAllThreadsAll(): Promise<Hash[]> {
-    return fetchAll((skip) =>
-      this.getAllThreads({ skip, take: DEFAULT_PAGE_SIZE }),
-    );
+    return fetchAll((cursor) => this.getAllThreads({ cursor, limit: DEFAULT_PAGE_SIZE }));
   }
 
   getThread(params: { hash: Hash }): Promise<Thread> {
@@ -250,15 +252,13 @@ export class Peer {
     return concatBytes(chunks);
   }
 
-  getAllPublicKeys(
-    params: { skip?: number; take?: number } = {},
-  ): Promise<PublicKey[]> {
+  getAllPublicKeys(params: PageParams = {}): Promise<PageResult<PublicKey>> {
     return this.request("getAllPublicKeys", params);
   }
 
   getAllPublicKeysAll(): Promise<PublicKey[]> {
-    return fetchAll((skip) =>
-      this.getAllPublicKeys({ skip, take: DEFAULT_PAGE_SIZE }),
+    return fetchAll((cursor) =>
+      this.getAllPublicKeys({ cursor, limit: DEFAULT_PAGE_SIZE }),
     );
   }
 
@@ -274,7 +274,7 @@ export class Server {
   private readonly pcs = new Map<string, RTCPeerConnection>();
   private readonly pendingIce = new Map<string, RTCIceCandidateInit[]>();
   private readonly peers = new Map<string, Peer>();
-  private readonly peerId = crypto.randomUUID();
+  private readonly fingerprint = crypto.randomUUID();
   private readonly myServices: Services;
   private readonly rpcServer: TypedJSONRPCServer<Methods>;
 
@@ -335,7 +335,7 @@ export class Server {
 
     this.sendLobby({
       action: "new_peer",
-      payload: { fingerprint: this.peerId, services: this.myServices },
+      payload: { fingerprint: this.fingerprint, services: this.myServices },
     });
   }
 
@@ -348,13 +348,13 @@ export class Server {
   private handleLobbyPacket(packet: LobbyPacket) {
     switch (packet.action) {
       case "new_peer":
-        if (packet.payload.fingerprint === this.peerId) {
+        if (packet.payload.fingerprint === this.fingerprint) {
           break;
         }
         void this.initiateOffer(packet.payload.fingerprint, packet.payload.services);
         break;
       case "rtc_offer":
-        if (packet.payload.to !== this.peerId) {
+        if (packet.payload.to !== this.fingerprint) {
           break;
         }
         void this.handleOffer(
@@ -364,13 +364,13 @@ export class Server {
         );
         break;
       case "rtc_answer":
-        if (packet.payload.to !== this.peerId) {
+        if (packet.payload.to !== this.fingerprint) {
           break;
         }
         void this.handleAnswer(packet.payload.from, packet.payload.sdp);
         break;
       case "rtc_ice":
-        if (packet.payload.to !== this.peerId) {
+        if (packet.payload.to !== this.fingerprint) {
           break;
         }
         void this.handleIce(packet.payload.from, packet.payload.candidate);
@@ -393,7 +393,7 @@ export class Server {
       this.sendLobby({
         action: "rtc_ice",
         payload: {
-          from: this.peerId,
+          from: this.fingerprint,
           to: remotePeerId,
           candidate: candidate.toJSON(),
         },
@@ -475,7 +475,7 @@ export class Server {
     this.sendLobby({
       action: "rtc_offer",
       payload: {
-        from: this.peerId,
+        from: this.fingerprint,
         to: remotePeerId,
         sdp: offer.sdp ?? "",
         services: this.myServices,
@@ -515,7 +515,7 @@ export class Server {
     this.sendLobby({
       action: "rtc_answer",
       payload: {
-        from: this.peerId,
+        from: this.fingerprint,
         to: remotePeerId,
         sdp: answer.sdp ?? "",
       },

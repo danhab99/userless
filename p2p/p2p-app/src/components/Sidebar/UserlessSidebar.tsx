@@ -14,10 +14,12 @@ export function UserlessSidebar(props: UserlessSidebarProps) {
   const context = useUserless();
   const [threads, setThreads] = useState<ResolvedThread[]>([]);
   const [hasMore, setHasMore] = useState(true);
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     setThreads([]);
     setHasMore(true);
+    setCursor(undefined);
   }, [context?.userless]);
 
   useEffect(() => {
@@ -26,12 +28,13 @@ export function UserlessSidebar(props: UserlessSidebarProps) {
     }
 
     void (async () => {
-      const nextThreads = await context.userless.listResolvedThreads(0, PAGE_SIZE);
-      setThreads(nextThreads);
-      setHasMore(nextThreads.length === PAGE_SIZE);
+      const page = await context.userless.listResolvedThreads(undefined, PAGE_SIZE);
+      setThreads(page.items);
+      setHasMore(Boolean(page.next_cursor));
+      setCursor(page.next_cursor);
 
-      if (!props.selectedHash && nextThreads[0]) {
-        props.onSelectThread(nextThreads[0]);
+      if (!props.selectedHash && page.items[0]) {
+        props.onSelectThread(page.items[0]);
       }
     })();
   }, [context, hasMore, props, threads.length]);
@@ -41,12 +44,10 @@ export function UserlessSidebar(props: UserlessSidebarProps) {
       return;
     }
 
-    const nextThreads = await context.userless.listResolvedThreads(
-      threads.length,
-      PAGE_SIZE,
-    );
-    setThreads((current) => [...current, ...nextThreads]);
-    setHasMore(nextThreads.length === PAGE_SIZE);
+    const page = await context.userless.listResolvedThreads(cursor, PAGE_SIZE);
+    setThreads((current) => [...current, ...page.items]);
+    setHasMore(Boolean(page.next_cursor));
+    setCursor(page.next_cursor);
   };
 
   return <Sidebar 

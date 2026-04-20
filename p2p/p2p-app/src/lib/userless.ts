@@ -2,11 +2,14 @@ import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import * as openpgp from "openpgp";
 import {
   FILE_CHUNK_SIZE,
+  DEFAULT_PAGE_SIZE,
   Peer,
   Server,
   normalizeLobbyUrl,
   type FileChunk,
   type Hash,
+  type PageParams,
+  type PageResult,
   type PublicKey,
   type Thread,
   type TransferStats,
@@ -15,6 +18,17 @@ import {
 type DBFile = {
   content: ArrayBuffer;
   signature: ArrayBuffer;
+};
+
+type BookmarkRecord = {
+  hash: Hash;
+  createdAt: string;
+};
+
+type AuditLogRecord = {
+  timestamp: string;
+  event: string;
+  details?: string;
 };
 
 interface UserlessDB extends DBSchema {
@@ -29,6 +43,14 @@ interface UserlessDB extends DBSchema {
   file: {
     key: Hash;
     value: DBFile,
+  };
+  bookmarks: {
+    key: Hash;
+    value: BookmarkRecord;
+  };
+  auditlog: {
+    key: number;
+    value: AuditLogRecord;
   };
 }
 
@@ -78,22 +100,46 @@ function extractOwner(userId: string | undefined, fallbackFingerprint: string) {
   };
 }
 
+function getPageWindow(params: PageParams) {
+  const offset = params.cursor ? Number.parseInt(params.cursor, 10) || 0 : 0;
+  const limit = params.limit ?? DEFAULT_PAGE_SIZE;
+  return { offset, limit };
+}
+
+function toPageResult<T>(items: T[], offset: number, limit: number): PageResult<T> {
+  return {
+    items,
+    next_cursor: items.length < limit ? undefined : String(offset + items.length),
+  };
+}
+
 export class Userless {
   private server: Server;
   private db!: IDBPDatabase<UserlessDB>;
   private dbReady: Promise<void>;
 
   constructor(url: string) {
-    this.dbReady = openDB<UserlessDB>("userless", 1, {
-      upgrade(db) {
-        if (!db.objectStoreNames.contains("threads")) {
-          db.createObjectStore("threads");
+    this.dbReady = openDB<UserlessDB>("userless", 2, {
+      upgrade(db, oldVersion) {
+        if (oldVersion < 1) {
+          if (!db.objectStoreNames.contains("threads")) {
+            db.createObjectStore("threads");
+          }
+          if (!db.objectStoreNames.contains("publickey")) {
+            db.createObjectStore("publickey");
+          }
+          if (!db.objectStoreNames.contains("file")) {
+            db.createObjectStore("file");
+          }
         }
-        if (!db.objectStoreNames.contains("publickey")) {
-          db.createObjectStore("publickey");
-        }
-        if (!db.objectStoreNames.contains("file")) {
-          db.createObjectStore("file");
+
+        if (oldVersion < 2) {
+          if (!db.objectStoreNames.contains("bookmarks")) {
+            db.createObjectStore("bookmarks");
+          }
+          if (!db.objectStoreNames.contains("auditlog")) {
+            db.createObjectStore("auditlog", { autoIncrement: true });
+          }
         }
       },
     }).then((database) => {
@@ -101,15 +147,17 @@ export class Userless {
     });
 
     this.server = new Server(url, ["threads", "files", "pks"], {
-      getAllPublicKeys: async ({ skip = 0, take = 50 }) => {
+      getAllPublicKeys: async (params) => {
         await this.ensureDB();
+        const { offset, limit } = getPageWindow(params);
         const keys = await this.db.getAll("publickey");
-        return keys.slice(skip, skip + take);
+        return toPageResult(keys.slice(offset, offset + limit), offset, limit);
       },
-      getAllThreads: async ({ skip = 0, take = 50 }) => {
+      getAllThreads: async (params) => {
         await this.ensureDB();
+        const { offset, limit } = getPageWindow(params);
         const hashes = (await this.db.getAllKeys("threads")) as Hash[];
-        return hashes.slice(skip, skip + take);
+        return toPageResult(hashes.slice(offset, offset + limit), offset, limit);
       },
       getThread: async ({ hash }) => {
         await this.ensureDB();
@@ -145,7 +193,16 @@ export class Userless {
     });
 
     this.server.onPeerConnected = (peer) => {
+      void this.appendAuditLog("peer_connected", peer.id);
       void this.scanPeerForThreads(peer);
+    };
+
+    this.server.onPeerDisconnected = (fingerprint) => {
+      void this.appendAuditLog("peer_disconnected", fingerprint);
+    };
+
+    this.server.onEmergency = (payload) => {
+      void this.appendAuditLog("emergency", JSON.stringify(payload));
     };
   }
 
@@ -153,20 +210,29 @@ export class Userless {
     await this.dbReady;
   }
 
+  private async appendAuditLog(event: string, details?: string) {
+    await this.ensureDB();
+    await this.db.add("auditlog", {
+      timestamp: new Date().toISOString(),
+      event,
+      details,
+    });
+  }
+
   private getPeersInternal(): Peer[] {
     return this.server.getPeers();
   }
 
   private async scanPeerForThreads(peer: Peer) {
-    let offset = 0;
+    let cursor: string | undefined;
 
     while (true) {
-      const hashes = await peer.getAllThreads({ skip: offset, take: 50 });
-      if (hashes.length === 0) {
+      const page = await peer.getAllThreads({ cursor, limit: DEFAULT_PAGE_SIZE });
+      if (page.items.length === 0) {
         break;
       }
 
-      for (const hash of hashes) {
+      for (const hash of page.items) {
         const existing = await this.db.getKey("threads", hash);
         if (existing) {
           continue;
@@ -174,12 +240,13 @@ export class Userless {
 
         const thread = await peer.getThread({ hash });
         await this.db.put("threads", thread, hash);
+        await this.appendAuditLog("thread_cached", hash);
       }
 
-      if (hashes.length < 50) {
+      if (!page.next_cursor) {
         break;
       }
-      offset += hashes.length;
+      cursor = page.next_cursor;
     }
   }
 
@@ -198,6 +265,7 @@ export class Userless {
         const acquiredKey = await this.queryPeersForPublicKeys(key.toHex());
         if (acquiredKey) {
           await this.db.put("publickey", acquiredKey, key.toHex());
+          await this.appendAuditLog("public_key_cached", key.toHex());
         }
       }
     }
@@ -264,6 +332,7 @@ export class Userless {
       },
       async (file) => {
         await this.db.put("file", file, hash);
+        await this.appendAuditLog("file_cached", hash);
       },
     );
   }
@@ -276,6 +345,7 @@ export class Userless {
       (peer) => peer.getThread({ hash }),
       async (thread) => {
         await this.db.put("threads", thread, hash);
+        await this.appendAuditLog("thread_cached", hash);
       },
     );
   }
@@ -290,8 +360,31 @@ export class Userless {
       (peer) => peer.getPublicKeys({ fingerprint }),
       async (key) => {
         await this.db.put("publickey", key, fingerprint);
+        await this.appendAuditLog("public_key_cached", fingerprint);
       },
     );
+  }
+
+  public async addBookmark(hash: Hash): Promise<void> {
+    await this.ensureDB();
+    await this.db.put("bookmarks", { hash, createdAt: new Date().toISOString() }, hash);
+    await this.appendAuditLog("bookmark_added", hash);
+  }
+
+  public async removeBookmark(hash: Hash): Promise<void> {
+    await this.ensureDB();
+    await this.db.delete("bookmarks", hash);
+    await this.appendAuditLog("bookmark_removed", hash);
+  }
+
+  public async getBookmarks(): Promise<BookmarkRecord[]> {
+    await this.ensureDB();
+    return this.db.getAll("bookmarks");
+  }
+
+  public async getAuditLog(): Promise<AuditLogRecord[]> {
+    await this.ensureDB();
+    return this.db.getAll("auditlog");
   }
 
   public async getAllPeers(): Promise<Peer[]> {
@@ -303,10 +396,11 @@ export class Userless {
     await Promise.all(this.getPeersInternal().map((peer) => this.scanPeerForThreads(peer)));
   }
 
-  public async getAllThreads(skip = 0, take = 100): Promise<Hash[]> {
+  public async getAllThreads(cursor?: string, limit = DEFAULT_PAGE_SIZE): Promise<PageResult<Hash>> {
     await this.scanAllPeers();
+    const offset = cursor ? Number.parseInt(cursor, 10) || 0 : 0;
     const hashes = ((await this.db.getAllKeys("threads")) as Hash[]).sort();
-    return hashes.slice(skip, skip + take);
+    return toPageResult(hashes.slice(offset, offset + limit), offset, limit);
   }
 
   public async getThread(hash: Hash): Promise<Thread | undefined> {
@@ -351,11 +445,14 @@ export class Userless {
   }
 
   public async listResolvedThreads(
-    skip = 0,
-    take = 100,
-  ): Promise<ResolvedThread[]> {
-    const hashes = await this.getAllThreads(skip, take);
-    return Promise.all(hashes.map((hash) => this.resolveThread(hash)));
+    cursor?: string,
+    limit = DEFAULT_PAGE_SIZE,
+  ): Promise<PageResult<ResolvedThread>> {
+    const page = await this.getAllThreads(cursor, limit);
+    return {
+      items: await Promise.all(page.items.map((hash) => this.resolveThread(hash))),
+      next_cursor: page.next_cursor,
+    };
   }
 
   public async getSnapshot(): Promise<UserlessSnapshot> {

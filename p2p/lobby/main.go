@@ -16,7 +16,7 @@ type Packet struct {
 }
 
 type NewPeerPayload struct {
-	SessionID string `json:"sessionId"`
+	Fingerprint string `json:"fingerprint"`
 }
 
 // RoutedPayload is used by rtc_offer, rtc_answer, and rtc_ice to carry
@@ -151,12 +151,12 @@ func (h *hub) serveWS(w http.ResponseWriter, r *http.Request) {
 		switch pkt.Action {
 		case "new_peer":
 			var payload NewPeerPayload
-			if err := json.Unmarshal(pkt.Payload, &payload); err != nil || payload.SessionID == "" {
+			if err := json.Unmarshal(pkt.Payload, &payload); err != nil || payload.Fingerprint == "" {
 				log.Printf("invalid new_peer payload from %s: %v", r.RemoteAddr, err)
 				continue
 			}
-			h.register(payload.SessionID, conn)
-			log.Printf("registered peer sessionId=%s addr=%s", payload.SessionID, r.RemoteAddr)
+			h.register(payload.Fingerprint, conn)
+			log.Printf("registered peer fingerprint=%s addr=%s", payload.Fingerprint, r.RemoteAddr)
 			h.broadcast(msg, conn)
 
 		case "emergency":
