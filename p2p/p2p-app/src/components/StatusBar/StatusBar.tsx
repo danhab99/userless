@@ -28,7 +28,7 @@ export type StatusBarProps = {
 
 export function StatusBar(props: StatusBarProps) {
   return (
-    <div className={clsx([style.StatusBar, "bg-gray-300 p-1 w-full"])}>
+    <div className={clsx([style.StatusBar, "base16-default-dark bg-300 text-black p-1 w-full"])}>
       <div className="flex flex-row justify-end content-center leading-none gap-4 text-xs">
         <div className="flex flex-row gap-1">
           <FaWifi />

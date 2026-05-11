@@ -33,6 +33,8 @@ export function UserlessStatusBar(props: {}) {
     };
   }, [userless]);
 
+  const dt = curr.timestamp.getTime() - (prev?.timestamp.getTime() ?? 0);
+
   return (
     <StatusBar
       connectionCount={curr.snapshot.connectionCount}
@@ -40,25 +42,24 @@ export function UserlessStatusBar(props: {}) {
       keyCount={curr.snapshot.keyCount}
       threadCount={curr.snapshot.threadCount}
       uploadSpeed={
-        (curr.snapshot.uploadedBytes - (prev?.snapshot.uploadedBytes ?? 0)) /
-        (curr.timestamp.getTime() - (prev?.timestamp.getTime() ?? 0))
+        ((curr.snapshot.uploadedBytes || 0) -
+          (prev?.snapshot.uploadedBytes ?? 0)) /
+        dt
       }
       downloadSpeed={
-        (curr.snapshot.downloadedBytes -
+        ((curr.snapshot.downloadedBytes || 0) -
           (prev?.snapshot.downloadedBytes ?? 0)) /
-        (curr.timestamp.getTime() - (prev?.timestamp.getTime() ?? 0))
+        dt
       }
       fileCountSpeed={
-        (curr.snapshot.fileCount - (prev?.snapshot.fileCount ?? 0)) /
-        (curr.timestamp.getTime() - (prev?.timestamp.getTime() ?? 0))
+        ((curr.snapshot.fileCount || 0) - (prev?.snapshot.fileCount ?? 0)) / dt
       }
       keyCountSpeed={
-        (curr.snapshot.keyCount - (prev?.snapshot.keyCount ?? 0)) /
-        (curr.timestamp.getTime() - (prev?.timestamp.getTime() ?? 0))
+        ((curr.snapshot.keyCount || 0) - (prev?.snapshot.keyCount ?? 0)) / dt
       }
       threadCountSpeed={
-        (curr.snapshot.threadCount - (prev?.snapshot.threadCount ?? 0)) /
-        (curr.timestamp.getTime() - (prev?.timestamp.getTime() ?? 0))
+        ((curr.snapshot.threadCount || 0) - (prev?.snapshot.threadCount ?? 0)) /
+        dt
       }
     />
   );
