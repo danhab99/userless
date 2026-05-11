@@ -1,6 +1,13 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { getUserless, type UserlessSnapshot } from "../../lib/userless";
 import type { Userless } from "../../lib/userless";
+import { usePrevious } from "react-use";
 
 export type UserlessProviderProps = {};
 
@@ -16,8 +23,6 @@ type UserlessContextValue = {
   };
 };
 
-const UserlessContext = createContext<UserlessContextValue | undefined>(undefined);
-
 const EMPTY_SNAPSHOT = {
   connectionCount: 0,
   uploadSpeed: 0,
@@ -27,9 +32,15 @@ const EMPTY_SNAPSHOT = {
   keyCount: 0,
 };
 
-export function UserlessProvider(props: React.PropsWithChildren<UserlessProviderProps>) {
-  const [userless] = useState(() => getUserless());
-  const [snapshot, setSnapshot] = useState(EMPTY_SNAPSHOT);
+const UserlessContext = createContext<UserlessContextValue>({
+  snapshot: EMPTY_SNAPSHOT,
+  userless: {} as any,
+});
+
+export function UserlessProvider(
+  props: React.PropsWithChildren<UserlessProviderProps>,
+) {
+  const userless = useMemo(() => getUserless(), []);
 
   useEffect(() => {
     let active = true;
@@ -44,18 +55,19 @@ export function UserlessProvider(props: React.PropsWithChildren<UserlessProvider
 
       const now = Date.now();
       const elapsedSeconds = Math.max((now - previousAt) / 1000, 1);
-      setSnapshot({
+      setSnapshot((prev) => ({
         connectionCount: current.connectionCount,
         uploadSpeed: previous
           ? (current.uploadedBytes - previous.uploadedBytes) / elapsedSeconds
           : 0,
         downloadSpeed: previous
-          ? (current.downloadedBytes - previous.downloadedBytes) / elapsedSeconds
+          ? (current.downloadedBytes - previous.downloadedBytes) /
+            elapsedSeconds
           : 0,
         threadCount: current.threadCount,
         fileCount: current.fileCount,
         keyCount: current.keyCount,
-      });
+      }));
 
       previous = current;
       previousAt = now;
@@ -71,8 +83,12 @@ export function UserlessProvider(props: React.PropsWithChildren<UserlessProvider
       window.clearInterval(timer);
     };
   }, [userless]);
-  
-  return <UserlessContext.Provider value={{ userless, snapshot }}>{props.children}</UserlessContext.Provider>
+
+  return (
+    <UserlessContext.Provider value={{ userless, snapshot }}>
+      {props.children}
+    </UserlessContext.Provider>
+  );
 }
 
 export function useUserless() {

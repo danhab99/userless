@@ -35,7 +35,7 @@ export function SidebarItem(props: SidebarItemProps) {
     <div
       className={clsx([
         style.SidebarItem,
-        "bg-gray-100 p-4 r-2 rounded-lg cursor-pointer border border-transparent",
+        "bg-gray-100 p-4 r-2 cursor-pointer border border-transparent",
         props.selected && "border-blue-500 bg-blue-50",
       ])}
       onClick={props.onClick}

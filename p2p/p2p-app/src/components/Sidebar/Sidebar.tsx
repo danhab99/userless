@@ -1,10 +1,13 @@
 import clsx from "clsx";
 import style from "./Sidebar.module.css";
-import { SidebarItem, type SidebarItemProps } from "../SidebarItem/SidebarItem";
 import InfiniteScroll from "react-infinite-scroll-component";
+import {
+  UserlessSidebarItem,
+  type UserlessSidebarItemProps,
+} from "../SidebarItem/UserlessSidebarItem";
 
 export type SidebarProps = {
-  items: SidebarItemProps[];
+  items: UserlessSidebarItemProps[];
   onNext: () => void;
   hasMore: boolean;
 };
@@ -19,7 +22,7 @@ export function Sidebar(props: SidebarProps) {
     >
       <div className={clsx([style.Sidebar])}>
         {props.items.map((item, i) => (
-          <SidebarItem key={i} {...item} />
+          <UserlessSidebarItem key={i} {...item} />
         ))}
       </div>
     </InfiniteScroll>
