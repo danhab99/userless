@@ -23,7 +23,7 @@ type UserlessContextValue = {
   };
 };
 
-const EMPTY_SNAPSHOT = {
+export const EMPTY_SNAPSHOT: UserlessSnapshot = {
   connectionCount: 0,
   uploadSpeed: 0,
   downloadSpeed: 0,
@@ -42,50 +42,8 @@ export function UserlessProvider(
 ) {
   const userless = useMemo(() => getUserless(), []);
 
-  useEffect(() => {
-    let active = true;
-    let previous: UserlessSnapshot | undefined;
-    let previousAt = Date.now();
-
-    const refresh = async () => {
-      const current = await userless.getSnapshot();
-      if (!active) {
-        return;
-      }
-
-      const now = Date.now();
-      const elapsedSeconds = Math.max((now - previousAt) / 1000, 1);
-      setSnapshot((prev) => ({
-        connectionCount: current.connectionCount,
-        uploadSpeed: previous
-          ? (current.uploadedBytes - previous.uploadedBytes) / elapsedSeconds
-          : 0,
-        downloadSpeed: previous
-          ? (current.downloadedBytes - previous.downloadedBytes) /
-            elapsedSeconds
-          : 0,
-        threadCount: current.threadCount,
-        fileCount: current.fileCount,
-        keyCount: current.keyCount,
-      }));
-
-      previous = current;
-      previousAt = now;
-    };
-
-    void refresh();
-    const timer = window.setInterval(() => {
-      void refresh();
-    }, 1000);
-
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-    };
-  }, [userless]);
-
   return (
-    <UserlessContext.Provider value={{ userless, snapshot }}>
+    <UserlessContext.Provider value={{ userless, snapshot: EMPTY_SNAPSHOT }}>
       {props.children}
     </UserlessContext.Provider>
   );
