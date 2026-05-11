@@ -21,11 +21,6 @@ type DBFile = {
   sourceThreadHash?: Hash;
 };
 
-type BookmarkRecord = {
-  hash: Hash;
-  createdAt: string;
-};
-
 export type AuditLogRecord = {
   timestamp: string;
   event: string;
@@ -44,10 +39,6 @@ interface UserlessDB extends DBSchema {
   file: {
     key: Hash;
     value: DBFile,
-  };
-  bookmarks: {
-    key: Hash;
-    value: BookmarkRecord;
   };
   auditlog: {
     key: number;
@@ -170,9 +161,6 @@ export class Userless {
         }
 
         if (oldVersion < 2) {
-          if (!db.objectStoreNames.contains("bookmarks")) {
-            db.createObjectStore("bookmarks");
-          }
           if (!db.objectStoreNames.contains("auditlog")) {
             db.createObjectStore("auditlog", { autoIncrement: true });
           }
@@ -421,23 +409,6 @@ export class Userless {
         await this.appendAuditLog("public_key_cached", fingerprint);
       },
     );
-  }
-
-  public async addBookmark(hash: Hash): Promise<void> {
-    await this.ensureDB();
-    await this.db.put("bookmarks", { hash, createdAt: new Date().toISOString() }, hash);
-    await this.appendAuditLog("bookmark_added", hash);
-  }
-
-  public async removeBookmark(hash: Hash): Promise<void> {
-    await this.ensureDB();
-    await this.db.delete("bookmarks", hash);
-    await this.appendAuditLog("bookmark_removed", hash);
-  }
-
-  public async getBookmarks(): Promise<BookmarkRecord[]> {
-    await this.ensureDB();
-    return this.db.getAll("bookmarks");
   }
 
   public async getAuditLog(): Promise<AuditLogRecord[]> {
