@@ -14,17 +14,15 @@ import {
   type Thread,
   type TransferStats,
 } from "./p2p";
+import {
+  createUserlessEventDispatcher,
+  type UserlessEventSink,
+} from "./userless-events";
 
 type DBFile = {
   content: ArrayBuffer;
   signature: ArrayBuffer;
   sourceThreadHash?: Hash;
-};
-
-export type AuditLogRecord = {
-  timestamp: string;
-  event: string;
-  details?: string;
 };
 
 interface UserlessDB extends DBSchema {
@@ -38,11 +36,7 @@ interface UserlessDB extends DBSchema {
   };
   file: {
     key: Hash;
-    value: DBFile,
-  };
-  auditlog: {
-    key: number;
-    value: AuditLogRecord;
+    value: DBFile;
   };
 }
 
@@ -83,6 +77,10 @@ export type FileDetail = {
   sourceThreadHash?: Hash;
 };
 
+export type UserlessOptions = {
+  eventSink?: UserlessEventSink;
+};
+
 const FILE_REGEX = /!\[[^\]]*\]\(userless:\/\/.*\/files\/[^\)]+\)/g;
 const CHUNK_SIZE = FILE_CHUNK_SIZE;
 
@@ -117,18 +115,20 @@ function getPageWindow(params: PageParams) {
   return { offset, limit };
 }
 
-function toPageResult<T>(items: T[], offset: number, limit: number): PageResult<T> {
+function toPageResult<T>(
+  items: T[],
+  offset: number,
+  limit: number,
+): PageResult<T> {
   return {
     items,
-    next_cursor: items.length < limit ? undefined : String(offset + items.length),
+    next_cursor:
+      items.length < limit ? undefined : String(offset + items.length),
   };
 }
 
 function extractReplyTarget(body: string): string | undefined {
-  const patterns = [
-    /reply_to\s*:\s*([a-f0-9]{8,64})/i,
-    /in-reply-to\s*:\s*([a-f0-9]{8,64})/i,
-  ];
+  const patterns = [/in-reply-to\s*:\s*([a-f0-9]{8,64})/i];
 
   for (const pattern of patterns) {
     const match = body.match(pattern);
@@ -144,8 +144,9 @@ export class Userless {
   private server: Server;
   private db!: IDBPDatabase<UserlessDB>;
   private dbReady: Promise<void>;
+  readonly events;
 
-  constructor(url: string) {
+  constructor(url: string, options: UserlessOptions = {}) {
     this.dbReady = openDB<UserlessDB>("userless", 2, {
       upgrade(db, oldVersion) {
         if (oldVersion < 1) {
@@ -159,16 +160,12 @@ export class Userless {
             db.createObjectStore("file");
           }
         }
-
-        if (oldVersion < 2) {
-          if (!db.objectStoreNames.contains("auditlog")) {
-            db.createObjectStore("auditlog", { autoIncrement: true });
-          }
-        }
       },
     }).then((database) => {
       this.db = database;
     });
+
+    this.events = createUserlessEventDispatcher(options.eventSink);
 
     this.server = new Server(url, ["threads", "files", "pks"], {
       getAllPublicKeys: async (params) => {
@@ -181,7 +178,11 @@ export class Userless {
         await this.ensureDB();
         const { offset, limit } = getPageWindow(params);
         const hashes = (await this.db.getAllKeys("threads")) as Hash[];
-        return toPageResult(hashes.slice(offset, offset + limit), offset, limit);
+        return toPageResult(
+          hashes.slice(offset, offset + limit),
+          offset,
+          limit,
+        );
       },
       getThread: async ({ hash }) => {
         await this.ensureDB();
@@ -217,30 +218,21 @@ export class Userless {
     });
 
     this.server.onPeerConnected = (peer) => {
-      void this.appendAuditLog("peer_connected", peer.id);
+      this.events.emit("peer_connected", { peerId: peer.id });
       void this.scanPeerForThreads(peer);
     };
 
     this.server.onPeerDisconnected = (fingerprint) => {
-      void this.appendAuditLog("peer_disconnected", fingerprint);
+      this.events.emit("peer_disconnected", { fingerprint });
     };
 
     this.server.onEmergency = (payload) => {
-      void this.appendAuditLog("emergency", JSON.stringify(payload));
+      this.events.emit("emergency", { payload });
     };
   }
 
   private async ensureDB() {
     await this.dbReady;
-  }
-
-  private async appendAuditLog(event: string, details?: string) {
-    await this.ensureDB();
-    await this.db.add("auditlog", {
-      timestamp: new Date().toISOString(),
-      event,
-      details,
-    });
   }
 
   private getPeersInternal(): Peer[] {
@@ -251,7 +243,10 @@ export class Userless {
     let cursor: string | undefined;
 
     while (true) {
-      const page = await peer.getAllThreads({ cursor, limit: DEFAULT_PAGE_SIZE });
+      const page = await peer.getAllThreads({
+        cursor,
+        limit: DEFAULT_PAGE_SIZE,
+      });
       if (page.items.length === 0) {
         break;
       }
@@ -264,7 +259,7 @@ export class Userless {
 
         const thread = await peer.getThread({ hash });
         await this.db.put("threads", thread, hash);
-        await this.appendAuditLog("thread_cached", hash);
+        this.events.emit("thread_cached", { hash });
       }
 
       if (!page.next_cursor) {
@@ -289,21 +284,23 @@ export class Userless {
         const acquiredKey = await this.queryPeersForPublicKeys(key.toHex());
         if (acquiredKey) {
           await this.db.put("publickey", acquiredKey, key.toHex());
-          await this.appendAuditLog("public_key_cached", key.toHex());
+          this.events.emit("public_key_cached", { fingerprint: key.toHex() });
         }
       }
     }
 
     const files = body.match(FILE_REGEX) ?? [];
-    const urls = files.map((x) => {
-      const match = x.match(/userless:\/\/[^)]+/);
-      return match ? new URL(match[0]) : null;
-    }).filter((x): x is URL => x !== null);
-    
+    const urls = files
+      .map((x) => {
+        const match = x.match(/userless:\/\/[^)]+/);
+        return match ? new URL(match[0]) : null;
+      })
+      .filter((x): x is URL => x !== null);
+
     // Fetch all files referenced in the thread
     if (urls) {
       for (const url of urls) {
-        const hash = url.pathname.split('/').pop();
+        const hash = url.pathname.split("/").pop();
         if (hash) {
           const fileExists = !!(await this.db.get("file", hash));
           if (!fileExists) {
@@ -314,7 +311,10 @@ export class Userless {
     }
   }
 
-  private async queryPeersForFileWithSource(hash: string, sourceThreadHash: Hash): Promise<DBFile | undefined> {
+  private async queryPeersForFileWithSource(
+    hash: string,
+    sourceThreadHash: Hash,
+  ): Promise<DBFile | undefined> {
     await this.ensureDB();
 
     return this.queryPeers(
@@ -330,7 +330,7 @@ export class Userless {
       },
       async (file) => {
         await this.db.put("file", file, hash);
-        await this.appendAuditLog("file_cached", hash);
+        this.events.emit("file_cached", { hash, sourceThreadHash });
       },
     );
   }
@@ -378,7 +378,7 @@ export class Userless {
       },
       async (file) => {
         await this.db.put("file", file, hash);
-        await this.appendAuditLog("file_cached", hash);
+        this.events.emit("file_cached", { hash });
       },
     );
   }
@@ -391,7 +391,7 @@ export class Userless {
       (peer) => peer.getThread({ hash }),
       async (thread) => {
         await this.db.put("threads", thread, hash);
-        await this.appendAuditLog("thread_cached", hash);
+        this.events.emit("thread_cached", { hash });
       },
     );
   }
@@ -406,24 +406,23 @@ export class Userless {
       (peer) => peer.getPublicKeys({ fingerprint }),
       async (key) => {
         await this.db.put("publickey", key, fingerprint);
-        await this.appendAuditLog("public_key_cached", fingerprint);
+        this.events.emit("public_key_cached", { fingerprint });
       },
     );
   }
 
-  public async getAuditLog(): Promise<AuditLogRecord[]> {
-    await this.ensureDB();
-    return this.db.getAll("auditlog");
-  }
-
-  public async saveReplyDraft(parentHash: Hash, body: string): Promise<ReplyDraftRecord> {
+  public async saveReplyDraft(
+    parentHash: Hash,
+    body: string,
+  ): Promise<ReplyDraftRecord> {
     const record: ReplyDraftRecord = {
       parentHash,
       body,
       createdAt: new Date().toISOString(),
     };
 
-    await this.appendAuditLog("reply_draft_saved", JSON.stringify(record));
+    this.events.emit("reply_draft_saved", { parentHash });
+
     return record;
   }
 
@@ -433,10 +432,15 @@ export class Userless {
 
   public async scanAllPeers(): Promise<void> {
     await this.ensureDB();
-    await Promise.all(this.getPeersInternal().map((peer) => this.scanPeerForThreads(peer)));
+    await Promise.all(
+      this.getPeersInternal().map((peer) => this.scanPeerForThreads(peer)),
+    );
   }
 
-  public async getAllThreads(cursor?: string, limit = DEFAULT_PAGE_SIZE): Promise<PageResult<Hash>> {
+  public async getAllThreads(
+    cursor?: string,
+    limit = DEFAULT_PAGE_SIZE,
+  ): Promise<PageResult<Hash>> {
     await this.scanAllPeers();
     const offset = cursor ? Number.parseInt(cursor, 10) || 0 : 0;
     const hashes = ((await this.db.getAllKeys("threads")) as Hash[]).sort();
@@ -490,7 +494,9 @@ export class Userless {
   ): Promise<PageResult<ResolvedThread>> {
     const page = await this.getAllThreads(cursor, limit);
     return {
-      items: await Promise.all(page.items.map((hash) => this.resolveThread(hash))),
+      items: await Promise.all(
+        page.items.map((hash) => this.resolveThread(hash)),
+      ),
       next_cursor: page.next_cursor,
     };
   }
@@ -551,7 +557,9 @@ export class Userless {
     return details;
   }
 
-  public async getThreadsByPublicKey(fingerprint: string): Promise<ResolvedThread[]> {
+  public async getThreadsByPublicKey(
+    fingerprint: string,
+  ): Promise<ResolvedThread[]> {
     await this.ensureDB();
     const matching: ResolvedThread[] = [];
     let cursor: string | undefined;
@@ -559,7 +567,9 @@ export class Userless {
     while (true) {
       const page = await this.listResolvedThreads(cursor, DEFAULT_PAGE_SIZE);
       for (const thread of page.items) {
-        if (thread.owner.fingerprint.toLowerCase() === fingerprint.toLowerCase()) {
+        if (
+          thread.owner.fingerprint.toLowerCase() === fingerprint.toLowerCase()
+        ) {
           matching.push(thread);
         }
       }
@@ -632,7 +642,9 @@ export class Userless {
       format: "armored",
     });
 
-    const privateKey = await openpgp.readPrivateKey({ armoredKey: key.privateKey as string });
+    const privateKey = await openpgp.readPrivateKey({
+      armoredKey: key.privateKey as string,
+    });
     localStorage.setItem("userless_signing_key", key.privateKey as string);
 
     return privateKey;
@@ -659,13 +671,13 @@ export class Userless {
     // Hash the content to create a deterministic hash
     const hashBuffer = await crypto.subtle.digest(
       "SHA-256",
-      new TextEncoder().encode(signedMessage)
+      new TextEncoder().encode(signedMessage),
     );
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const hash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
     await this.db.put("threads", thread, hash);
-    await this.appendAuditLog("thread_created", hash);
+    this.events.emit("thread_created", { hash });
 
     return hash;
   }
@@ -684,7 +696,7 @@ export class Userless {
     };
 
     await this.db.put("file", file, hash);
-    await this.appendAuditLog("file_added", `${name} (${hash})`);
+    this.events.emit("file_added", { name, hash });
 
     return hash;
   }
@@ -699,12 +711,14 @@ function defaultLobbyUrl(): string {
   }
 
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  return normalizeLobbyUrl(`${protocol}://${window.location.hostname}:4445/lobby`);
+  return normalizeLobbyUrl(
+    `${protocol}://${window.location.hostname}:4445/lobby`,
+  );
 }
 
-export function getUserless() {
+export function getUserless(options: UserlessOptions = {}) {
   if (!singleton) {
-    singleton = new Userless(defaultLobbyUrl());
+    singleton = new Userless(defaultLobbyUrl(), options);
   }
 
   return singleton;

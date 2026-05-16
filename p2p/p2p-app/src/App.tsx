@@ -5,11 +5,11 @@ import { UserlessSidebar } from "./components/Sidebar/UserlessSidebar";
 import { useUserless } from "./components/UserlessProvider/UserlessProvider";
 import { CreateThreadDialog } from "./components/CreateThreadDialog/CreateThreadDialog";
 import { CreateThreadButton } from "./components/CreateThreadButton/CreateThreadButton";
-import type { ResolvedThread, PublicKeyDetail, FileDetail, AuditLogRecord } from "./lib/userless";
+import type { ResolvedThread, PublicKeyDetail, FileDetail } from "./lib/userless";
 import {ThreadView} from "./components/ThreadView/ThreadView";
 import {UserlessStatusBar} from "./components/StatusBar/UserlessStatusBar";
 
-type PageType = "threads" | "keys" | "files" | "audit";
+type PageType = "threads" | "keys" | "files";
 
 function App() {
   return (
