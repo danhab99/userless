@@ -8,7 +8,10 @@ import {
 } from "@userless/ui-components";
 import { getUserlessUrl } from "../userless";
 
-export type PostThreadProps = Pick<CorePostThreadProps, "replyTo">;
+export type PostThreadProps = Pick<
+  CorePostThreadProps,
+  "replyTo" | "onFileCreated" | "onPostCreated"
+>;
 
 export function PostThread(props: PostThreadProps) {
   const router = useRouter();
@@ -16,8 +19,10 @@ export function PostThread(props: PostThreadProps) {
   return (
     <CorePostThread
       {...props}
-      onPosted={(hash) => router.push(`/thread/${hash}`)}
-      userlessUrl={getUserlessUrl()}
+      onPostCreated={(hash, signedMessage) => {
+        props.onPostCreated?.(hash, signedMessage);
+        router.push(`/thread/${hash}`);
+      }}
     />
   );
 }
@@ -28,8 +33,10 @@ export function PostThreadNarrow(props: PostThreadProps) {
   return (
     <CorePostThreadNarrow
       {...props}
-      onPosted={(hash) => router.push(`/thread/${hash}`)}
-      userlessUrl={getUserlessUrl()}
+      onPostCreated={(hash, signedMessage) => {
+        props.onPostCreated?.(hash, signedMessage);
+        router.push(`/thread/${hash}`);
+      }}
     />
   );
 }

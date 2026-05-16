@@ -17,7 +17,11 @@ import { resolveUserlessUrl } from "../userless";
 
 export type PostThreadProps = {
   replyTo?: string;
-  userlessUrl?: string;
+  /** Called when a file is successfully uploaded */
+  onFileCreated?: (hash: string, file: Blob) => void | Promise<void>;
+  /** Called when the post/thread is successfully created */
+  onPostCreated?: (hash: string, signedMessage: string) => void | Promise<void>;
+  /** @deprecated Use onPostCreated instead */
   onPosted?: (hash: string) => void | Promise<void>;
 };
 
@@ -35,9 +39,10 @@ function arrayBufferToHex(buffer: ArrayBuffer) {
 
 export const PostThread = (props: PostThreadProps) => {
   const privateKeys = usePrivateKeys();
+  // Use onPostCreated, falling back to onPosted for backward compatibility
+  const postCreatedHandler = props.onPostCreated || props.onPosted;
   const config = useUserlessUiConfig({
-    navigateToThread: props.onPosted,
-    userlessUrl: props.userlessUrl,
+    navigateToThread: postCreatedHandler,
   });
   const userlessUrl = resolveUserlessUrl(config.userlessUrl);
 
@@ -140,6 +145,10 @@ export const PostThread = (props: PostThreadProps) => {
 
             increment();
 
+            if (resp.ok) {
+              await props.onFileCreated?.(hash, data);
+            }
+
             return resp.ok;
           },
         );
@@ -189,6 +198,7 @@ export const PostThread = (props: PostThreadProps) => {
 
         if (resp.ok) {
           const hash = await resp.text();
+          await props.onPostCreated?.(hash, signedMsg.toString());
           await config.navigateToThread?.(hash);
         } else {
           alert("Unable to post thread");
@@ -196,7 +206,7 @@ export const PostThread = (props: PostThreadProps) => {
         }
       })();
     },
-    [body, config, files, keyId, privateKeys, props.replyTo, userlessUrl],
+    [body, config, files, keyId, privateKeys, props.replyTo, props.onFileCreated, props.onPostCreated, userlessUrl],
   );
 
   const textareaRef = useRef<HTMLTextAreaElement>(undefined);
