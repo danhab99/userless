@@ -4,14 +4,15 @@ import { base16Tailwind } from '@donovanglover/base16-tailwind'
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   safelist: [
-    {
-      pattern: /bg-/g,
-    }
+    { pattern: /bg-/ },
+    { pattern: /text-/ },
+    { pattern: /border-/ },
   ],
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
       },
     },
   },

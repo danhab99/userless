@@ -16,7 +16,7 @@ function App() {
     <UserlessProvider>
       <P2PKeyContextProvider>
         <ThreadProvider>
-          <main className="h-screen flex flex-col">
+          <main className="base16-default-dark h-screen flex flex-col bg-800 text-100">
             <Navbar s={s} />
             <div className="flex-1 min-h-0">
               {page === "threads" ? <ThreadPage /> : null}

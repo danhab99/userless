@@ -13,7 +13,7 @@ export function Navbar(props: NavbarProps) {
   const [page, setPage] = props.s;
 
   return (
-    <nav className="base16-default-dark bg-300">
+    <nav className="bg-700 text-200">
       <ActionButton label="Threads" onClick={() => setPage("threads")} />
       <ActionButton label="Keys" onClick={() => setPage("keys")} />
       <ActionButton label="Files" onClick={() => setPage("files")} />

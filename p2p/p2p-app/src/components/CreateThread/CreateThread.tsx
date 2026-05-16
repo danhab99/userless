@@ -23,11 +23,11 @@ export function CreateThread() {
     <div className={clsx([style.CreateThread])}>
       {show
         ? createPortal(
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black h-screen w-screen">
-              <div className="relative max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg bg-white">
+            <div className="base16-default-dark fixed inset-0 z-50 flex items-center justify-center bg-800 h-screen w-screen bg-opacity-80">
+              <div className="relative max-h-[90vh] w-full max-w-2xl overflow-auto">
                 <button
                   onClick={() => setShow(false)}
-                  className="absolute right-1 top-1 text-gray-500 hover:text-gray-700"
+                  className="absolute right-1 top-1 text-300 hover:text-100"
                   aria-label="Close"
                 >
                   ✕

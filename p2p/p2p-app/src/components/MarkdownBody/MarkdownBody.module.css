@@ -1,22 +1,22 @@
 .MarkdownBody {
-	--md-font-body: "Source Serif 4", "Iowan Old Style", "Palatino Linotype", Palatino, serif;
-	--md-font-ui: "IBM Plex Sans", "Segoe UI", sans-serif;
-	--md-font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+	--md-font-body: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	--md-font-ui: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	--md-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-	--md-text: #111827;
-	--md-muted: #4b5563;
-	--md-link: #0f5f4f;
-	--md-link-hover: #0a473b;
-	--md-heading: #0b1320;
+	--md-text: var(--color-200, #d8d8d8);
+	--md-muted: var(--color-400, #8a8a8a);
+	--md-link: var(--color-blue, #7cafc2);
+	--md-link-hover: var(--color-cyan, #86c1b9);
+	--md-heading: var(--color-100, #f8f8f8);
 
-	--md-code-bg: #f3f4f6;
-	--md-pre-bg: #111827;
-	--md-pre-text: #f9fafb;
+	--md-code-bg: var(--color-700, #282828);
+	--md-pre-bg: var(--color-700, #282828);
+	--md-pre-text: var(--color-200, #d8d8d8);
 
-	--md-border: #d1d5db;
-	--md-quote-bg: #f8fafc;
-	--md-quote-border: #9ca3af;
-	--md-mark-bg: #fef08a;
+	--md-border: var(--color-500, #585858);
+	--md-quote-bg: var(--color-700, #282828);
+	--md-quote-border: var(--color-500, #585858);
+	--md-mark-bg: var(--color-yellow, #f7ca88);
 
 	color: var(--md-text);
 	font-family: var(--md-font-body);
@@ -90,7 +90,7 @@
 .MarkdownBody strong,
 .MarkdownBody b {
 	font-weight: 700;
-	color: #0f172a;
+	color: var(--color-100, #f8f8f8);
 }
 
 .MarkdownBody em,
@@ -149,7 +149,7 @@
 .MarkdownBody blockquote {
 	border-left: 4px solid var(--md-quote-border);
 	background: var(--md-quote-bg);
-	color: #1f2937;
+	color: var(--md-text);
 	margin-inline: 0;
 	padding: 0.65em 1em;
 	border-radius: 0 0.4rem 0.4rem 0;
@@ -172,7 +172,7 @@
 
 .MarkdownBody :not(pre) > code {
 	background: var(--md-code-bg);
-	color: #111827;
+	color: var(--color-green, #a1b56c);
 	border-radius: 0.35rem;
 	padding: 0.12em 0.42em;
 }
@@ -183,7 +183,7 @@
 	border-radius: 0.5rem;
 	padding: 0.9em 1em;
 	overflow-x: auto;
-	border: 1px solid #1f2937;
+	border: 1px solid var(--color-600, #383838);
 }
 
 .MarkdownBody pre code {
@@ -205,7 +205,7 @@
 }
 
 .MarkdownBody thead {
-	background: #f3f4f6;
+	background: var(--color-700, #282828);
 }
 
 .MarkdownBody th,
@@ -218,12 +218,12 @@
 }
 
 .MarkdownBody th {
-	color: #111827;
+	color: var(--color-100, #f8f8f8);
 	font-weight: 700;
 }
 
 .MarkdownBody tbody tr:nth-child(even) {
-	background: #f9fafb;
+	background: var(--color-700, #282828);
 }
 
 .MarkdownBody img,

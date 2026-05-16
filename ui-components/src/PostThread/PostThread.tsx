@@ -261,10 +261,10 @@ export const PostThread = (props: PostThreadProps) => {
   );
 
   return (
-    <div className="bg-white shadow-xl">
+    <div className="bg-700 text-200 shadow-xl">
       <form onSubmit={onSubmit}>
         <div className="w-full flex">
-          <label className="px-2 flex-1 truncate overflow-hidden text-ellipsis whitespace-nowrap bg-gray-100">
+          <label className="px-2 flex-1 truncate overflow-hidden text-ellipsis whitespace-nowrap bg-600 text-300">
             {props.replyTo ? `Reply to ${props.replyTo}` : "Body:"}
           </label>
         </div>
@@ -274,7 +274,7 @@ export const PostThread = (props: PostThreadProps) => {
           }}
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          className="w-full p-1 bg-white border border-gray-300"
+          className="w-full p-1 bg-800 text-200 border border-500"
           rows={10}
           required
         />
@@ -282,13 +282,13 @@ export const PostThread = (props: PostThreadProps) => {
         <div>
           <ActionButton
             label="Add File"
-            color="text-blue-500"
+            color="text-blue"
             onClick={() => fileinputRef.current?.click()}
           />
-          <ActionButton label="Bold" color="text-gray-500" onClick={() => {}} />
+          <ActionButton label="Bold" color="text-300" onClick={() => {}} />
           <ActionButton
             label="Italics"
-            color="text-gray-500"
+            color="text-300"
             onClick={() => {}}
           />
           <input
@@ -308,7 +308,7 @@ export const PostThread = (props: PostThreadProps) => {
             onChange={(e) => setKeyId(e.target.value)}
             defaultValue={privateKeys[0]?.getKeyID().toHex()}
             required
-            className="w-8/10 w-full p-2 overflow-hidden bg-gray-100"
+            className="w-8/10 w-full p-2 overflow-hidden bg-700 text-200"
           >
             {privateKeys.map((key, i) => (
               <option key={i} value={key.getFingerprint()}>
@@ -319,7 +319,7 @@ export const PostThread = (props: PostThreadProps) => {
             ))}
           </select>
           <button
-            className="px-4 bg-yellow-300"
+            className="px-4 bg-yellow text-800 font-bold"
             type="submit"
             disabled={loading}
           >

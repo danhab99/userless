@@ -36,17 +36,17 @@ export function SidebarItem(props: SidebarItemProps) {
     <div
       className={clsx([
         style.SidebarItem,
-        "bg-gray-100 p-4 r-2 cursor-pointer border border-transparent",
-        props.selected && "border-blue-500 bg-blue-50",
+        "bg-700 p-4 r-2 cursor-pointer border border-transparent",
+        props.selected ? "border-blue bg-600" : "hover:bg-600",
       ])}
       onClick={props.onClick}
     >
       <div className="text-xs">
-        <span className="text-red-600">{props.ownerName}</span>
+        <span className="text-red">{props.ownerName}</span>
         {"<"}
-        <span className="text-green-600">{props.ownerEmail}</span>
+        <span className="text-green">{props.ownerEmail}</span>
         {"> on "}
-        <span className="text-blue-600">
+        <span className="text-blue">
           {props.timestamp.toLocaleString()}
         </span>
       </div>
