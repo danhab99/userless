@@ -42,7 +42,7 @@ export function CreateThread() {
       <button
         type="button"
         onClick={() => setShow((x) => !x)}
-        className="fixed bottom-24 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full text-xl font-bold shadow-lg transition-transform hover:scale-110 active:scale-95"
+        className="fixed bottom-8 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full text-xl font-bold shadow-lg transition-transform hover:scale-110 active:scale-95"
         title="Create new thread"
       >
         +
