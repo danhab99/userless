@@ -16,14 +16,13 @@ function App() {
     <UserlessProvider>
       <P2PKeyContextProvider>
         <ThreadProvider>
-          <main className="h-screen">
+          <main className="h-screen flex flex-col">
             <Navbar s={s} />
-            {page === "threads" ? <ThreadPage /> : null}
-            {page === "keys" ? <KeyManagementPage /> : null}
-
-            <div className="bottom-0 absolute w-full">
-              <UserlessStatusBar />
+            <div className="flex-1 min-h-0">
+              {page === "threads" ? <ThreadPage /> : null}
+              {page === "keys" ? <KeyManagementPage /> : null}
             </div>
+            <UserlessStatusBar />
           </main>
         </ThreadProvider>
       </P2PKeyContextProvider>
