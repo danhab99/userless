@@ -422,6 +422,7 @@ export class Server {
     });
 
     pc.addEventListener("connectionstatechange", () => {
+      console.log(`[p2p] connection state → ${pc.connectionState} (peer=${remotePeerId})`);
       if (
         pc.connectionState === "failed" ||
         pc.connectionState === "closed" ||
@@ -432,6 +433,7 @@ export class Server {
         this.pendingIce.delete(remotePeerId);
 
         if (this.peers.delete(remotePeerId)) {
+          console.log(`[p2p] peer removed (peer=${remotePeerId})`);
           this.onPeerDisconnected(remotePeerId);
         }
       }
@@ -441,6 +443,7 @@ export class Server {
   }
 
   private registerPeer(peer: Peer) {
+    console.log(`[p2p] peer registered (peer=${peer.id}, services=${peer.services.join(",")})`);
     this.peers.set(peer.id, peer);
     this.onPeerConnected(peer);
   }
@@ -479,6 +482,7 @@ export class Server {
       return;
     }
 
+    console.log(`[p2p] initiating offer (to=${remotePeerId})`);
     const pc = this.createPC(remotePeerId);
     const clientDc = pc.createDataChannel("rpc-client");
     const serverDc = pc.createDataChannel("rpc-server");
@@ -509,6 +513,7 @@ export class Server {
     sdp: string,
     services: Services,
   ) {
+    console.log(`[p2p] handling offer (from=${remotePeerId})`);
     const existing = this.pcs.get(remotePeerId);
     const pc = existing ?? this.createPC(remotePeerId);
 
@@ -544,6 +549,7 @@ export class Server {
   }
 
   private async handleAnswer(remotePeerId: string, sdp: string) {
+    console.log(`[p2p] handling answer (from=${remotePeerId})`);
     const pc = this.pcs.get(remotePeerId);
     if (!pc) {
       return;

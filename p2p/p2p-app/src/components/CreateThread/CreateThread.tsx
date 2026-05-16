@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import style from "./CreateThread.module.css";
 import { PostThread } from "@userless/ui-components";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useUserless } from "../UserlessProvider/UserlessProvider";
 
@@ -10,6 +10,14 @@ export type CreateThreadProps = {};
 export function CreateThread() {
   const { userless } = useUserless();
   const [show, setShow] = useState(false);
+  const [armoredPrivateKeys, setArmoredPrivateKeys] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!show) return;
+    userless.getPrivateKeys().then((keys) => {
+      setArmoredPrivateKeys(keys.map((k) => k.armor));
+    });
+  }, [show, userless]);
 
   return (
     <div className={clsx([style.CreateThread])}>
@@ -26,6 +34,7 @@ export function CreateThread() {
                 </button>
                 <div className="p-6">
                   <PostThread
+                    armoredPrivateKeys={armoredPrivateKeys}
                     onPost={async (signedMessage) => {
                       return userless.storeSignedThread(signedMessage);
                     }}

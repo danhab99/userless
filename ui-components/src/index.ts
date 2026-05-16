@@ -4,7 +4,12 @@ export type { ActionButtonProps } from "./ActionButton/ActionButton";
 export { Hash } from "./Hash/Hash";
 
 export { UserlessUiProvider } from "./config";
-export type { UiLinkProps, UserlessUiConfig } from "./config";
+export type {
+  UiLinkProps,
+  UserlessUiConfig,
+  UserlessUiKeyState,
+  UserlessUiKeyStateHandlers,
+} from "./config";
 
 export {
   createUserlessClient,

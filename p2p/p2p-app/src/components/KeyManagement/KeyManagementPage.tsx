@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useUserless } from "../UserlessProvider/UserlessProvider";
-import { ActionButton, useAddPrivateKey } from "@userless/ui-components";
+import { ActionButton } from "@userless/ui-components";
 import * as openpgp from "openpgp";
 import styles from "./KeyManagement.module.css";
 import { KeyList } from "./KeyList";
@@ -17,7 +17,6 @@ export type KeyInfo = {
 
 export function KeyManagementPage() {
   const { userless } = useUserless();
-  const addPrivateKey = useAddPrivateKey();
   const generateFormRef = useRef<HTMLFormElement | null>(null);
   const [keys, setKeys] = useState<KeyInfo[]>([]);
   const [selectedFingerprint, setSelectedFingerprint] = useState<string | null>(
@@ -116,10 +115,9 @@ export function KeyManagementPage() {
           format: "armored",
         });
 
-        const signingKey = await userless.saveSigningKey(
+        await userless.saveSigningKey(
           generated.privateKey as string,
         );
-        addPrivateKey(signingKey);
         await loadKeys();
         setIsGenerateDialogOpen(false);
         setForm({ name: "", email: "", comment: "", password: "" });
@@ -131,7 +129,7 @@ export function KeyManagementPage() {
         setIsGenerating(false);
       }
     },
-    [addPrivateKey, form.comment, form.email, form.name, form.password, loadKeys, userless],
+    [form.comment, form.email, form.name, form.password, loadKeys, userless],
   );
 
   return (

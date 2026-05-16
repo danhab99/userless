@@ -10,6 +10,7 @@ export type UserlessEventMap = {
   reply_draft_saved: { parentHash: Hash };
   thread_created: { hash: Hash };
   file_added: { name: string; hash: Hash };
+  signing_key_changed: { fingerprint: string | undefined };
 };
 
 export interface UserlessEventSink {

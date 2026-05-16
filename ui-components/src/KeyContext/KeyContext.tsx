@@ -136,36 +136,64 @@ export const KeyContextStateProvider = (
   }, DefaultKeyState);
 
   const [state, dispatch] = r;
+  const savedSignatureRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     (async () => {
       if (state.initialized) {
-        const f = (s: Storage, a: (s: State) => any[]) => {
-          s.setItem("ring", JSON.stringify(a(state).map((x) => x.armor())));
+        const keyState = {
+          privateKeys: state.privateKeys.map((x) => x.armor()),
+          decryptedKeys: state.decryptedKeys.map((x) => x.armor()),
+        };
+        const signature = JSON.stringify(keyState);
+
+        if (savedSignatureRef.current === signature) {
+          return;
+        }
+
+        savedSignatureRef.current = signature;
+        await config.keyStateHandlers?.save?.(keyState);
+      } else {
+        const loadedState =
+          (await config.keyStateHandlers?.load?.()) ?? {
+            privateKeys: [],
+            decryptedKeys: [],
+          };
+
+        const parseKeys = async (armoredKeys: string[]) => {
+          const parsed = await Promise.all(
+            armoredKeys.map(async (armoredKey) => {
+              try {
+                return await openpgp.readPrivateKey({ armoredKey });
+              } catch {
+                return undefined;
+              }
+            }),
+          );
+          return parsed.filter((key): key is openpgp.PrivateKey => Boolean(key));
         };
 
-        f(localStorage, (s) => s.privateKeys);
-        f(sessionStorage, (s) => s.decryptedKeys);
-      } else {
-        const f = async (s: Storage) => {
-          const armoredKeys: string[] = JSON.parse(s.getItem("ring") ?? "[]");
-          return Promise.all(
-            armoredKeys.map((armoredKey) =>
-              openpgp.readPrivateKey({
-                armoredKey,
-              }),
-            ),
-          );
-        };
+        const privateKeys = await parseKeys(loadedState.privateKeys);
+        const decryptedKeys = await parseKeys(loadedState.decryptedKeys);
+
+        savedSignatureRef.current = JSON.stringify({
+          privateKeys: privateKeys.map((x) => x.armor()),
+          decryptedKeys: decryptedKeys.map((x) => x.armor()),
+        });
 
         dispatch({
           action: "load",
-          privateKeys: await f(localStorage),
-          decryptedKeys: await f(sessionStorage),
+          privateKeys,
+          decryptedKeys,
         });
       }
     })();
-  }, [state.initialized, state.privateKeys, state.decryptedKeys]);
+  }, [
+    config.keyStateHandlers,
+    state.initialized,
+    state.privateKeys,
+    state.decryptedKeys,
+  ]);
 
   return (
     <UserlessUiProvider {...config}>

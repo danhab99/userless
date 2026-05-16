@@ -6,6 +6,16 @@ import {
   useContext,
 } from "react";
 
+export type UserlessUiKeyState = {
+  privateKeys: string[];
+  decryptedKeys: string[];
+};
+
+export type UserlessUiKeyStateHandlers = {
+  load?: () => Promise<UserlessUiKeyState>;
+  save?: (state: UserlessUiKeyState) => Promise<void> | void;
+};
+
 export type UiLinkProps = {
   href: string;
   children: ReactNode;
@@ -16,6 +26,7 @@ export type UserlessUiConfig = {
   getKeyHref?: (fingerprint: string) => string;
   LinkComponent?: ComponentType<UiLinkProps>;
   navigateToThread?: (hash: string) => void | Promise<void>;
+  keyStateHandlers?: UserlessUiKeyStateHandlers;
 };
 
 const UserlessUiConfigContext = createContext<UserlessUiConfig>({});

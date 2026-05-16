@@ -2,6 +2,7 @@ import clsx from "clsx";
 import style from "./SidebarItem.module.css";
 import { useMemo } from "react";
 import Markdown from "react-markdown";
+import { ActionButton } from "@userless/ui-components";
 
 export type SidebarItemProps = {
   ownerName: string;
@@ -51,6 +52,11 @@ export function SidebarItem(props: SidebarItemProps) {
       </div>
 
       <Markdown>{preview}</Markdown>
+
+      <div className="text-xs">
+        <ActionButton label="Emergency" />
+        <ActionButton label="Delete" />
+      </div>
     </div>
   );
 }

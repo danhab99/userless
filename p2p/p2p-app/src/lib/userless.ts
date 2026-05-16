@@ -25,6 +25,20 @@ type DBFile = {
   sourceThreadHash?: Hash;
 };
 
+type DBPrivateKey = {
+  armored: string;
+};
+
+type DBPublicKeyAlias = {
+  fingerprint: string;
+};
+
+export type PrivateKeyDetail = {
+  fingerprint: string;
+  armor: string;
+  userId: string;
+};
+
 interface UserlessDB extends DBSchema {
   threads: {
     key: Hash;
@@ -33,6 +47,14 @@ interface UserlessDB extends DBSchema {
   publickey: {
     key: Hash;
     value: PublicKey;
+  };
+  publickey_alias: {
+    key: string;
+    value: DBPublicKeyAlias;
+  };
+  privatekey: {
+    key: Hash;
+    value: DBPrivateKey;
   };
   file: {
     key: Hash;
@@ -148,7 +170,7 @@ export class Userless extends UserlessEventEmitter {
   constructor(url: string, options: UserlessOptions = {}) {
     super(options.eventSink);
 
-    this.dbReady = openDB<UserlessDB>("userless", 2, {
+    this.dbReady = openDB<UserlessDB>("userless", 5, {
       upgrade(db, oldVersion) {
         if (oldVersion < 1) {
           if (!db.objectStoreNames.contains("threads")) {
@@ -159,6 +181,16 @@ export class Userless extends UserlessEventEmitter {
           }
           if (!db.objectStoreNames.contains("file")) {
             db.createObjectStore("file");
+          }
+        }
+        if (oldVersion < 3) {
+          if (!db.objectStoreNames.contains("privatekey")) {
+            db.createObjectStore("privatekey");
+          }
+        }
+        if (oldVersion < 4) {
+          if (!db.objectStoreNames.contains("publickey_alias")) {
+            db.createObjectStore("publickey_alias");
           }
         }
       },
@@ -208,7 +240,7 @@ export class Userless extends UserlessEventEmitter {
       },
       getPublicKeys: async ({ fingerprint }) => {
         await this.ensureDB();
-        const key = await this.db.get("publickey", fingerprint);
+        const key = await this.getPublicKeyByFingerprintOrId(fingerprint);
         if (!key) {
           throw new Error(`Public key not found: ${fingerprint}`);
         }
@@ -217,11 +249,13 @@ export class Userless extends UserlessEventEmitter {
     });
 
     this.server.onPeerConnected = (peer) => {
+      console.log(`[userless] peer connected (id=${peer.id})`);
       this.emit("peer_connected", { peerId: peer.id });
       void this.scanPeerForThreads(peer);
     };
 
     this.server.onPeerDisconnected = (fingerprint) => {
+      console.log(`[userless] peer disconnected (id=${fingerprint})`);
       this.emit("peer_disconnected", { fingerprint });
     };
 
@@ -234,13 +268,102 @@ export class Userless extends UserlessEventEmitter {
     await this.dbReady;
   }
 
+  private async upsertPublicKeyWithAliases(publicKey: PublicKey): Promise<void> {
+    await this.db.put("publickey", publicKey, publicKey.fingerprint);
+
+    const parsed = await openpgp.readKey({ armoredKey: publicKey.armored });
+    const anyParsed = parsed as any;
+    const aliasValues = new Set<string>();
+
+    const normalizedPrimaryFingerprint = parsed.getFingerprint().toLowerCase();
+    aliasValues.add(normalizedPrimaryFingerprint);
+
+    const primaryKeyId = parsed.getKeyID().toHex().toLowerCase();
+    aliasValues.add(primaryKeyId);
+
+    for (const keyId of parsed.getKeyIDs()) {
+      aliasValues.add(keyId.toHex().toLowerCase());
+    }
+
+    for (const subkey of anyParsed.getSubkeys?.() ?? []) {
+      const subFp = subkey.getFingerprint?.()?.toLowerCase?.();
+      if (subFp) {
+        aliasValues.add(subFp);
+      }
+
+      const subId = subkey.getKeyID?.()?.toHex?.()?.toLowerCase?.();
+      if (subId) {
+        aliasValues.add(subId);
+      }
+    }
+
+    const canonicalFingerprint = publicKey.fingerprint.toLowerCase();
+    for (const alias of aliasValues) {
+      await this.db.put("publickey_alias", { fingerprint: canonicalFingerprint }, alias);
+    }
+  }
+
+  private async removePublicKeyAliasesForFingerprint(fingerprint: string): Promise<void> {
+    const canonical = fingerprint.toLowerCase();
+    const aliases = (await this.db.getAllKeys("publickey_alias")) as string[];
+    for (const alias of aliases) {
+      const value = await this.db.get("publickey_alias", alias);
+      if (value?.fingerprint === canonical) {
+        await this.db.delete("publickey_alias", alias);
+      }
+    }
+  }
+
+  private async getPublicKeyByFingerprintOrId(
+    fingerprintOrId: string,
+  ): Promise<PublicKey | undefined> {
+    const normalized = fingerprintOrId.toLowerCase();
+
+    const exact = await this.db.get("publickey", normalized);
+    if (exact) return exact;
+
+    const mapped = await this.db.get("publickey_alias", normalized);
+    if (mapped?.fingerprint) {
+      const byAlias = await this.db.get("publickey", mapped.fingerprint);
+      if (byAlias) {
+        return byAlias;
+      }
+    }
+
+    // Migration fallback: parse existing keys, backfill aliases, and retry.
+    const allFingerprints = (await this.db.getAllKeys("publickey")) as string[];
+    for (const fingerprint of allFingerprints) {
+      const record = await this.db.get("publickey", fingerprint);
+      if (!record) {
+        continue;
+      }
+
+      try {
+        await this.upsertPublicKeyWithAliases(record);
+        const match = await this.db.get("publickey_alias", normalized);
+        if (match?.fingerprint) {
+          const byAlias = await this.db.get("publickey", match.fingerprint);
+          if (byAlias) {
+            return byAlias;
+          }
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return undefined;
+  }
+
   private getPeersInternal(): Peer[] {
     return this.server.getPeers();
   }
 
   private async scanPeerForThreads(peer: Peer) {
     let cursor: string | undefined;
+    let totalScanned = 0;
 
+    console.log(`[userless] scanning peer for threads (peer=${peer.id})`);
     while (true) {
       const page = await peer.getAllThreads({
         cursor,
@@ -258,7 +381,9 @@ export class Userless extends UserlessEventEmitter {
 
         const thread = await peer.getThread({ hash });
         await this.db.put("threads", thread, hash);
+        console.log(`[userless] thread cached from peer (hash=${hash}, peer=${peer.id})`);
         this.emit("thread_cached", { hash });
+        totalScanned++;
       }
 
       if (!page.next_cursor) {
@@ -266,6 +391,7 @@ export class Userless extends UserlessEventEmitter {
       }
       cursor = page.next_cursor;
     }
+    console.log(`[userless] scan complete (peer=${peer.id}, new=${totalScanned})`);
   }
 
   private async scanThreadForFilesAndKeys(thread: Thread, threadHash: Hash) {
@@ -278,12 +404,17 @@ export class Userless extends UserlessEventEmitter {
     const signingKeys = msg.getSigningKeyIDs();
 
     for (const key of signingKeys) {
-      const keyExists = !!(await this.db.get("publickey", key.toHex()));
+      const keyId = key.toHex();
+      const keyExists = !!(await this.getPublicKeyByFingerprintOrId(keyId));
       if (!keyExists) {
-        const acquiredKey = await this.queryPeersForPublicKeys(key.toHex());
+        console.log(`[userless] fetching public key from peers (keyId=${keyId})`);
+        const acquiredKey = await this.queryPeersForPublicKeys(keyId);
         if (acquiredKey) {
-          await this.db.put("publickey", acquiredKey, key.toHex());
-          this.emit("public_key_cached", { fingerprint: key.toHex() });
+          await this.upsertPublicKeyWithAliases(acquiredKey);
+          console.log(`[userless] public key cached (fingerprint=${acquiredKey.fingerprint})`);
+          this.emit("public_key_cached", { fingerprint: acquiredKey.fingerprint });
+        } else {
+          console.warn(`[userless] public key not found on any peer (keyId=${keyId})`);
         }
       }
     }
@@ -396,16 +527,16 @@ export class Userless extends UserlessEventEmitter {
   }
 
   public async queryPeersForPublicKeys(
-    fingerprint: string,
+    fingerprintOrId: string,
   ): Promise<PublicKey | undefined> {
     await this.ensureDB();
 
     return this.queryPeers(
-      () => this.db.get("publickey", fingerprint),
-      (peer) => peer.getPublicKeys({ fingerprint }),
+      () => this.getPublicKeyByFingerprintOrId(fingerprintOrId),
+      (peer) => peer.getPublicKeys({ fingerprint: fingerprintOrId }),
       async (key) => {
-        await this.db.put("publickey", key, fingerprint);
-        this.emit("public_key_cached", { fingerprint });
+        await this.upsertPublicKeyWithAliases(key);
+        this.emit("public_key_cached", { fingerprint: key.fingerprint });
       },
     );
   }
@@ -623,32 +754,86 @@ export class Userless extends UserlessEventEmitter {
   }
 
   public async getSigningKey(): Promise<openpgp.PrivateKey | undefined> {
-    const stored = localStorage.getItem("userless_signing_key");
-    if (stored) {
-      try {
-        const key = await openpgp.readPrivateKey({ armoredKey: stored });
-        return key;
-      } catch {
-        return undefined;
-      }
+    await this.ensureDB();
+    // Use first available private key as signing key.
+    const fingerprints = (await this.db.getAllKeys("privatekey")) as string[];
+    const first = fingerprints[0];
+    if (!first) {
+      return undefined;
     }
 
-    return undefined;
+    const key = await this.db.get("privatekey", first);
+    if (!key) {
+      return undefined;
+    }
+
+    try {
+      return await openpgp.readPrivateKey({ armoredKey: key.armored });
+    } catch {
+      return undefined;
+    }
+  }
+
+  public async addPrivateKey(armoredKey: string): Promise<openpgp.PrivateKey> {
+    await this.ensureDB();
+    const key = await openpgp.readPrivateKey({ armoredKey });
+    const fingerprint = key.getFingerprint().toLowerCase();
+    console.log(`[userless] adding private key (fingerprint=${fingerprint})`);
+    await this.db.put("privatekey", { armored: armoredKey }, fingerprint);
+    const publicKey: PublicKey = { fingerprint, armored: key.toPublic().armor() };
+    await this.upsertPublicKeyWithAliases(publicKey);
+    return key;
+  }
+
+  public async getPrivateKeys(): Promise<PrivateKeyDetail[]> {
+    await this.ensureDB();
+    const fingerprints = (await this.db.getAllKeys("privatekey")) as string[];
+    const details: PrivateKeyDetail[] = [];
+    for (const fingerprint of fingerprints) {
+      const record = await this.db.get("privatekey", fingerprint);
+      if (!record) continue;
+      let userId = "";
+      try {
+        const parsed = await openpgp.readPrivateKey({ armoredKey: record.armored });
+        userId = parsed.getUserIDs()[0] ?? "";
+      } catch {
+        // ignore parse errors
+      }
+      details.push({ fingerprint, armor: record.armored, userId });
+    }
+    return details;
+  }
+
+  public async deletePrivateKey(fingerprint: string): Promise<void> {
+    console.log(`[userless] deleting private key (fingerprint=${fingerprint})`);
+    await this.ensureDB();
+    const normalized = fingerprint.toLowerCase();
+    await this.db.delete("privatekey", normalized);
+    await this.db.delete("publickey", normalized);
+    await this.removePublicKeyAliasesForFingerprint(normalized);
   }
 
   public async saveSigningKey(armoredKey: string): Promise<openpgp.PrivateKey> {
-    const key = await openpgp.readPrivateKey({ armoredKey });
-    localStorage.setItem("userless_signing_key", armoredKey);
+    const key = await this.addPrivateKey(armoredKey);
+    console.log(`[userless] signing key set (fingerprint=${key.getFingerprint()})`);
+    this.emit("signing_key_changed", { fingerprint: key.getFingerprint().toLowerCase() });
     return key;
   }
 
   public async deleteSigningKey(): Promise<void> {
-    localStorage.removeItem("userless_signing_key");
+    console.log("[userless] deleting signing key");
+    const existing = await this.getSigningKey();
+    if (existing) {
+      await this.deletePrivateKey(existing.getFingerprint());
+    }
+    this.emit("signing_key_changed", { fingerprint: undefined });
   }
 
   public async deletePublicKey(fingerprint: string): Promise<void> {
     await this.ensureDB();
-    await this.db.delete("publickey", fingerprint);
+    const normalized = fingerprint.toLowerCase();
+    await this.db.delete("publickey", normalized);
+    await this.removePublicKeyAliasesForFingerprint(normalized);
   }
 
   public async createThread(body: string): Promise<Hash> {
@@ -681,6 +866,7 @@ export class Userless extends UserlessEventEmitter {
     const hash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
     await this.db.put("threads", thread, hash);
+    console.log(`[userless] thread created (hash=${hash})`);
     this.emit("thread_created", { hash });
 
     return hash;
@@ -700,6 +886,7 @@ export class Userless extends UserlessEventEmitter {
     const hash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
     await this.db.put("threads", thread, hash);
+    console.log(`[userless] signed thread stored (hash=${hash})`);
     this.emit("thread_created", { hash });
 
     return hash;
@@ -719,6 +906,7 @@ export class Userless extends UserlessEventEmitter {
     };
 
     await this.db.put("file", file, hash);
+    console.log(`[userless] file added (name=${name}, hash=${hash}, size=${data.byteLength})`);
     this.emit("file_added", { name, hash });
 
     return hash;
@@ -746,3 +934,4 @@ export function getUserless(options: UserlessOptions = {}) {
 
   return singleton;
 }
+

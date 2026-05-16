@@ -34,6 +34,8 @@ export type PostThreadProps = {
   onPostCreated?: (hash: string, signedMessage: string) => void | Promise<void>;
   /** @deprecated Use onPostCreated instead */
   onPosted?: (hash: string) => void | Promise<void>;
+  /** Armored private keys to show in the signing key dropdown. Falls back to KeyContext. */
+  armoredPrivateKeys?: string[];
 };
 
 const MATCH_SHA256 = /[a-fA-F0-9]{64}/gm;
@@ -49,7 +51,21 @@ function arrayBufferToHex(buffer: ArrayBuffer) {
 }
 
 export const PostThread = (props: PostThreadProps) => {
-  const privateKeys = usePrivateKeys();
+  const contextKeys = usePrivateKeys();
+  const [parsedArmoredKeys, setParsedArmoredKeys] = useState<openpgp.PrivateKey[]>([]);
+
+  useEffect(() => {
+    if (!props.armoredPrivateKeys) return;
+    Promise.all(
+      props.armoredPrivateKeys.map((armoredKey) =>
+        openpgp.readPrivateKey({ armoredKey }).catch(() => undefined),
+      ),
+    ).then((keys) =>
+      setParsedArmoredKeys(keys.filter((k): k is openpgp.PrivateKey => Boolean(k))),
+    );
+  }, [props.armoredPrivateKeys]);
+
+  const privateKeys = props.armoredPrivateKeys ? parsedArmoredKeys : contextKeys;
   // Use onPostCreated, falling back to onPosted for backward compatibility
   const postCreatedHandler = props.onPostCreated || props.onPosted;
   const config = useUserlessUiConfig({
