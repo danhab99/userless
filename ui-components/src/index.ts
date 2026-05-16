@@ -14,10 +14,15 @@ export {
 
 export {
   KeyContextProvider,
+  KeyContextStateProvider,
+  KeyDrawer,
   usePrivateKeys,
   useCreateKey,
   useAddPrivateKey,
   useMasterKey,
+  useUnlockKey,
+  useDeleteKey,
+  useAllKeys,
 } from "./KeyContext/KeyContext";
 
 export { PostThread, PostThreadNarrow } from "./PostThread/PostThread";

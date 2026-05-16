@@ -97,7 +97,7 @@ export const useAddPrivateKey = () => {
   };
 };
 
-export const KeyContextProvider = (
+export const KeyContextStateProvider = (
   props: React.PropsWithChildren<UserlessUiConfig>,
 ) => {
   const { children, ...config } = props;
@@ -170,10 +170,22 @@ export const KeyContextProvider = (
   return (
     <UserlessUiProvider {...config}>
       <KeyContextState.Provider value={r}>
-        <KeyDrawer />
         {children}
       </KeyContextState.Provider>
     </UserlessUiProvider>
+  );
+};
+
+export const KeyContextProvider = (
+  props: React.PropsWithChildren<UserlessUiConfig>,
+) => {
+  const { children, ...config } = props;
+
+  return (
+    <KeyContextStateProvider {...config}>
+      <KeyDrawer />
+      {children}
+    </KeyContextStateProvider>
   );
 };
 
@@ -207,7 +219,7 @@ export const useCreateKey = () => {
   };
 };
 
-const useUnlockKey = () => {
+export const useUnlockKey = () => {
   const [state, dispatch] = useContext(KeyContextState);
 
   return async (fingerprint: string, passphrase: string) => {
@@ -233,7 +245,7 @@ const useUnlockKey = () => {
   };
 };
 
-const useDeleteKey = () => {
+export const useDeleteKey = () => {
   const [, dispatch] = useContext(KeyContextState);
 
   return async (fingerprint: string) => {
@@ -244,7 +256,9 @@ const useDeleteKey = () => {
   };
 };
 
-function KeyDrawer() {
+export { useAllKeys };
+
+export function KeyDrawer() {
   const [, dispatch] = useContext(KeyContextState);
   const addKey = useCreateKey();
 
