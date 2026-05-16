@@ -1,19 +1,21 @@
+export { ActionButton } from "./ActionButton/ActionButton";
+export type { ActionButtonProps } from "./ActionButton/ActionButton";
+
+export { Hash } from "./Hash/Hash";
+
+export { UserlessUiProvider } from "./config";
+export type { UiLinkProps, UserlessUiConfig } from "./config";
+
 export {
-  ActionButton,
-  type ActionButtonProps,
-  Hash,
-  UserlessUiProvider,
   createUserlessClient,
   DEFAULT_USERLESS_URL,
   resolveUserlessUrl,
-  useCreateKey,
-} from "@userless/ui-components";
-
-export { getServer } from "./userless";
+} from "./userless";
 
 export {
   KeyContextProvider,
   usePrivateKeys,
+  useCreateKey,
   useAddPrivateKey,
   useMasterKey,
 } from "./KeyContext/KeyContext";

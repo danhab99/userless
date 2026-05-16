@@ -5,34 +5,13 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "scripts": {
-    "storybook": "storybook dev -p 6007",
-    "build-storybook": "storybook build"
-  },
   "peerDependencies": {
     "next": "*",
     "react": "*",
     "react-dom": "*"
   },
   "dependencies": {
-    "api-wrapper": "file:../api-wrapper",
-    "openpgp": "^5.11.2",
-    "react-use": "^17.6.0",
-    "smol-toml": "^1.3.0"
-  },
-  "devDependencies": {
-    "@chromatic-com/storybook": "^5.0.1",
-    "@storybook/addon-a11y": "^10.2.8",
-    "@storybook/addon-docs": "^10.2.8",
-    "@storybook/nextjs-vite": "^10.2.8",
-    "@tailwindcss/vite": "^4.2.1",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "next": "16.1.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "storybook": "^10.2.8",
-    "typescript": "^5",
-    "vite": "^7.3.1"
+    "@userless/ui-components": "file:../../ui-components",
+    "api-wrapper": "file:../api-wrapper"
   }
 }
