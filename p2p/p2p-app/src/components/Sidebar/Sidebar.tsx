@@ -19,7 +19,7 @@ export function Sidebar(props: SidebarProps) {
   const canRescan = !!props.onRescanAllPeers && !props.isRescanning;
 
   return (
-    <div className={clsx("base16-default-dark bg-100 w-1/3", style.SidebarShell)}>
+    <div className={clsx("base16-default-dark bg-100 w-1/3 h-full", style.SidebarShell)}>
       <div id="sidebar-scroll-region" className={style.ScrollRegion}>
         <InfiniteScroll
           dataLength={props.items.length} //This is important field to render the next data

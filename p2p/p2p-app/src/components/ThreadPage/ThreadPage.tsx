@@ -6,9 +6,9 @@ export type ThreadPageProps = {};
 
 export function ThreadPage(props: ThreadPageProps) {
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full">
       <CreateThread />
-      <div className="flex-1 min-h-0 flex flex-row">
+      <div className="h-full flex flex-row">
         <UserlessSidebar />
         <UserlessMarkdownBody />
       </div>

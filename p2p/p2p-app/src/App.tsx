@@ -22,6 +22,7 @@ function App() {
               {page === "threads" ? <ThreadPage /> : null}
               {page === "keys" ? <KeyManagementPage /> : null}
             </div>
+
             <UserlessStatusBar />
           </main>
         </ThreadProvider>
