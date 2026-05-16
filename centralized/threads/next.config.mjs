@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ["api-wrapper", "ui-components"],
+  transpilePackages: ["@userless/ui-components", "api-wrapper", "ui-components"],
   webpack: (config, { isServer, dev }) => {
     config.resolve.extensionAlias = {
       ".js": [".js", ".ts"],
@@ -14,6 +14,7 @@ const nextConfig = {
         ...config.watchOptions,
         ignored: [
           "**/node_modules/**",
+          "!**/node_modules/@userless/ui-components/**",
           "!**/node_modules/api-wrapper/**",
           "!**/node_modules/ui-components/**"
         ],

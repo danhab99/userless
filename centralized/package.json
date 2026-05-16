@@ -4,19 +4,16 @@
   "private": true,
   "workspaces": [
     "./api-wrapper",
-    "./ui-components", 
     "./redditless",
     "./threads"
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:ui\" \"npm run dev:redditless\" \"npm run dev:threads\"",
     "dev:api": "cd api-wrapper && npm run dev",
-    "dev:ui": "cd ui-components && npm run dev", 
     "dev:redditless": "cd redditless && npm run dev",
     "dev:threads": "cd threads && npm run dev",
     "build": "npm run build:api && npm run build:ui && npm run build:redditless && npm run build:threads",
     "build:api": "cd api-wrapper && npm run build",
-    "build:ui": "cd ui-components && npm run build",
     "build:redditless": "cd redditless && npm run build", 
     "build:threads": "cd threads && npm run build"
   },
