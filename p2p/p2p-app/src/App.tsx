@@ -16,8 +16,6 @@ function App() {
     <UserlessProvider>
       <P2PKeyContextProvider>
         <ThreadProvider>
-          <CreateThread />
-
           <main className="h-screen">
             <Navbar s={s} />
             {page === "threads" ? <ThreadPage /> : null}

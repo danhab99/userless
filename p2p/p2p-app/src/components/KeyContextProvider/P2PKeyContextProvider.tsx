@@ -21,7 +21,11 @@ export function P2PKeyContextProvider(
   // Load signing key from Userless on mount
   useEffect(() => {
     (async () => {
-      const signingKey = await userless.getOrCreateSigningKey();
+      const signingKey = await userless.getSigningKey();
+      if (!signingKey) {
+        return;
+      }
+
       // Add the key to the context for PostThread to use
       addPrivateKey(signingKey);
     })();

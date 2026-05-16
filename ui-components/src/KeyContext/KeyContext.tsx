@@ -81,7 +81,7 @@ function addPrivateKey(
 
 export function usePrivateKeys() {
   const [s] = useContext(KeyContextState);
-  return s.decryptedKeys;
+  return s.allKeys;
 }
 
 export const useMasterKey = () => {

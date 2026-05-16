@@ -623,37 +623,42 @@ export class Userless {
     };
   }
 
-  public async getOrCreateSigningKey(): Promise<openpgp.PrivateKey> {
+  public async getSigningKey(): Promise<openpgp.PrivateKey | undefined> {
     const stored = localStorage.getItem("userless_signing_key");
     if (stored) {
       try {
         const key = await openpgp.readPrivateKey({ armoredKey: stored });
         return key;
       } catch {
-        // Fall through to generate new key
+        return undefined;
       }
     }
 
-    // Generate a new key
-    const key = await openpgp.generateKey({
-      type: "rsa",
-      rsaBits: 2048,
-      userIDs: [{ name: "Userless User", email: "user@userless.local" }],
-      format: "armored",
-    });
+    return undefined;
+  }
 
-    const privateKey = await openpgp.readPrivateKey({
-      armoredKey: key.privateKey as string,
-    });
-    localStorage.setItem("userless_signing_key", key.privateKey as string);
+  public async saveSigningKey(armoredKey: string): Promise<openpgp.PrivateKey> {
+    const key = await openpgp.readPrivateKey({ armoredKey });
+    localStorage.setItem("userless_signing_key", armoredKey);
+    return key;
+  }
 
-    return privateKey;
+  public async deleteSigningKey(): Promise<void> {
+    localStorage.removeItem("userless_signing_key");
+  }
+
+  public async deletePublicKey(fingerprint: string): Promise<void> {
+    await this.ensureDB();
+    await this.db.delete("publickey", fingerprint);
   }
 
   public async createThread(body: string): Promise<Hash> {
     await this.ensureDB();
 
-    const signingKey = await this.getOrCreateSigningKey();
+    const signingKey = await this.getSigningKey();
+    if (!signingKey) {
+      throw new Error("No signing key configured. Import or create a private key first.");
+    }
 
     const cleartextMessage = await openpgp.createCleartextMessage({
       text: body,
@@ -669,6 +674,25 @@ export class Userless {
     };
 
     // Hash the content to create a deterministic hash
+    const hashBuffer = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(signedMessage),
+    );
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+
+    await this.db.put("threads", thread, hash);
+    this.events.emit("thread_created", { hash });
+
+    return hash;
+  }
+
+  /** Store a pre-signed cleartext thread message without re-signing. */
+  public async storeSignedThread(signedMessage: string): Promise<Hash> {
+    await this.ensureDB();
+
+    const thread: Thread = { content: signedMessage };
+
     const hashBuffer = await crypto.subtle.digest(
       "SHA-256",
       new TextEncoder().encode(signedMessage),

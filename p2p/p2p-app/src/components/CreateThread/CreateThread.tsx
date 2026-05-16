@@ -3,18 +3,20 @@ import style from "./CreateThread.module.css";
 import { PostThread } from "@userless/ui-components";
 import { useState } from "react";
 import { createPortal } from "react-dom";
+import { useUserless } from "../UserlessProvider/UserlessProvider";
 
 export type CreateThreadProps = {};
 
-export function CreateThread(props: CreateThreadProps) {
+export function CreateThread() {
+  const { userless } = useUserless();
   const [show, setShow] = useState(false);
 
   return (
     <div className={clsx([style.CreateThread])}>
       {show
         ? createPortal(
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 h-screen w-screen">
-              <div className="relative max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg bg-white shadow-2xl">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black h-screen w-screen">
+              <div className="relative max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg bg-white">
                 <button
                   onClick={() => setShow(false)}
                   className="absolute right-1 top-1 text-gray-500 hover:text-gray-700"
@@ -22,11 +24,16 @@ export function CreateThread(props: CreateThreadProps) {
                 >
                   ✕
                 </button>
-                <PostThread
-                  onPostCreated={(hash, signedMessage) => {
-                    setShow(false);
-                  }}
-                />
+                <div className="p-6">
+                  <PostThread
+                    onPost={async (signedMessage) => {
+                      return userless.storeSignedThread(signedMessage);
+                    }}
+                    onPostCreated={() => {
+                      setShow(false);
+                    }}
+                  />
+                </div>
               </div>
             </div>,
             document.body,

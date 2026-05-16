@@ -13,10 +13,21 @@ import { useMap } from "react-use";
 import * as toml from "smol-toml";
 import { ActionButton } from "../ActionButton/ActionButton";
 import { useUserlessUiConfig } from "../config";
-import { resolveUserlessUrl } from "../userless";
 
 export type PostThreadProps = {
   replyTo?: string;
+  /**
+   * Called to upload a file attachment. Receives the content hash, the file
+   * blob, and the detached armored PGP signature. Return true on success.
+   * If omitted, file attachments are silently skipped.
+   */
+  onUploadFile?: (hash: string, data: Blob, signature: string) => Promise<boolean>;
+  /**
+   * Called to submit the signed cleartext post. Receives the armored signed
+   * message and should return the resulting content hash. Throw on failure.
+   * If omitted, the signed message is not posted anywhere.
+   */
+  onPost?: (signedMessage: string) => Promise<string>;
   /** Called when a file is successfully uploaded */
   onFileCreated?: (hash: string, file: Blob) => void | Promise<void>;
   /** Called when the post/thread is successfully created */
@@ -42,9 +53,10 @@ export const PostThread = (props: PostThreadProps) => {
   // Use onPostCreated, falling back to onPosted for backward compatibility
   const postCreatedHandler = props.onPostCreated || props.onPosted;
   const config = useUserlessUiConfig({
-    navigateToThread: postCreatedHandler,
+    navigateToThread: props.onPosted
+      ? (hash: string) => props.onPosted?.(hash)
+      : undefined,
   });
-  const userlessUrl = resolveUserlessUrl(config.userlessUrl);
 
   const [body, setBody] = useState("");
   const [keyId, setKeyId] = useState<string>();
@@ -130,26 +142,13 @@ export const PostThread = (props: PostThreadProps) => {
 
             increment();
 
-            const f = new FormData();
-            f.append("document", data);
-            f.append("signature", sig.toString());
+            const ok = await props.onUploadFile?.(hash, data, sig.toString()) ?? true;
 
-            const resp = await fetch(
-              `${userlessUrl}/upload`,
-              {
-                method: "POST",
-                body: f,
-                redirect: "manual",
-              },
-            );
-
-            increment();
-
-            if (resp.ok) {
+            if (ok) {
               await props.onFileCreated?.(hash, data);
             }
 
-            return resp.ok;
+            return ok;
           },
         );
 
@@ -184,29 +183,21 @@ export const PostThread = (props: PostThreadProps) => {
           return;
         }
 
-        const resp = await fetch(
-          `${userlessUrl}/post`,
-          {
-            method: "POST",
-            body: signedMsg,
-          },
-        );
+        if (props.onPost) {
+          const hash = await props.onPost(signedMsg.toString());
 
-        increment();
+          increment();
+          setLoading(false);
 
-        setLoading(false);
-
-        if (resp.ok) {
-          const hash = await resp.text();
           await props.onPostCreated?.(hash, signedMsg.toString());
           await config.navigateToThread?.(hash);
         } else {
-          alert("Unable to post thread");
-          console.error(resp);
+          increment();
+          setLoading(false);
         }
       })();
     },
-    [body, config, files, keyId, privateKeys, props.replyTo, props.onFileCreated, props.onPostCreated, userlessUrl],
+    [body, config, files, keyId, privateKeys, props.replyTo, props.onFileCreated, props.onPostCreated, props.onUploadFile, props.onPost],
   );
 
   const textareaRef = useRef<HTMLTextAreaElement>(undefined);
