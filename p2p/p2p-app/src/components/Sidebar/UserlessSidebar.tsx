@@ -24,10 +24,17 @@ export function UserlessSidebar(props: UserlessSidebarProps) {
         PAGE_SIZE,
       );
 
-      setVisibleState((prev) => ({
-        cursor: allThreadHashes.next_cursor,
-        threadHashes: [...prev.threadHashes, ...allThreadHashes.items],
-      }));
+      setVisibleState((prev) => {
+        return {
+          cursor: allThreadHashes.next_cursor,
+          threadHashes: [
+            ...prev.threadHashes,
+            ...allThreadHashes.items.filter(
+              (x) => !prev.threadHashes.includes(x),
+            ),
+          ],
+        };
+      });
     })();
   }, [userless]);
 

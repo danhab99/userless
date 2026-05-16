@@ -8,8 +8,10 @@ export function ThreadPage(props: ThreadPageProps) {
   return (
     <div className="h-full">
       <CreateThread />
-      <UserlessSidebar />
-      <UserlessMarkdownBody />
+      <div className="h-full flex flex-row">
+        <UserlessSidebar />
+        <UserlessMarkdownBody />
+      </div>
     </div>
   );
 }
