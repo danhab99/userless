@@ -8,7 +8,7 @@ export type MarkdownBodyProps = {
 
 export function MarkdownBody(props: MarkdownBodyProps) {
 
-  return <div className={clsx([style.MarkdownBody, "p-4 bg-800 text-100"])}>
+  return <div className={clsx([style.MarkdownBody, "p-4 bg-800 text-100 h-full overflow-y-auto"])}>
     <Markdown>{props.body}</Markdown>
   </div>;
 }
