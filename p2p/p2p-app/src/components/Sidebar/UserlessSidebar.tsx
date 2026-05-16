@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import type { ResolvedThread } from "../../lib/userless";
 import { useUserless } from "../UserlessProvider/UserlessProvider";
 import { Sidebar } from "./Sidebar";
 
@@ -9,6 +8,7 @@ const PAGE_SIZE = 100;
 
 export function UserlessSidebar(props: UserlessSidebarProps) {
   const { userless } = useUserless();
+  const [isRescanning, setIsRescanning] = useState(false);
   const [visibleState, setVisibleState] = useState<{
     threadHashes: string[];
     cursor: string | undefined;
@@ -39,18 +39,46 @@ export function UserlessSidebar(props: UserlessSidebarProps) {
   }, [userless]);
 
   useEffect(() => {
-    setVisibleState({
-      cursor: undefined,
-      threadHashes: [],
+    const reset = () => {
+      setVisibleState({
+        cursor: undefined,
+        threadHashes: [],
+      });
+      loadMore();
+    };
+
+    const off = userless.on("thread_created", ({ hash }) => {
+      reset()
     });
-    loadMore();
-  }, [loadMore]);
+
+    reset()
+
+    return () => {
+      off();
+    }
+  }, [loadMore, userless]);
+
+  const handleRescanAllPeers = useCallback(async () => {
+    setIsRescanning(true);
+    try {
+      await userless.scanAllPeers();
+      setVisibleState({
+        cursor: undefined,
+        threadHashes: [],
+      });
+      loadMore();
+    } finally {
+      setIsRescanning(false);
+    }
+  }, [loadMore, userless]);
 
   return (
     <Sidebar
       items={visibleState.threadHashes.map((threadHash) => ({ threadHash }))}
       onNext={loadMore}
       hasMore={!!visibleState.cursor}
+      onRescanAllPeers={handleRescanAllPeers}
+      isRescanning={isRescanning}
     />
   );
 }

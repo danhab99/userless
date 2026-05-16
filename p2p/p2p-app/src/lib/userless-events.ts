@@ -19,21 +19,80 @@ export interface UserlessEventSink {
   ): void | Promise<void>;
 }
 
-export type UserlessEventDispatcher = {
-  emit<K extends keyof UserlessEventMap>(event: K, payload: UserlessEventMap[K]): void;
-};
+export type UserlessEventListener<K extends keyof UserlessEventMap> = (
+  payload: UserlessEventMap[K],
+) => void;
 
-export function createUserlessEventDispatcher(
-  sink?: UserlessEventSink,
-): UserlessEventDispatcher {
-  return {
-    emit(event, payload) {
-      if (!sink) {
-        return;
+export class UserlessEventEmitter {
+  private readonly listeners = new Map<
+    keyof UserlessEventMap,
+    Set<(payload: unknown) => void>
+  >();
+  private readonly sink?: UserlessEventSink;
+
+  constructor(sink?: UserlessEventSink) {
+    this.sink = sink;
+  }
+
+  public on<K extends keyof UserlessEventMap>(
+    event: K,
+    listener: UserlessEventListener<K>,
+  ): () => void {
+    const eventListeners =
+      this.listeners.get(event) ?? new Set<(payload: unknown) => void>();
+
+    eventListeners.add(listener as (payload: unknown) => void);
+    this.listeners.set(event, eventListeners);
+
+    return () => {
+      this.off(event, listener);
+    };
+  }
+
+  public once<K extends keyof UserlessEventMap>(
+    event: K,
+    listener: UserlessEventListener<K>,
+  ): () => void {
+    const dispose = this.on(event, (payload) => {
+      dispose();
+      listener(payload);
+    });
+
+    return dispose;
+  }
+
+  public off<K extends keyof UserlessEventMap>(
+    event: K,
+    listener: UserlessEventListener<K>,
+  ): void {
+    const eventListeners = this.listeners.get(event);
+    if (!eventListeners) {
+      return;
+    }
+
+    eventListeners.delete(listener as (payload: unknown) => void);
+
+    if (eventListeners.size === 0) {
+      this.listeners.delete(event);
+    }
+  }
+
+  public emit<K extends keyof UserlessEventMap>(
+    event: K,
+    payload: UserlessEventMap[K],
+  ): void {
+    const eventListeners = this.listeners.get(event);
+    if (eventListeners) {
+      for (const listener of [...eventListeners]) {
+        listener(payload);
       }
+    }
 
-      // Event delivery should not block core P2P and storage paths.
-      void Promise.resolve(sink.emit(event, payload)).catch(() => undefined);
-    },
-  };
+    if (!this.sink) {
+      return;
+    }
+
+    // Event delivery should not block core P2P and storage paths.
+    void Promise.resolve(this.sink.emit(event, payload)).catch(() => undefined);
+  }
 }

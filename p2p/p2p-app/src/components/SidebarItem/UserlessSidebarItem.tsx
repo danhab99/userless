@@ -23,7 +23,6 @@ export function UserlessSidebarItem(props: UserlessSidebarItemProps) {
       ownerName={value?.owner.name ?? ""}
       timestamp={new Date()}
       onClick={async () => {
-        debugger;
         setSelectedThread(value);
       }}
       selected={selectedThread?.hash === props.threadHash}

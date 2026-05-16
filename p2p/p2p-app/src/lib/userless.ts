@@ -15,7 +15,7 @@ import {
   type TransferStats,
 } from "./p2p";
 import {
-  createUserlessEventDispatcher,
+  UserlessEventEmitter,
   type UserlessEventSink,
 } from "./userless-events";
 
@@ -140,13 +140,14 @@ function extractReplyTarget(body: string): string | undefined {
   return undefined;
 }
 
-export class Userless {
+export class Userless extends UserlessEventEmitter {
   private server: Server;
   private db!: IDBPDatabase<UserlessDB>;
   private dbReady: Promise<void>;
-  readonly events;
 
   constructor(url: string, options: UserlessOptions = {}) {
+    super(options.eventSink);
+
     this.dbReady = openDB<UserlessDB>("userless", 2, {
       upgrade(db, oldVersion) {
         if (oldVersion < 1) {
@@ -164,8 +165,6 @@ export class Userless {
     }).then((database) => {
       this.db = database;
     });
-
-    this.events = createUserlessEventDispatcher(options.eventSink);
 
     this.server = new Server(url, ["threads", "files", "pks"], {
       getAllPublicKeys: async (params) => {
@@ -218,16 +217,16 @@ export class Userless {
     });
 
     this.server.onPeerConnected = (peer) => {
-      this.events.emit("peer_connected", { peerId: peer.id });
+      this.emit("peer_connected", { peerId: peer.id });
       void this.scanPeerForThreads(peer);
     };
 
     this.server.onPeerDisconnected = (fingerprint) => {
-      this.events.emit("peer_disconnected", { fingerprint });
+      this.emit("peer_disconnected", { fingerprint });
     };
 
     this.server.onEmergency = (payload) => {
-      this.events.emit("emergency", { payload });
+      this.emit("emergency", { payload });
     };
   }
 
@@ -259,7 +258,7 @@ export class Userless {
 
         const thread = await peer.getThread({ hash });
         await this.db.put("threads", thread, hash);
-        this.events.emit("thread_cached", { hash });
+        this.emit("thread_cached", { hash });
       }
 
       if (!page.next_cursor) {
@@ -284,7 +283,7 @@ export class Userless {
         const acquiredKey = await this.queryPeersForPublicKeys(key.toHex());
         if (acquiredKey) {
           await this.db.put("publickey", acquiredKey, key.toHex());
-          this.events.emit("public_key_cached", { fingerprint: key.toHex() });
+          this.emit("public_key_cached", { fingerprint: key.toHex() });
         }
       }
     }
@@ -330,7 +329,7 @@ export class Userless {
       },
       async (file) => {
         await this.db.put("file", file, hash);
-        this.events.emit("file_cached", { hash, sourceThreadHash });
+        this.emit("file_cached", { hash, sourceThreadHash });
       },
     );
   }
@@ -378,7 +377,7 @@ export class Userless {
       },
       async (file) => {
         await this.db.put("file", file, hash);
-        this.events.emit("file_cached", { hash });
+        this.emit("file_cached", { hash });
       },
     );
   }
@@ -391,7 +390,7 @@ export class Userless {
       (peer) => peer.getThread({ hash }),
       async (thread) => {
         await this.db.put("threads", thread, hash);
-        this.events.emit("thread_cached", { hash });
+        this.emit("thread_cached", { hash });
       },
     );
   }
@@ -406,7 +405,7 @@ export class Userless {
       (peer) => peer.getPublicKeys({ fingerprint }),
       async (key) => {
         await this.db.put("publickey", key, fingerprint);
-        this.events.emit("public_key_cached", { fingerprint });
+        this.emit("public_key_cached", { fingerprint });
       },
     );
   }
@@ -421,7 +420,7 @@ export class Userless {
       createdAt: new Date().toISOString(),
     };
 
-    this.events.emit("reply_draft_saved", { parentHash });
+  this.emit("reply_draft_saved", { parentHash });
 
     return record;
   }
@@ -682,7 +681,7 @@ export class Userless {
     const hash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
     await this.db.put("threads", thread, hash);
-    this.events.emit("thread_created", { hash });
+    this.emit("thread_created", { hash });
 
     return hash;
   }
@@ -701,7 +700,7 @@ export class Userless {
     const hash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
     await this.db.put("threads", thread, hash);
-    this.events.emit("thread_created", { hash });
+    this.emit("thread_created", { hash });
 
     return hash;
   }
@@ -720,7 +719,7 @@ export class Userless {
     };
 
     await this.db.put("file", file, hash);
-    this.events.emit("file_added", { name, hash });
+    this.emit("file_added", { name, hash });
 
     return hash;
   }

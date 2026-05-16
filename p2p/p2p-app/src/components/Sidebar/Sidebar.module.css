@@ -1,0 +1,23 @@
+.SidebarShell {
+	display: flex;
+	flex-direction: column;
+}
+
+.ScrollRegion {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+}
+
+.Sidebar {
+	display: flex;
+	flex-direction: column;
+}
+
+.Footer {
+	margin-top: auto;
+	padding: 0.75rem;
+	border-top: 1px solid rgba(0, 0, 0, 0.15);
+	background: rgba(255, 255, 255, 0.08);
+	text-align: center;
+}
