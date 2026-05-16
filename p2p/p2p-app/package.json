@@ -14,6 +14,7 @@
   "dependencies": {
     "@donovanglover/base16-tailwind": "npm:@jsr/donovanglover__base16-tailwind",
     "@types/number-abbreviate": "^2.0.0",
+    "@userless/ui-components": "file:../../ui-components",
     "clsx": "^2.1.1",
     "idb": "^8.0.3",
     "json-rpc-2.0": "^1.7.1",
@@ -35,7 +36,6 @@
     "@rolldown/plugin-babel": "^0.2.1",
     "@storybook/addon-a11y": "^10.2.8",
     "@storybook/addon-docs": "^10.2.8",
-    "@storybook/addon-interactions": "^10.2.8",
     "@storybook/react-vite": "^10.2.8",
     "@types/babel__core": "^7.20.5",
     "@types/node": "^24.12.0",
