@@ -31,7 +31,13 @@ export function UserlessSidebar(props: UserlessSidebarProps) {
     })();
   }, [userless]);
 
-  useEffect(loadMore, [loadMore]);
+  useEffect(() => {
+    setVisibleState({
+      cursor: undefined,
+      threadHashes: [],
+    });
+    loadMore();
+  }, [loadMore]);
 
   return (
     <Sidebar
