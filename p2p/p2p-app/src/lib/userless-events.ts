@@ -9,6 +9,7 @@ export type UserlessEventMap = {
   file_cached: { hash: Hash; sourceThreadHash?: Hash };
   reply_draft_saved: { parentHash: Hash };
   thread_created: { hash: Hash };
+  thread_hidden: { hash: Hash };
   file_added: { name: string; hash: Hash };
   signing_key_changed: { fingerprint: string | undefined };
 };

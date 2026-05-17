@@ -32,6 +32,7 @@ export type PageResult<T> = {
 
 export type Methods = {
   getAllThreads(params: PageParams): Promise<PageResult<Hash>>;
+  getReplyThreads(params: { parentHash: Hash } & PageParams): Promise<PageResult<Hash>>;
   getThread(params: { hash: Hash }): Promise<Thread>;
   getFile(params: {
     hash: Hash;
@@ -211,6 +212,20 @@ export class Peer {
     return fetchAll((cursor) => this.getAllThreads({ cursor, limit: DEFAULT_PAGE_SIZE }));
   }
 
+  getReplyThreads(params: {
+    parentHash: Hash;
+    cursor?: string;
+    limit?: number;
+  }): Promise<PageResult<Hash>> {
+    return this.request("getReplyThreads", params);
+  }
+
+  getReplyThreadsAll(parentHash: Hash): Promise<Hash[]> {
+    return fetchAll((cursor) =>
+      this.getReplyThreads({ parentHash, cursor, limit: DEFAULT_PAGE_SIZE }),
+    );
+  }
+
   getThread(params: { hash: Hash }): Promise<Thread> {
     return this.request("getThread", params);
   }
@@ -305,6 +320,10 @@ export class Server {
   onPeerConnected: (peer: Peer) => void = () => {};
   onPeerDisconnected: (id: string) => void = () => {};
   onEmergency: (payload: EmergencyPayload) => void = () => {};
+
+  broadcastEmergency(payload: EmergencyPayload) {
+    this.sendLobby({ action: "emergency", payload });
+  }
 
   constructor(
     lobbyUrl: string,

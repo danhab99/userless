@@ -33,6 +33,10 @@ type DBPublicKeyAlias = {
   fingerprint: string;
 };
 
+type DBHiddenThread = {
+  hiddenAt: string;
+};
+
 export type PrivateKeyDetail = {
   fingerprint: string;
   armor: string;
@@ -60,12 +64,17 @@ interface UserlessDB extends DBSchema {
     key: Hash;
     value: DBFile;
   };
+  hidden_thread: {
+    key: Hash;
+    value: DBHiddenThread;
+  };
 }
 
 export type ResolvedThread = {
   hash: Hash;
   body: string;
   content: string;
+  timestamp: Date;
   owner: {
     fingerprint: string;
     name: string;
@@ -162,6 +171,29 @@ function extractReplyTarget(body: string): string | undefined {
   return undefined;
 }
 
+async function extractSignatureTimestamp(content: string): Promise<Date | undefined> {
+  const signatureMatch = content.match(
+    /-----BEGIN PGP SIGNATURE-----[\s\S]+?-----END PGP SIGNATURE-----/,
+  );
+  if (!signatureMatch) {
+    return undefined;
+  }
+
+  try {
+    const signature = await openpgp.readSignature({
+      armoredSignature: signatureMatch[0],
+    });
+    const created = signature.packets[0]?.created;
+    if (created instanceof Date) {
+      return created;
+    }
+  } catch {
+    // Keep timestamp optional when signature parsing fails.
+  }
+
+  return undefined;
+}
+
 export class Userless extends UserlessEventEmitter {
   private server: Server;
   private db!: IDBPDatabase<UserlessDB>;
@@ -170,7 +202,7 @@ export class Userless extends UserlessEventEmitter {
   constructor(url: string, options: UserlessOptions = {}) {
     super(options.eventSink);
 
-    this.dbReady = openDB<UserlessDB>("userless", 5, {
+    this.dbReady = openDB<UserlessDB>("userless", 6, {
       upgrade(db, oldVersion) {
         if (oldVersion < 1) {
           if (!db.objectStoreNames.contains("threads")) {
@@ -191,6 +223,11 @@ export class Userless extends UserlessEventEmitter {
         if (oldVersion < 4) {
           if (!db.objectStoreNames.contains("publickey_alias")) {
             db.createObjectStore("publickey_alias");
+          }
+        }
+        if (oldVersion < 6) {
+          if (!db.objectStoreNames.contains("hidden_thread")) {
+            db.createObjectStore("hidden_thread");
           }
         }
       },
@@ -560,6 +597,22 @@ export class Userless extends UserlessEventEmitter {
     return this.getPeersInternal();
   }
 
+  public broadcastEmergency(payload: {
+    thread_hash?: string;
+    file_hash?: string;
+    pk_fingerprint?: string;
+    reason: string;
+    suggested_action: "remove" | "hide";
+  }): void {
+    this.server.broadcastEmergency({
+      thread_hash: payload.thread_hash ?? "",
+      file_hash: payload.file_hash ?? "",
+      pk_fingerprint: payload.pk_fingerprint ?? "",
+      reason: payload.reason,
+      suggested_action: payload.suggested_action,
+    });
+  }
+
   public async scanAllPeers(): Promise<void> {
     await this.ensureDB();
     await Promise.all(
@@ -573,8 +626,19 @@ export class Userless extends UserlessEventEmitter {
   ): Promise<PageResult<Hash>> {
     await this.scanAllPeers();
     const offset = cursor ? Number.parseInt(cursor, 10) || 0 : 0;
-    const hashes = ((await this.db.getAllKeys("threads")) as Hash[]).sort();
+    const hiddenHashes = new Set(
+      (await this.db.getAllKeys("hidden_thread")) as Hash[],
+    );
+    const hashes = ((await this.db.getAllKeys("threads")) as Hash[])
+      .filter((hash) => !hiddenHashes.has(hash))
+      .sort();
     return toPageResult(hashes.slice(offset, offset + limit), offset, limit);
+  }
+
+  public async hideThread(hash: Hash): Promise<void> {
+    await this.ensureDB();
+    await this.db.put("hidden_thread", { hiddenAt: new Date().toISOString() }, hash);
+    this.emit("thread_hidden", { hash });
   }
 
   public async getThread(hash: Hash): Promise<Thread | undefined> {
@@ -599,6 +663,8 @@ export class Userless extends UserlessEventEmitter {
       cleartextMessage: thread.content,
     });
     const body = message.getText();
+    const timestamp =
+      (await extractSignatureTimestamp(thread.content)) ?? new Date(0);
     const fingerprint = message.getSigningKeyIDs()[0]?.toHex() ?? "unknown";
 
     let owner = extractOwner(undefined, fingerprint);
@@ -614,6 +680,7 @@ export class Userless extends UserlessEventEmitter {
       hash,
       body,
       content: thread.content,
+      timestamp,
       owner,
     };
   }
