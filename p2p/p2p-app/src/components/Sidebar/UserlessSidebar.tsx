@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { useUserless } from "../UserlessProvider/UserlessProvider";
 import { Sidebar } from "./Sidebar";
 
-export type UserlessSidebarProps = {};
+export type UserlessSidebarProps = {
+  width?: number;
+};
 
 const PAGE_SIZE = 100;
 
@@ -47,15 +49,20 @@ export function UserlessSidebar(props: UserlessSidebarProps) {
       loadMore();
     };
 
-    const off = userless.on("thread_created", ({ hash }) => {
-      reset()
+    const offCreated = userless.on("thread_created", () => {
+      reset();
     });
 
-    reset()
+    const offHidden = userless.on("thread_hidden", () => {
+      reset();
+    });
+
+    reset();
 
     return () => {
-      off();
-    }
+      offCreated();
+      offHidden();
+    };
   }, [loadMore, userless]);
 
   const handleRescanAllPeers = useCallback(async () => {
@@ -74,6 +81,7 @@ export function UserlessSidebar(props: UserlessSidebarProps) {
 
   return (
     <Sidebar
+      width={props.width}
       items={visibleState.threadHashes.map((threadHash) => ({ threadHash }))}
       onNext={loadMore}
       hasMore={!!visibleState.cursor}

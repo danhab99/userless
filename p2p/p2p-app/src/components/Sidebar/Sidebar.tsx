@@ -8,6 +8,7 @@ import {
 } from "../SidebarItem/UserlessSidebarItem";
 
 export type SidebarProps = {
+  width?: number;
   items: UserlessSidebarItemProps[];
   onNext: () => void;
   hasMore: boolean;
@@ -19,7 +20,10 @@ export function Sidebar(props: SidebarProps) {
   const canRescan = !!props.onRescanAllPeers && !props.isRescanning;
 
   return (
-    <div className={clsx("bg-700 text-200 w-1/3 h-full", style.SidebarShell)}>
+    <div
+      className={clsx("bg-700 text-200 h-full shrink-0", style.SidebarShell)}
+      style={{ width: props.width ?? "33.3333%" }}
+    >
       <div id="sidebar-scroll-region" className={style.ScrollRegion}>
         <InfiniteScroll
           dataLength={props.items.length} //This is important field to render the next data

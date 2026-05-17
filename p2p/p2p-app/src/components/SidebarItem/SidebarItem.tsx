@@ -12,6 +12,8 @@ export type SidebarItemProps = {
   body: string;
   selected?: boolean;
   onClick?: () => void;
+  onEmergency?: () => void;
+  onHide?: () => void;
 };
 
 const PREVIEW_LINE_LENGTH = 25;
@@ -54,8 +56,8 @@ export function SidebarItem(props: SidebarItemProps) {
       <Markdown>{preview}</Markdown>
 
       <div className="text-xs">
-        <ActionButton label="Emergency" />
-        <ActionButton label="Delete" />
+        <ActionButton label="Emergency" color="text-red" onClick={props.onEmergency} />
+        <ActionButton label="Hide" color="text-400" onClick={props.onHide} />
       </div>
     </div>
   );
