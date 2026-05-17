@@ -159,7 +159,10 @@ function toPageResult<T>(
 }
 
 function extractReplyTarget(body: string): string | undefined {
-  const patterns = [/in-reply-to\s*:\s*([a-f0-9]{8,64})/i];
+  const patterns = [
+    /in-reply-to\s*:\s*([a-f0-9]{8,64})/i,
+    /replyto\s*=\s*"?([a-f0-9]{8,64})"?/i,
+  ];
 
   for (const pattern of patterns) {
     const match = body.match(pattern);
@@ -244,13 +247,11 @@ export class Userless extends UserlessEventEmitter {
       },
       getAllThreads: async (params) => {
         await this.ensureDB();
-        const { offset, limit } = getPageWindow(params);
-        const hashes = (await this.db.getAllKeys("threads")) as Hash[];
-        return toPageResult(
-          hashes.slice(offset, offset + limit),
-          offset,
-          limit,
-        );
+        return this.getTopLevelThreadHashesPage(params.cursor, params.limit);
+      },
+      getReplyThreads: async ({ parentHash, cursor, limit }) => {
+        await this.ensureDB();
+        return this.getReplyThreadHashesPage(parentHash, cursor, limit);
       },
       getThread: async ({ hash }) => {
         await this.ensureDB();
@@ -396,9 +397,134 @@ export class Userless extends UserlessEventEmitter {
     return this.server.getPeers();
   }
 
+  private async getTopLevelThreadHashesPage(
+    cursor?: string,
+    limit = DEFAULT_PAGE_SIZE,
+  ): Promise<PageResult<Hash>> {
+    const { offset, limit: pageLimit } = getPageWindow({ cursor, limit });
+    const roots = await this.getTopLevelThreadHashesAll();
+
+    return toPageResult(roots.slice(offset, offset + pageLimit), offset, pageLimit);
+  }
+
+  private async getTopLevelThreadHashesAll(): Promise<Hash[]> {
+    const hashes = ((await this.db.getAllKeys("threads")) as Hash[]).sort();
+    const roots: Hash[] = [];
+
+    for (const hash of hashes) {
+      const thread = await this.db.get("threads", hash);
+      if (!thread) {
+        continue;
+      }
+
+      try {
+        const message = await openpgp.readCleartextMessage({
+          cleartextMessage: thread.content,
+        });
+        const parent = extractReplyTarget(message.getText());
+        if (!parent) {
+          roots.push(hash);
+        }
+      } catch {
+        // If parsing fails, keep the thread visible as a root.
+        roots.push(hash);
+      }
+    }
+
+    return roots;
+  }
+
+  private async getReplyThreadHashesPage(
+    parentHash: Hash,
+    cursor?: string,
+    limit = DEFAULT_PAGE_SIZE,
+  ): Promise<PageResult<Hash>> {
+    const { offset, limit: pageLimit } = getPageWindow({ cursor, limit });
+    const target = parentHash.toLowerCase();
+    const hashes = ((await this.db.getAllKeys("threads")) as Hash[]).sort();
+    const replies: Hash[] = [];
+
+    for (const hash of hashes) {
+      const thread = await this.db.get("threads", hash);
+      if (!thread) {
+        continue;
+      }
+
+      try {
+        const message = await openpgp.readCleartextMessage({
+          cleartextMessage: thread.content,
+        });
+        const parent = extractReplyTarget(message.getText());
+        if (parent === target) {
+          replies.push(hash);
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return toPageResult(
+      replies.slice(offset, offset + pageLimit),
+      offset,
+      pageLimit,
+    );
+  }
+
+  private async cacheThreadFromPeer(peer: Peer, hash: Hash): Promise<boolean> {
+    const existing = await this.db.getKey("threads", hash);
+    if (existing) {
+      return false;
+    }
+
+    const thread = await peer.getThread({ hash });
+    await this.db.put("threads", thread, hash);
+    console.log(`[userless] thread cached from peer (hash=${hash}, peer=${peer.id})`);
+    this.emit("thread_cached", { hash });
+    return true;
+  }
+
+  private async scanPeerReplies(
+    peer: Peer,
+    parentHash: Hash,
+    visited: Set<string>,
+  ): Promise<number> {
+    const normalizedParent = parentHash.toLowerCase();
+    if (visited.has(normalizedParent)) {
+      return 0;
+    }
+    visited.add(normalizedParent);
+
+    let cursor: string | undefined;
+    let totalScanned = 0;
+
+    while (true) {
+      const page = await peer.getReplyThreads({
+        parentHash,
+        cursor,
+        limit: DEFAULT_PAGE_SIZE,
+      });
+
+      for (const replyHash of page.items) {
+        if (await this.cacheThreadFromPeer(peer, replyHash)) {
+          totalScanned += 1;
+        }
+
+        totalScanned += await this.scanPeerReplies(peer, replyHash, visited);
+      }
+
+      if (!page.next_cursor) {
+        break;
+      }
+      cursor = page.next_cursor;
+    }
+
+    return totalScanned;
+  }
+
   private async scanPeerForThreads(peer: Peer) {
     let cursor: string | undefined;
     let totalScanned = 0;
+    const visitedReplyParents = new Set<string>();
 
     console.log(`[userless] scanning peer for threads (peer=${peer.id})`);
     while (true) {
@@ -411,16 +537,15 @@ export class Userless extends UserlessEventEmitter {
       }
 
       for (const hash of page.items) {
-        const existing = await this.db.getKey("threads", hash);
-        if (existing) {
-          continue;
+        if (await this.cacheThreadFromPeer(peer, hash)) {
+          totalScanned += 1;
         }
 
-        const thread = await peer.getThread({ hash });
-        await this.db.put("threads", thread, hash);
-        console.log(`[userless] thread cached from peer (hash=${hash}, peer=${peer.id})`);
-        this.emit("thread_cached", { hash });
-        totalScanned++;
+        totalScanned += await this.scanPeerReplies(
+          peer,
+          hash,
+          visitedReplyParents,
+        );
       }
 
       if (!page.next_cursor) {
@@ -625,14 +750,19 @@ export class Userless extends UserlessEventEmitter {
     limit = DEFAULT_PAGE_SIZE,
   ): Promise<PageResult<Hash>> {
     await this.scanAllPeers();
-    const offset = cursor ? Number.parseInt(cursor, 10) || 0 : 0;
+    const { offset, limit: pageLimit } = getPageWindow({ cursor, limit });
     const hiddenHashes = new Set(
       (await this.db.getAllKeys("hidden_thread")) as Hash[],
     );
-    const hashes = ((await this.db.getAllKeys("threads")) as Hash[])
+    const allTopLevel = await this.getTopLevelThreadHashesAll();
+    const hashes = allTopLevel
       .filter((hash) => !hiddenHashes.has(hash))
       .sort();
-    return toPageResult(hashes.slice(offset, offset + limit), offset, limit);
+    return toPageResult(
+      hashes.slice(offset, offset + pageLimit),
+      offset,
+      pageLimit,
+    );
   }
 
   public async hideThread(hash: Hash): Promise<void> {
