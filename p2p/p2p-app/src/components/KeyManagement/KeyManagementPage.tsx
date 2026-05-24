@@ -16,7 +16,7 @@ export type KeyInfo = {
 };
 
 export function KeyManagementPage() {
-  const { userless } = useUserless();
+  const { appService, userless } = useUserless();
   const generateFormRef = useRef<HTMLFormElement | null>(null);
   const [keys, setKeys] = useState<KeyInfo[]>([]);
   const [selectedFingerprint, setSelectedFingerprint] = useState<string | null>(
@@ -40,7 +40,7 @@ export function KeyManagementPage() {
       let privateFingerprint: string | undefined;
 
       // Get private key
-      const signingKey = await userless.getSigningKey();
+      const signingKey = await appService.getSigningKey();
       if (signingKey) {
         privateFingerprint = signingKey.getFingerprint().toUpperCase();
         const privateUserId = signingKey.getUserIDs()[0] || "Unknown";
@@ -84,14 +84,14 @@ export function KeyManagementPage() {
   const handleDeleteKey = useCallback(
     async (keyInfo: KeyInfo) => {
       if (keyInfo.type === "private") {
-        await userless.deleteSigningKey();
+        await appService.deleteSigningKey();
       } else {
-        await userless.deletePublicKey(keyInfo.fingerprint);
+        await appService.deletePublicKey(keyInfo.fingerprint);
       }
 
       await loadKeys();
     },
-    [loadKeys, userless],
+    [appService, loadKeys],
   );
 
   const handleGeneratePrivateKey = useCallback(
@@ -115,7 +115,7 @@ export function KeyManagementPage() {
           format: "armored",
         });
 
-        await userless.saveSigningKey(
+        await appService.saveSigningKey(
           generated.privateKey as string,
         );
         await loadKeys();
@@ -129,7 +129,7 @@ export function KeyManagementPage() {
         setIsGenerating(false);
       }
     },
-    [form.comment, form.email, form.name, form.password, loadKeys, userless],
+    [appService, form.comment, form.email, form.name, form.password, loadKeys],
   );
 
   return (
@@ -149,6 +149,7 @@ export function KeyManagementPage() {
         {selectedFingerprint ? (
           <KeyDetail
             keyInfo={keys.find((k) => k.fingerprint === selectedFingerprint)}
+            appService={appService}
             userless={userless}
             onDeleteKey={handleDeleteKey}
           />

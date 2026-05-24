@@ -1,17 +1,15 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import { getUserless, type UserlessSnapshot } from "../../lib/userless";
-import type { Userless } from "../../lib/userless";
-import { usePrevious } from "react-use";
+import React, { createContext, useContext, useMemo } from "react";
+import {
+  getAppService,
+  getUserless,
+  type UserlessSnapshot,
+} from "../../lib/userless";
+import type { AppService, Userless } from "../../lib/userless";
 
 export type UserlessProviderProps = {};
 
 type UserlessContextValue = {
+  appService: AppService;
   userless: Userless;
   snapshot: {
     connectionCount: number;
@@ -33,6 +31,7 @@ export const EMPTY_SNAPSHOT: UserlessSnapshot = {
 };
 
 const UserlessContext = createContext<UserlessContextValue>({
+  appService: {} as AppService,
   snapshot: EMPTY_SNAPSHOT,
   userless: {} as any,
 });
@@ -41,9 +40,12 @@ export function UserlessProvider(
   props: React.PropsWithChildren<UserlessProviderProps>,
 ) {
   const userless = useMemo(() => getUserless(), []);
+  const appService = useMemo(() => getAppService(), []);
 
   return (
-    <UserlessContext.Provider value={{ userless, snapshot: EMPTY_SNAPSHOT }}>
+    <UserlessContext.Provider
+      value={{ appService, userless, snapshot: EMPTY_SNAPSHOT }}
+    >
       {props.children}
     </UserlessContext.Provider>
   );

@@ -1,144 +1,45 @@
-import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import * as openpgp from "openpgp";
 import {
-  FILE_CHUNK_SIZE,
   DEFAULT_PAGE_SIZE,
-  Peer,
-  Server,
-  normalizeLobbyUrl,
   type FileChunk,
   type Hash,
+  normalizeLobbyUrl,
   type PageParams,
   type PageResult,
+  type Peer,
   type PublicKey,
+  Server,
   type Thread,
-  type TransferStats,
 } from "./p2p";
-import {
-  UserlessEventEmitter,
-  type UserlessEventSink,
-} from "./userless-events";
+import { AppService, type ReplyDraftRecord } from "./app-service";
+import { UserlessDatabase } from "./database";
+import { UserlessEventEmitter, type UserlessEventSink } from "./events";
+import type { FileDetail } from "./file-manager";
+import { FileManager } from "./file-manager";
+import type { PublicKeyDetail, UserlessSnapshot } from "./inspector";
+import { UserlessInspector } from "./inspector";
+import type { PrivateKeyDetail } from "./key-manager";
+import { KeyManager } from "./key-manager";
+import { UserlessPublicKey, UserlessThread } from "./model";
+import { PeerGateway, type EmergencyPayload } from "./peer-gateway";
+import { PeerScanner } from "./peer-scanner";
+import { createUserlessRuntime } from "./runtime";
+import { ThreadResolver, type ResolvedThread } from "./thread-resolver";
 
-type DBFile = {
-  content: ArrayBuffer;
-  signature: ArrayBuffer;
-  sourceThreadHash?: Hash;
+export type {
+  FileDetail,
+  PrivateKeyDetail,
+  PublicKeyDetail,
+  ReplyDraftRecord,
+  ResolvedThread,
+  UserlessSnapshot,
 };
 
-type DBPrivateKey = {
-  armored: string;
-};
-
-type DBPublicKeyAlias = {
-  fingerprint: string;
-};
-
-type DBHiddenThread = {
-  hiddenAt: string;
-};
-
-export type PrivateKeyDetail = {
-  fingerprint: string;
-  armor: string;
-  userId: string;
-};
-
-interface UserlessDB extends DBSchema {
-  threads: {
-    key: Hash;
-    value: Thread;
-  };
-  publickey: {
-    key: Hash;
-    value: PublicKey;
-  };
-  publickey_alias: {
-    key: string;
-    value: DBPublicKeyAlias;
-  };
-  privatekey: {
-    key: Hash;
-    value: DBPrivateKey;
-  };
-  file: {
-    key: Hash;
-    value: DBFile;
-  };
-  hidden_thread: {
-    key: Hash;
-    value: DBHiddenThread;
-  };
-}
-
-export type ResolvedThread = {
-  hash: Hash;
-  body: string;
-  content: string;
-  timestamp: Date;
-  owner: {
-    fingerprint: string;
-    name: string;
-    email: string;
-  };
-};
-
-export type UserlessSnapshot = TransferStats & {
-  connectionCount: number;
-  threadCount: number;
-  fileCount: number;
-  keyCount: number;
-};
-
-export type ReplyDraftRecord = {
-  parentHash: Hash;
-  body: string;
-  createdAt: string;
-};
-
-export type PublicKeyDetail = {
-  fingerprint: string;
-  armor: string;
-  userId: string;
-  threadCount: number;
-};
-
-export type FileDetail = {
-  hash: Hash;
-  size: number;
-  sourceThreadHash?: Hash;
-};
+export { AppService, UserlessPublicKey, UserlessThread };
 
 export type UserlessOptions = {
   eventSink?: UserlessEventSink;
 };
-
-const FILE_REGEX = /!\[[^\]]*\]\(userless:\/\/.*\/files\/[^\)]+\)/g;
-const CHUNK_SIZE = FILE_CHUNK_SIZE;
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  for (const value of bytes) {
-    binary += String.fromCharCode(value);
-  }
-  return btoa(binary);
-}
-
-function extractOwner(userId: string | undefined, fallbackFingerprint: string) {
-  if (!userId) {
-    return {
-      fingerprint: fallbackFingerprint,
-      name: fallbackFingerprint.slice(0, 16),
-      email: "",
-    };
-  }
-
-  const match = userId.match(/^(.*?)(?:\s*<([^>]+)>)?$/);
-  return {
-    fingerprint: fallbackFingerprint,
-    name: match?.[1]?.trim() || fallbackFingerprint.slice(0, 16),
-    email: match?.[2]?.trim() || "",
-  };
-}
 
 function getPageWindow(params: PageParams) {
   const offset = params.cursor ? Number.parseInt(params.cursor, 10) || 0 : 0;
@@ -146,11 +47,7 @@ function getPageWindow(params: PageParams) {
   return { offset, limit };
 }
 
-function toPageResult<T>(
-  items: T[],
-  offset: number,
-  limit: number,
-): PageResult<T> {
+function toPageResult<T>(items: T[], offset: number, limit: number): PageResult<T> {
   return {
     items,
     next_cursor:
@@ -158,96 +55,67 @@ function toPageResult<T>(
   };
 }
 
-function extractReplyTarget(body: string): string | undefined {
-  const patterns = [
-    /in-reply-to\s*:\s*([a-f0-9]{8,64})/i,
-    /replyto\s*=\s*"?([a-f0-9]{8,64})"?/i,
-  ];
+async function hashSignedThreadContent(signedMessage: string): Promise<Hash> {
+  const buffer = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(signedMessage),
+  );
 
-  for (const pattern of patterns) {
-    const match = body.match(pattern);
-    if (match?.[1]) {
-      return match[1].toLowerCase();
-    }
-  }
-
-  return undefined;
+  return Array.from(new Uint8Array(buffer))
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
 }
 
-async function extractSignatureTimestamp(content: string): Promise<Date | undefined> {
-  const signatureMatch = content.match(
-    /-----BEGIN PGP SIGNATURE-----[\s\S]+?-----END PGP SIGNATURE-----/,
-  );
-  if (!signatureMatch) {
-    return undefined;
-  }
-
-  try {
-    const signature = await openpgp.readSignature({
-      armoredSignature: signatureMatch[0],
-    });
-    const created = signature.packets[0]?.created;
-    if (created instanceof Date) {
-      return created;
-    }
-  } catch {
-    // Keep timestamp optional when signature parsing fails.
-  }
-
-  return undefined;
+function toServerEmergencyPayload(payload: EmergencyPayload) {
+  return {
+    thread_hash: payload.thread_hash ?? "",
+    file_hash: payload.file_hash ?? "",
+    pk_fingerprint: payload.pk_fingerprint ?? "",
+    reason: payload.reason,
+    suggested_action: payload.suggested_action,
+  };
 }
 
 export class Userless extends UserlessEventEmitter {
   private server: Server;
-  private db!: IDBPDatabase<UserlessDB>;
+  private db!: UserlessDatabase;
   private dbReady: Promise<void>;
+  private peerScanner!: PeerScanner;
+  private threadResolver!: ThreadResolver;
+  private keyManager!: KeyManager;
+  private fileManager!: FileManager;
+  private peerGateway!: PeerGateway;
+  private inspector!: UserlessInspector;
+  private appSingleton: AppService;
 
   constructor(url: string, options: UserlessOptions = {}) {
     super(options.eventSink);
 
-    this.dbReady = openDB<UserlessDB>("userless", 6, {
-      upgrade(db, oldVersion) {
-        if (oldVersion < 1) {
-          if (!db.objectStoreNames.contains("threads")) {
-            db.createObjectStore("threads");
-          }
-          if (!db.objectStoreNames.contains("publickey")) {
-            db.createObjectStore("publickey");
-          }
-          if (!db.objectStoreNames.contains("file")) {
-            db.createObjectStore("file");
-          }
-        }
-        if (oldVersion < 3) {
-          if (!db.objectStoreNames.contains("privatekey")) {
-            db.createObjectStore("privatekey");
-          }
-        }
-        if (oldVersion < 4) {
-          if (!db.objectStoreNames.contains("publickey_alias")) {
-            db.createObjectStore("publickey_alias");
-          }
-        }
-        if (oldVersion < 6) {
-          if (!db.objectStoreNames.contains("hidden_thread")) {
-            db.createObjectStore("hidden_thread");
-          }
-        }
-      },
-    }).then((database) => {
-      this.db = database;
+    this.appSingleton = new AppService({
+      getAllFilesDetailed: () => this.getAllFilesDetailedInternal(),
+      getSnapshot: () => this.getSnapshotInternal(),
+      getSigningKey: () => this.getSigningKeyInternal(),
+      addPrivateKey: (armoredKey) => this.addPrivateKeyInternal(armoredKey),
+      getPrivateKeys: () => this.getPrivateKeysInternal(),
+      deletePrivateKey: (fingerprint) => this.deletePrivateKeyInternal(fingerprint),
+      saveSigningKey: (armoredKey) => this.saveSigningKeyInternal(armoredKey),
+      deleteSigningKey: () => this.deleteSigningKeyInternal(),
+      deletePublicKey: (fingerprint) => this.deletePublicKeyInternal(fingerprint),
+      saveReplyDraft: (parentHash, body) =>
+        this.saveReplyDraftInternal(parentHash, body),
+      broadcastEmergency: (payload) => this.broadcastEmergencyInternal(payload),
+      scanAllPeers: () => this.scanAllPeersInternal(),
+      hideThread: (hash) => this.hideThreadInternal(hash),
+      createThread: (body) => this.createThreadInternal(body),
+      storeSignedThread: (signedMessage) =>
+        this.storeSignedThreadInternal(signedMessage),
+      addFile: (name, data) => this.addFileInternal(name, data),
     });
 
     this.server = new Server(url, ["threads", "files", "pks"], {
-      getAllPublicKeys: async (params) => {
-        await this.ensureDB();
-        const { offset, limit } = getPageWindow(params);
-        const keys = await this.db.getAll("publickey");
-        return toPageResult(keys.slice(offset, offset + limit), offset, limit);
-      },
       getAllThreads: async (params) => {
         await this.ensureDB();
-        return this.getTopLevelThreadHashesPage(params.cursor, params.limit);
+        return this.getAllThreads(params.cursor, params.limit);
       },
       getReplyThreads: async ({ parentHash, cursor, limit }) => {
         await this.ensureDB();
@@ -255,7 +123,7 @@ export class Userless extends UserlessEventEmitter {
       },
       getThread: async ({ hash }) => {
         await this.ensureDB();
-        const thread = await this.db.get("threads", hash);
+        const thread = await this.db.getThread(hash);
         if (!thread) {
           throw new Error(`Thread not found: ${hash}`);
         }
@@ -263,22 +131,17 @@ export class Userless extends UserlessEventEmitter {
       },
       getFile: async ({ hash, offset, length }) => {
         await this.ensureDB();
-        const file = await this.db.get("file", hash);
-        if (!file) {
-          throw new Error(`File not found: ${hash}`);
-        }
-
-        const content = new Uint8Array(file.content);
-        const chunk = content.slice(offset, offset + length);
-
-        return {
-          data: bytesToBase64(chunk),
-          total: content.byteLength,
-        } satisfies FileChunk;
+        return this.fileManager.getFileChunk(hash, offset, length);
+      },
+      getAllPublicKeys: async (params) => {
+        await this.ensureDB();
+        return this.getAllPublicKeysPage(params);
       },
       getPublicKeys: async ({ fingerprint }) => {
         await this.ensureDB();
-        const key = await this.getPublicKeyByFingerprintOrId(fingerprint);
+        const key = await this.keyManager.getPublicKeyByFingerprintOrId(
+          fingerprint,
+        );
         if (!key) {
           throw new Error(`Public key not found: ${fingerprint}`);
         }
@@ -287,151 +150,89 @@ export class Userless extends UserlessEventEmitter {
     });
 
     this.server.onPeerConnected = (peer) => {
-      console.log(`[userless] peer connected (id=${peer.id})`);
       this.emit("peer_connected", { peerId: peer.id });
-      void this.scanPeerForThreads(peer);
+      void this.handlePeerConnected(peer);
     };
-
-    this.server.onPeerDisconnected = (fingerprint) => {
-      console.log(`[userless] peer disconnected (id=${fingerprint})`);
-      this.emit("peer_disconnected", { fingerprint });
+    this.server.onPeerDisconnected = (id) => {
+      this.emit("peer_disconnected", { fingerprint: id });
     };
-
     this.server.onEmergency = (payload) => {
       this.emit("emergency", { payload });
     };
+
+    this.dbReady = this.initializeRuntime();
   }
 
-  private async ensureDB() {
+  private async initializeRuntime(): Promise<void> {
+    const runtime = await createUserlessRuntime({
+      broadcastEmergency: (payload) =>
+        this.server.broadcastEmergency(toServerEmergencyPayload(payload)),
+      createThread: (body) => this.createThreadInternal(body),
+      emitEvent: this.emit.bind(this),
+      getConnectionCount: () => this.server.getPeers().length,
+      getPeers: () => this.server.getPeers(),
+      getTransferStats: () => this.server.getTransferStats(),
+      hideThread: (hash) => this.hideThreadInternal(hash),
+      listResolvedThreads: (cursor, limit) =>
+        this.listResolvedThreads(cursor, limit),
+      saveReplyDraft: (parentHash, body) =>
+        this.saveReplyDraftInternal(parentHash, body),
+      scanAllPeers: () => this.scanAllPeersInternal(),
+      storeSignedThread: (signedMessage) =>
+        this.storeSignedThreadInternal(signedMessage),
+    });
+
+    this.db = runtime.db;
+    this.fileManager = runtime.fileManager;
+    this.inspector = runtime.inspector;
+    this.keyManager = runtime.keyManager;
+    this.peerGateway = runtime.peerGateway;
+    this.peerScanner = runtime.peerScanner;
+    this.threadResolver = runtime.threadResolver;
+  }
+
+  private async ensureDB(): Promise<void> {
     await this.dbReady;
   }
 
-  private async upsertPublicKeyWithAliases(publicKey: PublicKey): Promise<void> {
-    await this.db.put("publickey", publicKey, publicKey.fingerprint);
-
-    const parsed = await openpgp.readKey({ armoredKey: publicKey.armored });
-    const anyParsed = parsed as any;
-    const aliasValues = new Set<string>();
-
-    const normalizedPrimaryFingerprint = parsed.getFingerprint().toLowerCase();
-    aliasValues.add(normalizedPrimaryFingerprint);
-
-    const primaryKeyId = parsed.getKeyID().toHex().toLowerCase();
-    aliasValues.add(primaryKeyId);
-
-    for (const keyId of parsed.getKeyIDs()) {
-      aliasValues.add(keyId.toHex().toLowerCase());
-    }
-
-    for (const subkey of anyParsed.getSubkeys?.() ?? []) {
-      const subFp = subkey.getFingerprint?.()?.toLowerCase?.();
-      if (subFp) {
-        aliasValues.add(subFp);
-      }
-
-      const subId = subkey.getKeyID?.()?.toHex?.()?.toLowerCase?.();
-      if (subId) {
-        aliasValues.add(subId);
-      }
-    }
-
-    const canonicalFingerprint = publicKey.fingerprint.toLowerCase();
-    for (const alias of aliasValues) {
-      await this.db.put("publickey_alias", { fingerprint: canonicalFingerprint }, alias);
-    }
+  private async handlePeerConnected(peer: Peer): Promise<void> {
+    await this.ensureDB();
+    await this.peerScanner.scanPeerForThreads(peer, DEFAULT_PAGE_SIZE);
   }
 
-  private async removePublicKeyAliasesForFingerprint(fingerprint: string): Promise<void> {
-    const canonical = fingerprint.toLowerCase();
-    const aliases = (await this.db.getAllKeys("publickey_alias")) as string[];
-    for (const alias of aliases) {
-      const value = await this.db.get("publickey_alias", alias);
-      if (value?.fingerprint === canonical) {
-        await this.db.delete("publickey_alias", alias);
-      }
-    }
+  private async getVisibleHiddenSet(): Promise<Set<Hash>> {
+    await this.ensureDB();
+    return this.db.getHiddenThreads();
   }
 
-  private async getPublicKeyByFingerprintOrId(
-    fingerprintOrId: string,
-  ): Promise<PublicKey | undefined> {
-    const normalized = fingerprintOrId.toLowerCase();
+  private async getVisibleTopLevelThreadHashes(): Promise<Hash[]> {
+    const [hidden, hashes] = await Promise.all([
+      this.getVisibleHiddenSet(),
+      this.threadResolver.getTopLevelThreadHashesAll(),
+    ]);
 
-    const exact = await this.db.get("publickey", normalized);
-    if (exact) return exact;
-
-    const mapped = await this.db.get("publickey_alias", normalized);
-    if (mapped?.fingerprint) {
-      const byAlias = await this.db.get("publickey", mapped.fingerprint);
-      if (byAlias) {
-        return byAlias;
-      }
-    }
-
-    // Migration fallback: parse existing keys, backfill aliases, and retry.
-    const allFingerprints = (await this.db.getAllKeys("publickey")) as string[];
-    for (const fingerprint of allFingerprints) {
-      const record = await this.db.get("publickey", fingerprint);
-      if (!record) {
-        continue;
-      }
-
-      try {
-        await this.upsertPublicKeyWithAliases(record);
-        const match = await this.db.get("publickey_alias", normalized);
-        if (match?.fingerprint) {
-          const byAlias = await this.db.get("publickey", match.fingerprint);
-          if (byAlias) {
-            return byAlias;
-          }
-        }
-      } catch {
-        continue;
-      }
-    }
-
-    return undefined;
+    return hashes.filter((hash) => !hidden.has(hash));
   }
 
-  private getPeersInternal(): Peer[] {
-    return this.server.getPeers();
-  }
+  private async getAllReplyThreadHashes(parentHash: Hash): Promise<Hash[]> {
+    const hidden = await this.getVisibleHiddenSet();
+    const hashes: Hash[] = [];
+    let cursor: string | undefined;
 
-  private async getTopLevelThreadHashesPage(
-    cursor?: string,
-    limit = DEFAULT_PAGE_SIZE,
-  ): Promise<PageResult<Hash>> {
-    const { offset, limit: pageLimit } = getPageWindow({ cursor, limit });
-    const roots = await this.getTopLevelThreadHashesAll();
+    while (true) {
+      const page = await this.threadResolver.getReplyThreadHashesPage(
+        parentHash,
+        cursor,
+        DEFAULT_PAGE_SIZE,
+      );
+      hashes.push(...page.items.filter((hash) => !hidden.has(hash)));
 
-    return toPageResult(roots.slice(offset, offset + pageLimit), offset, pageLimit);
-  }
-
-  private async getTopLevelThreadHashesAll(): Promise<Hash[]> {
-    const hashes = ((await this.db.getAllKeys("threads")) as Hash[]).sort();
-    const roots: Hash[] = [];
-
-    for (const hash of hashes) {
-      const thread = await this.db.get("threads", hash);
-      if (!thread) {
-        continue;
+      if (!page.next_cursor) {
+        return hashes;
       }
 
-      try {
-        const message = await openpgp.readCleartextMessage({
-          cleartextMessage: thread.content,
-        });
-        const parent = extractReplyTarget(message.getText());
-        if (!parent) {
-          roots.push(hash);
-        }
-      } catch {
-        // If parsing fails, keep the thread visible as a root.
-        roots.push(hash);
-      }
+      cursor = page.next_cursor;
     }
-
-    return roots;
   }
 
   private async getReplyThreadHashesPage(
@@ -439,271 +240,130 @@ export class Userless extends UserlessEventEmitter {
     cursor?: string,
     limit = DEFAULT_PAGE_SIZE,
   ): Promise<PageResult<Hash>> {
+    const hashes = await this.getAllReplyThreadHashes(parentHash);
     const { offset, limit: pageLimit } = getPageWindow({ cursor, limit });
-    const target = parentHash.toLowerCase();
-    const hashes = ((await this.db.getAllKeys("threads")) as Hash[]).sort();
-    const replies: Hash[] = [];
-
-    for (const hash of hashes) {
-      const thread = await this.db.get("threads", hash);
-      if (!thread) {
-        continue;
-      }
-
-      try {
-        const message = await openpgp.readCleartextMessage({
-          cleartextMessage: thread.content,
-        });
-        const parent = extractReplyTarget(message.getText());
-        if (parent === target) {
-          replies.push(hash);
-        }
-      } catch {
-        continue;
-      }
-    }
 
     return toPageResult(
-      replies.slice(offset, offset + pageLimit),
+      hashes.slice(offset, offset + pageLimit),
       offset,
       pageLimit,
     );
   }
 
-  private async cacheThreadFromPeer(peer: Peer, hash: Hash): Promise<boolean> {
-    const existing = await this.db.getKey("threads", hash);
-    if (existing) {
-      return false;
-    }
+  private async getAllPublicKeysPage(
+    params: PageParams,
+  ): Promise<PageResult<PublicKey>> {
+    const keys = (await this.db.getAllPublicKeys()).sort((left, right) =>
+      left.fingerprint.localeCompare(right.fingerprint),
+    );
+    const { offset, limit } = getPageWindow(params);
 
-    const thread = await peer.getThread({ hash });
-    await this.db.put("threads", thread, hash);
-    console.log(`[userless] thread cached from peer (hash=${hash}, peer=${peer.id})`);
-    this.emit("thread_cached", { hash });
-    return true;
+    return toPageResult(keys.slice(offset, offset + limit), offset, limit);
   }
 
-  private async scanPeerReplies(
-    peer: Peer,
-    parentHash: Hash,
-    visited: Set<string>,
-  ): Promise<number> {
-    const normalizedParent = parentHash.toLowerCase();
-    if (visited.has(normalizedParent)) {
-      return 0;
-    }
-    visited.add(normalizedParent);
-
-    let cursor: string | undefined;
-    let totalScanned = 0;
-
-    while (true) {
-      const page = await peer.getReplyThreads({
-        parentHash,
-        cursor,
-        limit: DEFAULT_PAGE_SIZE,
-      });
-
-      for (const replyHash of page.items) {
-        if (await this.cacheThreadFromPeer(peer, replyHash)) {
-          totalScanned += 1;
-        }
-
-        totalScanned += await this.scanPeerReplies(peer, replyHash, visited);
-      }
-
-      if (!page.next_cursor) {
-        break;
-      }
-      cursor = page.next_cursor;
-    }
-
-    return totalScanned;
+  private async getAllFilesDetailedInternal(): Promise<FileDetail[]> {
+    await this.ensureDB();
+    return this.fileManager.getAllFilesDetailed();
   }
 
-  private async scanPeerForThreads(peer: Peer) {
-    let cursor: string | undefined;
-    let totalScanned = 0;
-    const visitedReplyParents = new Set<string>();
-
-    console.log(`[userless] scanning peer for threads (peer=${peer.id})`);
-    while (true) {
-      const page = await peer.getAllThreads({
-        cursor,
-        limit: DEFAULT_PAGE_SIZE,
-      });
-      if (page.items.length === 0) {
-        break;
-      }
-
-      for (const hash of page.items) {
-        if (await this.cacheThreadFromPeer(peer, hash)) {
-          totalScanned += 1;
-        }
-
-        totalScanned += await this.scanPeerReplies(
-          peer,
-          hash,
-          visitedReplyParents,
-        );
-      }
-
-      if (!page.next_cursor) {
-        break;
-      }
-      cursor = page.next_cursor;
-    }
-    console.log(`[userless] scan complete (peer=${peer.id}, new=${totalScanned})`);
+  private async getSnapshotInternal(): Promise<UserlessSnapshot> {
+    await this.ensureDB();
+    return this.inspector.getSnapshot();
   }
 
-  private async scanThreadForFilesAndKeys(thread: Thread, threadHash: Hash) {
-    const msg = await openpgp.readCleartextMessage({
-      cleartextMessage: thread.content,
+  private async getSigningKeyInternal(): Promise<openpgp.PrivateKey | undefined> {
+    await this.ensureDB();
+    return this.keyManager.getSigningKey();
+  }
+
+  private async addPrivateKeyInternal(
+    armoredKey: string,
+  ): Promise<openpgp.PrivateKey> {
+    await this.ensureDB();
+    return this.keyManager.addPrivateKey(armoredKey);
+  }
+
+  private async getPrivateKeysInternal(): Promise<PrivateKeyDetail[]> {
+    await this.ensureDB();
+    return this.keyManager.getPrivateKeys();
+  }
+
+  private async deletePrivateKeyInternal(fingerprint: string): Promise<void> {
+    await this.ensureDB();
+    await this.keyManager.deletePrivateKey(fingerprint);
+  }
+
+  private async saveSigningKeyInternal(
+    armoredKey: string,
+  ): Promise<openpgp.PrivateKey> {
+    await this.ensureDB();
+    return this.keyManager.saveSigningKey(armoredKey);
+  }
+
+  private async deleteSigningKeyInternal(): Promise<void> {
+    await this.ensureDB();
+    await this.keyManager.deleteSigningKey();
+  }
+
+  private async deletePublicKeyInternal(fingerprint: string): Promise<void> {
+    await this.ensureDB();
+    await this.keyManager.deletePublicKey(fingerprint);
+  }
+
+  private broadcastEmergencyInternal(payload: EmergencyPayload): void {
+    this.server.broadcastEmergency(toServerEmergencyPayload(payload));
+  }
+
+  private async scanAllPeersInternal(): Promise<void> {
+    await this.ensureDB();
+    await this.peerScanner.scanAllPeers(DEFAULT_PAGE_SIZE);
+  }
+
+  private async hideThreadInternal(hash: Hash): Promise<void> {
+    await this.ensureDB();
+    await this.db.hideThread(hash);
+    this.emit("thread_hidden", { hash });
+  }
+
+  private async createThreadInternal(body: string): Promise<Hash> {
+    await this.ensureDB();
+    const signingKey = await this.keyManager.getSigningKey();
+    if (!signingKey) {
+      throw new Error(
+        "No signing key configured. Import or create a private key first.",
+      );
+    }
+
+    const cleartextMessage = await openpgp.createCleartextMessage({ text: body });
+    const signedMessage = await openpgp.sign({
+      message: cleartextMessage,
+      signingKeys: signingKey,
     });
 
-    const body = msg.getText();
-
-    const signingKeys = msg.getSigningKeyIDs();
-
-    for (const key of signingKeys) {
-      const keyId = key.toHex();
-      const keyExists = !!(await this.getPublicKeyByFingerprintOrId(keyId));
-      if (!keyExists) {
-        console.log(`[userless] fetching public key from peers (keyId=${keyId})`);
-        const acquiredKey = await this.queryPeersForPublicKeys(keyId);
-        if (acquiredKey) {
-          await this.upsertPublicKeyWithAliases(acquiredKey);
-          console.log(`[userless] public key cached (fingerprint=${acquiredKey.fingerprint})`);
-          this.emit("public_key_cached", { fingerprint: acquiredKey.fingerprint });
-        } else {
-          console.warn(`[userless] public key not found on any peer (keyId=${keyId})`);
-        }
-      }
-    }
-
-    const files = body.match(FILE_REGEX) ?? [];
-    const urls = files
-      .map((x) => {
-        const match = x.match(/userless:\/\/[^)]+/);
-        return match ? new URL(match[0]) : null;
-      })
-      .filter((x): x is URL => x !== null);
-
-    // Fetch all files referenced in the thread
-    if (urls) {
-      for (const url of urls) {
-        const hash = url.pathname.split("/").pop();
-        if (hash) {
-          const fileExists = !!(await this.db.get("file", hash));
-          if (!fileExists) {
-            await this.queryPeersForFileWithSource(hash, threadHash);
-          }
-        }
-      }
-    }
+    return this.storeSignedThreadInternal(signedMessage);
   }
 
-  private async queryPeersForFileWithSource(
-    hash: string,
-    sourceThreadHash: Hash,
-  ): Promise<DBFile | undefined> {
+  private async storeSignedThreadInternal(signedMessage: string): Promise<Hash> {
     await this.ensureDB();
 
-    return this.queryPeers(
-      () => this.db.get("file", hash),
-      async (peer) => {
-        const bytes = await peer.fetchFile(hash, CHUNK_SIZE);
-        const copy = new Uint8Array(bytes);
-        return {
-          content: copy.buffer,
-          signature: new ArrayBuffer(0),
-          sourceThreadHash,
-        };
-      },
-      async (file) => {
-        await this.db.put("file", file, hash);
-        this.emit("file_cached", { hash, sourceThreadHash });
-      },
-    );
+    const hash = await hashSignedThreadContent(signedMessage);
+    const thread: Thread = {
+      content: signedMessage,
+    };
+
+    await this.db.saveThread(hash, thread);
+    await this.fileManager.scanThreadForFilesAndKeys(thread, hash);
+    this.emit("thread_created", { hash });
+
+    return hash;
   }
 
-  private async queryPeers<T>(
-    lookupLocal: () => Promise<T | undefined>,
-    lookupPeer: (peer: Peer) => Promise<T | undefined>,
-    save: (value: T) => Promise<void>,
-  ): Promise<T | undefined> {
-    const local = await lookupLocal();
-    if (local) {
-      return local;
-    }
-
-    for (const peer of this.getPeersInternal()) {
-      try {
-        const value = await lookupPeer(peer);
-        if (!value) {
-          continue;
-        }
-
-        await save(value);
-        return value;
-      } catch {
-        continue;
-      }
-    }
-
-    return undefined;
-  }
-
-  public async queryPeersForFile(hash: string): Promise<DBFile | undefined> {
+  private async addFileInternal(name: string, data: ArrayBuffer): Promise<Hash> {
     await this.ensureDB();
-
-    return this.queryPeers(
-      () => this.db.get("file", hash),
-      async (peer) => {
-        const bytes = await peer.fetchFile(hash, CHUNK_SIZE);
-        const copy = new Uint8Array(bytes);
-        return {
-          content: copy.buffer,
-          signature: new ArrayBuffer(0),
-          sourceThreadHash: undefined,
-        };
-      },
-      async (file) => {
-        await this.db.put("file", file, hash);
-        this.emit("file_cached", { hash });
-      },
-    );
+    return this.fileManager.addFile(name, data);
   }
 
-  public async queryPeersForThread(hash: string): Promise<Thread | undefined> {
-    await this.ensureDB();
-
-    return this.queryPeers(
-      () => this.db.get("threads", hash),
-      (peer) => peer.getThread({ hash }),
-      async (thread) => {
-        await this.db.put("threads", thread, hash);
-        this.emit("thread_cached", { hash });
-      },
-    );
-  }
-
-  public async queryPeersForPublicKeys(
-    fingerprintOrId: string,
-  ): Promise<PublicKey | undefined> {
-    await this.ensureDB();
-
-    return this.queryPeers(
-      () => this.getPublicKeyByFingerprintOrId(fingerprintOrId),
-      (peer) => peer.getPublicKeys({ fingerprint: fingerprintOrId }),
-      async (key) => {
-        await this.upsertPublicKeyWithAliases(key);
-        this.emit("public_key_cached", { fingerprint: key.fingerprint });
-      },
-    );
-  }
-
-  public async saveReplyDraft(
+  private async saveReplyDraftInternal(
     parentHash: Hash,
     body: string,
   ): Promise<ReplyDraftRecord> {
@@ -713,74 +373,94 @@ export class Userless extends UserlessEventEmitter {
       createdAt: new Date().toISOString(),
     };
 
-  this.emit("reply_draft_saved", { parentHash });
-
+    this.emit("reply_draft_saved", { parentHash });
     return record;
   }
 
-  public async getAllPeers(): Promise<Peer[]> {
-    return this.getPeersInternal();
+  public getAppService(): AppService {
+    return this.appSingleton;
   }
 
-  public broadcastEmergency(payload: {
-    thread_hash?: string;
-    file_hash?: string;
-    pk_fingerprint?: string;
-    reason: string;
-    suggested_action: "remove" | "hide";
-  }): void {
-    this.server.broadcastEmergency({
-      thread_hash: payload.thread_hash ?? "",
-      file_hash: payload.file_hash ?? "",
-      pk_fingerprint: payload.pk_fingerprint ?? "",
-      reason: payload.reason,
-      suggested_action: payload.suggested_action,
-    });
-  }
-
-  public async scanAllPeers(): Promise<void> {
-    await this.ensureDB();
-    await Promise.all(
-      this.getPeersInternal().map((peer) => this.scanPeerForThreads(peer)),
-    );
-  }
-
-  public async getAllThreads(
+  public async getRootThreads(
     cursor?: string,
     limit = DEFAULT_PAGE_SIZE,
-  ): Promise<PageResult<Hash>> {
-    await this.scanAllPeers();
-    const { offset, limit: pageLimit } = getPageWindow({ cursor, limit });
-    const hiddenHashes = new Set(
-      (await this.db.getAllKeys("hidden_thread")) as Hash[],
-    );
-    const allTopLevel = await this.getTopLevelThreadHashesAll();
-    const hashes = allTopLevel
-      .filter((hash) => !hiddenHashes.has(hash))
-      .sort();
-    return toPageResult(
-      hashes.slice(offset, offset + pageLimit),
-      offset,
-      pageLimit,
-    );
+  ): Promise<PageResult<UserlessThread>> {
+    const hashes = await this.getAllThreads(cursor, limit);
+
+    return {
+      items: hashes.items.map((hash) => this.getThreadClass(hash)),
+      next_cursor: hashes.next_cursor,
+    };
   }
 
-  public async hideThread(hash: Hash): Promise<void> {
+  public async *iterateRootThreads(
+    limit = DEFAULT_PAGE_SIZE,
+  ): AsyncGenerator<UserlessThread, void, undefined> {
+    let cursor: string | undefined;
+
+    while (true) {
+      const page = await this.getRootThreads(cursor, limit);
+      for (const thread of page.items) {
+        yield thread;
+      }
+
+      if (!page.next_cursor) {
+        return;
+      }
+
+      cursor = page.next_cursor;
+    }
+  }
+
+  public getThreadClass(hash: Hash): UserlessThread {
+    return new UserlessThread(this, hash);
+  }
+
+  public getPublicKeyClass(fingerprint: string): UserlessPublicKey {
+    return new UserlessPublicKey(this, fingerprint);
+  }
+
+  public async getPublicKey(
+    fingerprintOrId: string,
+  ): Promise<PublicKey | undefined> {
     await this.ensureDB();
-    await this.db.put("hidden_thread", { hiddenAt: new Date().toISOString() }, hash);
-    this.emit("thread_hidden", { hash });
+
+    const local = await this.keyManager.getPublicKeyByFingerprintOrId(
+      fingerprintOrId,
+    );
+    if (local) {
+      return local;
+    }
+
+    return this.peerGateway.queryPeersForPublicKeys(fingerprintOrId);
   }
 
   public async getThread(hash: Hash): Promise<Thread | undefined> {
     await this.ensureDB();
 
-    const cached = await this.db.get("threads", hash);
-    const thread = cached ?? (await this.queryPeersForThread(hash));
+    const local = await this.db.getThread(hash);
+    if (local) {
+      return local;
+    }
+
+    const thread = await this.peerGateway.queryPeersForThread(hash);
     if (thread) {
-      await this.scanThreadForFilesAndKeys(thread, hash);
+      await this.fileManager.scanThreadForFilesAndKeys(thread, hash);
     }
 
     return thread;
+  }
+
+  public async getReplyThreadClasses(parentHash: Hash): Promise<UserlessThread[]> {
+    const hashes = await this.getAllReplyThreadHashes(parentHash);
+    return hashes.map((hash) => this.getThreadClass(hash));
+  }
+
+  public async getThreadClassesByPublicKey(
+    fingerprint: string,
+  ): Promise<UserlessThread[]> {
+    const threads = await this.getThreadsByPublicKey(fingerprint);
+    return threads.map((thread) => this.getThreadClass(thread.hash));
   }
 
   public async resolveThread(hash: Hash): Promise<ResolvedThread> {
@@ -789,324 +469,81 @@ export class Userless extends UserlessEventEmitter {
       throw new Error(`Thread not found: ${hash}`);
     }
 
-    const message = await openpgp.readCleartextMessage({
-      cleartextMessage: thread.content,
-    });
-    const body = message.getText();
-    const timestamp =
-      (await extractSignatureTimestamp(thread.content)) ?? new Date(0);
-    const fingerprint = message.getSigningKeyIDs()[0]?.toHex() ?? "unknown";
-
-    let owner = extractOwner(undefined, fingerprint);
-    if (fingerprint !== "unknown") {
-      const key = await this.queryPeersForPublicKeys(fingerprint);
-      if (key) {
-        const parsedKey = await openpgp.readKey({ armoredKey: key.armored });
-        owner = extractOwner(parsedKey.getUserIDs()[0], fingerprint);
-      }
-    }
-
-    return {
-      hash,
-      body,
-      content: thread.content,
-      timestamp,
-      owner,
-    };
+    return this.threadResolver.resolveThread(hash, thread);
   }
 
   public async listResolvedThreads(
     cursor?: string,
     limit = DEFAULT_PAGE_SIZE,
   ): Promise<PageResult<ResolvedThread>> {
-    const page = await this.getAllThreads(cursor, limit);
-    return {
-      items: await Promise.all(
-        page.items.map((hash) => this.resolveThread(hash)),
-      ),
-      next_cursor: page.next_cursor,
-    };
+    await this.ensureDB();
+
+    const hidden = await this.db.getHiddenThreads();
+    const hashes = (await this.db.getAllThreadKeys())
+      .sort()
+      .filter((hash) => !hidden.has(hash));
+    const { offset, limit: pageLimit } = getPageWindow({ cursor, limit });
+    const pageHashes = hashes.slice(offset, offset + pageLimit);
+    const threads = await Promise.all(
+      pageHashes.map(async (hash) => {
+        const thread = await this.getThread(hash);
+        if (!thread) {
+          throw new Error(`Thread not found: ${hash}`);
+        }
+        return thread;
+      }),
+    );
+
+    return this.threadResolver.listResolvedThreads(
+      threads,
+      pageHashes,
+      undefined,
+      pageLimit,
+    );
+  }
+
+  public async getAllThreads(
+    cursor?: string,
+    limit = DEFAULT_PAGE_SIZE,
+  ): Promise<PageResult<Hash>> {
+    const hashes = await this.getVisibleTopLevelThreadHashes();
+    const { offset, limit: pageLimit } = getPageWindow({ cursor, limit });
+
+    return toPageResult(
+      hashes.slice(offset, offset + pageLimit),
+      offset,
+      pageLimit,
+    );
   }
 
   public async getReplyThreads(parentHash: Hash): Promise<ResolvedThread[]> {
-    const lowerHash = parentHash.toLowerCase();
-    const matching: ResolvedThread[] = [];
-    let cursor: string | undefined;
-
-    while (true) {
-      const page = await this.listResolvedThreads(cursor, DEFAULT_PAGE_SIZE);
-      for (const thread of page.items) {
-        if (thread.hash.toLowerCase() === lowerHash) {
-          continue;
-        }
-
-        const target = extractReplyTarget(thread.body);
-        if (target === lowerHash) {
-          matching.push(thread);
-        }
-      }
-
-      if (!page.next_cursor) {
-        break;
-      }
-      cursor = page.next_cursor;
-    }
-
-    return matching;
+    await this.ensureDB();
+    const hidden = await this.db.getHiddenThreads();
+    const replies = await this.threadResolver.getReplyThreads(parentHash);
+    return replies.filter((thread) => !hidden.has(thread.hash));
   }
 
   public async getAllPublicKeysDetailed(): Promise<PublicKeyDetail[]> {
     await this.ensureDB();
-    const keys = await this.db.getAll("publickey");
-    const allKeys = await this.db.getAllKeys("publickey");
-    const details: PublicKeyDetail[] = [];
-
-    for (let i = 0; i < keys.length; i++) {
-      const key = keys[i];
-      const fingerprint = allKeys[i] as string;
-
-      let userId = "";
-      try {
-        const parsedKey = await openpgp.readKey({ armoredKey: key.armored });
-        userId = parsedKey.getUserIDs()[0] || "";
-      } catch {
-        // Use empty userId if parsing fails
-      }
-
-      details.push({
-        fingerprint,
-        armor: key.armored,
-        userId,
-        threadCount: 0,
-      });
-    }
-
-    return details;
+    return this.inspector.getAllPublicKeysDetailed();
   }
 
   public async getThreadsByPublicKey(
     fingerprint: string,
   ): Promise<ResolvedThread[]> {
     await this.ensureDB();
-    const matching: ResolvedThread[] = [];
-    let cursor: string | undefined;
-
-    while (true) {
-      const page = await this.listResolvedThreads(cursor, DEFAULT_PAGE_SIZE);
-      for (const thread of page.items) {
-        if (
-          thread.owner.fingerprint.toLowerCase() === fingerprint.toLowerCase()
-        ) {
-          matching.push(thread);
-        }
-      }
-
-      if (!page.next_cursor) {
-        break;
-      }
-      cursor = page.next_cursor;
-    }
-
-    return matching;
+    const hidden = await this.db.getHiddenThreads();
+    const threads = await this.inspector.getThreadsByPublicKey(fingerprint);
+    return threads.filter((thread) => !hidden.has(thread.hash));
   }
 
-  public async getAllFilesDetailed(): Promise<FileDetail[]> {
+  public async getFileChunk(
+    hash: Hash,
+    offset: number,
+    length: number,
+  ): Promise<FileChunk> {
     await this.ensureDB();
-    const keys = (await this.db.getAllKeys("file")) as Hash[];
-    const details: FileDetail[] = [];
-
-    for (const hash of keys) {
-      const file = await this.db.get("file", hash);
-      if (file) {
-        details.push({
-          hash,
-          size: file.content.byteLength,
-          sourceThreadHash: file.sourceThreadHash,
-        });
-      }
-    }
-
-    return details;
-  }
-
-  public async getSnapshot(): Promise<UserlessSnapshot> {
-    await this.ensureDB();
-
-    const [threadCount, fileCount, keyCount] = await Promise.all([
-      this.db.count("threads"),
-      this.db.count("file"),
-      this.db.count("publickey"),
-    ]);
-
-    const transfer = this.server.getTransferStats();
-
-    return {
-      connectionCount: this.server.getPeers().length,
-      threadCount,
-      fileCount,
-      keyCount,
-      uploadedBytes: transfer.uploadedBytes,
-      downloadedBytes: transfer.downloadedBytes,
-    };
-  }
-
-  public async getSigningKey(): Promise<openpgp.PrivateKey | undefined> {
-    await this.ensureDB();
-    // Use first available private key as signing key.
-    const fingerprints = (await this.db.getAllKeys("privatekey")) as string[];
-    const first = fingerprints[0];
-    if (!first) {
-      return undefined;
-    }
-
-    const key = await this.db.get("privatekey", first);
-    if (!key) {
-      return undefined;
-    }
-
-    try {
-      return await openpgp.readPrivateKey({ armoredKey: key.armored });
-    } catch {
-      return undefined;
-    }
-  }
-
-  public async addPrivateKey(armoredKey: string): Promise<openpgp.PrivateKey> {
-    await this.ensureDB();
-    const key = await openpgp.readPrivateKey({ armoredKey });
-    const fingerprint = key.getFingerprint().toLowerCase();
-    console.log(`[userless] adding private key (fingerprint=${fingerprint})`);
-    await this.db.put("privatekey", { armored: armoredKey }, fingerprint);
-    const publicKey: PublicKey = { fingerprint, armored: key.toPublic().armor() };
-    await this.upsertPublicKeyWithAliases(publicKey);
-    return key;
-  }
-
-  public async getPrivateKeys(): Promise<PrivateKeyDetail[]> {
-    await this.ensureDB();
-    const fingerprints = (await this.db.getAllKeys("privatekey")) as string[];
-    const details: PrivateKeyDetail[] = [];
-    for (const fingerprint of fingerprints) {
-      const record = await this.db.get("privatekey", fingerprint);
-      if (!record) continue;
-      let userId = "";
-      try {
-        const parsed = await openpgp.readPrivateKey({ armoredKey: record.armored });
-        userId = parsed.getUserIDs()[0] ?? "";
-      } catch {
-        // ignore parse errors
-      }
-      details.push({ fingerprint, armor: record.armored, userId });
-    }
-    return details;
-  }
-
-  public async deletePrivateKey(fingerprint: string): Promise<void> {
-    console.log(`[userless] deleting private key (fingerprint=${fingerprint})`);
-    await this.ensureDB();
-    const normalized = fingerprint.toLowerCase();
-    await this.db.delete("privatekey", normalized);
-    await this.db.delete("publickey", normalized);
-    await this.removePublicKeyAliasesForFingerprint(normalized);
-  }
-
-  public async saveSigningKey(armoredKey: string): Promise<openpgp.PrivateKey> {
-    const key = await this.addPrivateKey(armoredKey);
-    console.log(`[userless] signing key set (fingerprint=${key.getFingerprint()})`);
-    this.emit("signing_key_changed", { fingerprint: key.getFingerprint().toLowerCase() });
-    return key;
-  }
-
-  public async deleteSigningKey(): Promise<void> {
-    console.log("[userless] deleting signing key");
-    const existing = await this.getSigningKey();
-    if (existing) {
-      await this.deletePrivateKey(existing.getFingerprint());
-    }
-    this.emit("signing_key_changed", { fingerprint: undefined });
-  }
-
-  public async deletePublicKey(fingerprint: string): Promise<void> {
-    await this.ensureDB();
-    const normalized = fingerprint.toLowerCase();
-    await this.db.delete("publickey", normalized);
-    await this.removePublicKeyAliasesForFingerprint(normalized);
-  }
-
-  public async createThread(body: string): Promise<Hash> {
-    await this.ensureDB();
-
-    const signingKey = await this.getSigningKey();
-    if (!signingKey) {
-      throw new Error("No signing key configured. Import or create a private key first.");
-    }
-
-    const cleartextMessage = await openpgp.createCleartextMessage({
-      text: body,
-    });
-
-    const signedMessage = await openpgp.sign({
-      message: cleartextMessage,
-      signingKeys: signingKey,
-    });
-
-    const thread: Thread = {
-      content: signedMessage,
-    };
-
-    // Hash the content to create a deterministic hash
-    const hashBuffer = await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(signedMessage),
-    );
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-
-    await this.db.put("threads", thread, hash);
-    console.log(`[userless] thread created (hash=${hash})`);
-    this.emit("thread_created", { hash });
-
-    return hash;
-  }
-
-  /** Store a pre-signed cleartext thread message without re-signing. */
-  public async storeSignedThread(signedMessage: string): Promise<Hash> {
-    await this.ensureDB();
-
-    const thread: Thread = { content: signedMessage };
-
-    const hashBuffer = await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(signedMessage),
-    );
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-
-    await this.db.put("threads", thread, hash);
-    console.log(`[userless] signed thread stored (hash=${hash})`);
-    this.emit("thread_created", { hash });
-
-    return hash;
-  }
-
-  public async addFile(name: string, data: ArrayBuffer): Promise<Hash> {
-    await this.ensureDB();
-
-    // Hash the file content to create a deterministic hash
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-
-    const file: DBFile = {
-      content: data,
-      signature: new ArrayBuffer(0),
-    };
-
-    await this.db.put("file", file, hash);
-    console.log(`[userless] file added (name=${name}, hash=${hash}, size=${data.byteLength})`);
-    this.emit("file_added", { name, hash });
-
-    return hash;
+    return this.fileManager.getFileChunk(hash, offset, length);
   }
 }
 
@@ -1124,7 +561,7 @@ function defaultLobbyUrl(): string {
   );
 }
 
-export function getUserless(options: UserlessOptions = {}) {
+export function getUserless(options: UserlessOptions = {}): Userless {
   if (!singleton) {
     singleton = new Userless(defaultLobbyUrl(), options);
   }
@@ -1132,3 +569,6 @@ export function getUserless(options: UserlessOptions = {}) {
   return singleton;
 }
 
+export function getAppService(options: UserlessOptions = {}): AppService {
+  return getUserless(options).getAppService();
+}

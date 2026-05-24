@@ -3,21 +3,22 @@ import style from "./CreateThread.module.css";
 import { PostThread } from "@userless/ui-components";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import type { PrivateKeyDetail } from "../../lib/userless";
 import { useUserless } from "../UserlessProvider/UserlessProvider";
 
 export type CreateThreadProps = {};
 
 export function CreateThread() {
-  const { userless } = useUserless();
+  const { appService } = useUserless();
   const [show, setShow] = useState(false);
   const [armoredPrivateKeys, setArmoredPrivateKeys] = useState<string[]>([]);
 
   useEffect(() => {
     if (!show) return;
-    userless.getPrivateKeys().then((keys) => {
-      setArmoredPrivateKeys(keys.map((k) => k.armor));
+    appService.getPrivateKeys().then((keys: PrivateKeyDetail[]) => {
+      setArmoredPrivateKeys(keys.map((key: PrivateKeyDetail) => key.armor));
     });
-  }, [show, userless]);
+  }, [appService, show]);
 
   return (
     <div className={clsx([style.CreateThread])}>
@@ -36,7 +37,7 @@ export function CreateThread() {
                   <PostThread
                     armoredPrivateKeys={armoredPrivateKeys}
                     onPost={async (signedMessage) => {
-                      return userless.storeSignedThread(signedMessage);
+                      return appService.storeSignedThread(signedMessage);
                     }}
                     onPostCreated={() => {
                       setShow(false);

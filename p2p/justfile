@@ -1,0 +1,8 @@
+
+lobby:
+  nix develop .#go \
+    --command bash -c "cd lobby && go run ."
+
+dev:
+  nix develop .#ts \
+    --command bash -c "cd p2p-app && yarn dev"

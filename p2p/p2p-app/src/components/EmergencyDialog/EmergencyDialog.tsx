@@ -8,14 +8,14 @@ export type EmergencyDialogProps = {
 };
 
 export function EmergencyDialog(props: EmergencyDialogProps) {
-  const { userless } = useUserless();
+  const { appService } = useUserless();
   const [reason, setReason] = useState("");
   const [suggestedAction, setSuggestedAction] = useState<"remove" | "hide">("hide");
   const [sent, setSent] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    userless.broadcastEmergency({
+    appService.broadcastEmergency({
       thread_hash: props.threadHash,
       reason,
       suggested_action: suggestedAction,

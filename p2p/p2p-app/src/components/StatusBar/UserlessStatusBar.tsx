@@ -8,7 +8,7 @@ import { usePrevious } from "react-use";
 import { StatusBar } from "./StatusBar";
 
 export function UserlessStatusBar(props: {}) {
-  const { userless } = useUserless();
+  const { appService } = useUserless();
   const [curr, setSnapshot] = useState<{
     snapshot: UserlessSnapshot;
     timestamp: Date;
@@ -20,7 +20,7 @@ export function UserlessStatusBar(props: {}) {
 
   useEffect(() => {
     const id = setInterval(async () => {
-      const snapshot = await userless.getSnapshot();
+      const snapshot = await appService.getSnapshot();
 
       setSnapshot({
         timestamp: new Date(),
@@ -31,7 +31,7 @@ export function UserlessStatusBar(props: {}) {
     return () => {
       clearInterval(id);
     };
-  }, [userless]);
+  }, [appService]);
 
   const dt = curr.timestamp.getTime() - (prev?.timestamp.getTime() ?? 0);
 

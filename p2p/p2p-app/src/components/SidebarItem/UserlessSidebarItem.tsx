@@ -12,7 +12,7 @@ export type UserlessSidebarItemProps = {
 
 export function UserlessSidebarItem(props: UserlessSidebarItemProps) {
   const [selectedThread, setSelectedThread] = useSelectedThread();
-  const { userless } = useUserless();
+  const { appService, userless } = useUserless();
   const [showEmergency, setShowEmergency] = useState(false);
 
   const { value } = useAsync(() => {
@@ -32,7 +32,7 @@ export function UserlessSidebarItem(props: UserlessSidebarItemProps) {
         selected={selectedThread?.hash === props.threadHash}
         onEmergency={() => setShowEmergency(true)}
         onHide={async () => {
-          await userless.hideThread(props.threadHash);
+          await appService.hideThread(props.threadHash);
           if (selectedThread?.hash === props.threadHash) {
             setSelectedThread(undefined);
           }

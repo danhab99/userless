@@ -3,6 +3,7 @@ import {
   KeyContextStateProvider,
   type UserlessUiKeyState,
 } from "@userless/ui-components";
+import type { PrivateKeyDetail } from "../../lib/userless";
 import { useUserless } from "../UserlessProvider/UserlessProvider";
 import type { UserlessUiConfig } from "@userless/ui-components";
 import * as openpgp from "openpgp";
@@ -16,16 +17,16 @@ import * as openpgp from "openpgp";
 export function P2PKeyContextProvider(
   props: React.PropsWithChildren<Omit<UserlessUiConfig, "navigateToThread">>,
 ) {
-  const { userless } = useUserless();
+  const { appService } = useUserless();
 
   const keyStateHandlers = useMemo(() => {
     return {
       load: async (): Promise<UserlessUiKeyState> => {
-        const privateKeys = await userless.getPrivateKeys();
-        const signingKey = await userless.getSigningKey();
+        const privateKeys: PrivateKeyDetail[] = await appService.getPrivateKeys();
+        const signingKey = await appService.getSigningKey();
 
         return {
-          privateKeys: privateKeys.map((x) => x.armor),
+          privateKeys: privateKeys.map((key) => key.armor),
           decryptedKeys: signingKey ? [signingKey.armor()] : [],
         };
       },
@@ -40,20 +41,23 @@ export function P2PKeyContextProvider(
           }
         }
 
-        const existing = await userless.getPrivateKeys();
-        const existingByFingerprint = new Map(
-          existing.map((x) => [x.fingerprint.toLowerCase(), x.armor]),
+        const existing: PrivateKeyDetail[] = await appService.getPrivateKeys();
+        const existingByFingerprint = new Map<string, string>(
+          existing.map((key): [string, string] => [
+            key.fingerprint.toLowerCase(),
+            key.armor,
+          ]),
         );
 
         for (const [fingerprint] of existingByFingerprint) {
           if (!desiredByFingerprint.has(fingerprint)) {
-            await userless.deletePrivateKey(fingerprint);
+            await appService.deletePrivateKey(fingerprint);
           }
         }
 
         for (const [fingerprint, armored] of desiredByFingerprint) {
           if (existingByFingerprint.get(fingerprint) !== armored) {
-            await userless.addPrivateKey(armored);
+            await appService.addPrivateKey(armored);
           }
         }
 
@@ -70,7 +74,7 @@ export function P2PKeyContextProvider(
           (x): x is openpgp.PrivateKey => Boolean(x),
         );
 
-        const currentSigningKey = await userless.getSigningKey();
+        const currentSigningKey = await appService.getSigningKey();
         let nextSigningKeyArmor: string | undefined;
 
         if (decryptedCandidates.length > 0) {
@@ -91,14 +95,14 @@ export function P2PKeyContextProvider(
         if (nextSigningKeyArmor) {
           const currentArmor = currentSigningKey?.armor();
           if (currentArmor !== nextSigningKeyArmor) {
-            await userless.saveSigningKey(nextSigningKeyArmor);
+            await appService.saveSigningKey(nextSigningKeyArmor);
           }
         } else if (currentSigningKey) {
-          await userless.deleteSigningKey();
+          await appService.deleteSigningKey();
         }
       },
     };
-  }, [userless]);
+  }, [appService]);
 
   return (
     <KeyContextStateProvider {...props} keyStateHandlers={keyStateHandlers}>

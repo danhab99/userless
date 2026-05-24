@@ -2,18 +2,20 @@ import { useEffect, useState } from "react";
 import { ActionButton } from "@userless/ui-components";
 import styles from "./KeyManagement.module.css";
 import type { KeyInfo } from "./KeyManagementPage";
+import type { AppService } from "../../lib/userless";
 import type { Userless } from "../../lib/userless";
 import type { ResolvedThread, FileDetail } from "../../lib/userless";
 import * as openpgp from "openpgp";
 
 export type KeyDetailProps = {
+  appService: AppService;
   keyInfo?: KeyInfo;
   userless: Userless;
   onDeleteKey: (keyInfo: KeyInfo) => Promise<void>;
 };
 
 export function KeyDetail(props: KeyDetailProps) {
-  const { keyInfo, userless, onDeleteKey } = props;
+  const { appService, keyInfo, userless, onDeleteKey } = props;
   const [threads, setThreads] = useState<ResolvedThread[]>([]);
   const [files, setFiles] = useState<FileDetail[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,7 +54,7 @@ export function KeyDetail(props: KeyDetailProps) {
         setThreads(signedThreads);
 
         // Get all files and filter by threads signed by this key
-        const allFiles = await userless.getAllFilesDetailed();
+        const allFiles = await appService.getAllFilesDetailed();
         const threadHashes = signedThreads.map((t) => t.hash.toLowerCase());
         const relatedFiles = allFiles.filter(
           (f) =>
@@ -68,7 +70,7 @@ export function KeyDetail(props: KeyDetailProps) {
     };
 
     loadDetails();
-  }, [keyInfo, userless]);
+  }, [appService, keyInfo, userless]);
 
   if (!keyInfo) {
     return null;

@@ -9,7 +9,7 @@ export type UserlessSidebarProps = {
 const PAGE_SIZE = 100;
 
 export function UserlessSidebar(props: UserlessSidebarProps) {
-  const { userless } = useUserless();
+  const { appService, userless } = useUserless();
   const [isRescanning, setIsRescanning] = useState(false);
   const [visibleState, setVisibleState] = useState<{
     threadHashes: string[];
@@ -68,7 +68,7 @@ export function UserlessSidebar(props: UserlessSidebarProps) {
   const handleRescanAllPeers = useCallback(async () => {
     setIsRescanning(true);
     try {
-      await userless.scanAllPeers();
+      await appService.scanAllPeers();
       setVisibleState({
         cursor: undefined,
         threadHashes: [],
@@ -77,7 +77,7 @@ export function UserlessSidebar(props: UserlessSidebarProps) {
     } finally {
       setIsRescanning(false);
     }
-  }, [loadMore, userless]);
+  }, [appService, loadMore]);
 
   return (
     <Sidebar
