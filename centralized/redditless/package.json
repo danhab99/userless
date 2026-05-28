@@ -11,6 +11,8 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@userless/tailwind-base16-plugin": "file:../../tailwind-base16-plugin",
+    "@userless/ui-components": "file:../../ui-components",
     "api-wrapper": "../api-wrapper",
     "next": "16.1.6",
     "openpgp": "^5.11.2",
@@ -19,8 +21,7 @@
     "react-markdown": "^10.1.0",
     "react-use": "^17.6.0",
     "smol-toml": "^1.3.0",
-    "tailwind-scrollbar": "^4.0.2",
-    "ui-components": "file:../ui-components"
+    "tailwind-scrollbar": "^4.0.2"
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^5.0.1",
