@@ -9,16 +9,16 @@ import { useUserless } from "../UserlessProvider/UserlessProvider";
 export type CreateThreadProps = {};
 
 export function CreateThread() {
-  const { appService } = useUserless();
+  const { userless } = useUserless();
   const [show, setShow] = useState(false);
   const [armoredPrivateKeys, setArmoredPrivateKeys] = useState<string[]>([]);
 
   useEffect(() => {
     if (!show) return;
-    appService.getPrivateKeys().then((keys: PrivateKeyDetail[]) => {
+    userless.getPrivateKeys().then((keys: PrivateKeyDetail[]) => {
       setArmoredPrivateKeys(keys.map((key: PrivateKeyDetail) => key.armor));
     });
-  }, [appService, show]);
+  }, [show, userless]);
 
   return (
     <div className={clsx([style.CreateThread])}>
@@ -37,7 +37,7 @@ export function CreateThread() {
                   <PostThread
                     armoredPrivateKeys={armoredPrivateKeys}
                     onPost={async (signedMessage) => {
-                      return appService.storeSignedThread(signedMessage);
+                      return userless.storeSignedThread(signedMessage);
                     }}
                     onPostCreated={() => {
                       setShow(false);

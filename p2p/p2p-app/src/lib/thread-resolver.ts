@@ -111,6 +111,14 @@ function toPageResult<T>(
  * Resolves thread details (body, owner, timestamp) and manages thread relationships.
  */
 export class ThreadResolver extends UserlessEventEmitter {
+  private relationshipCache:
+    | {
+        signature: string;
+        roots: Hash[];
+        repliesByParent: Map<Hash, Hash[]>;
+      }
+    | undefined;
+
   constructor(
     private db: UserlessDatabase,
     private queryPublicKey: (
@@ -121,12 +129,22 @@ export class ThreadResolver extends UserlessEventEmitter {
     super(eventSink);
   }
 
-  /**
-   * Get all top-level thread hashes (threads with no parent).
-   */
-  async getTopLevelThreadHashesAll(): Promise<Hash[]> {
+  private async getThreadRelationshipIndex(): Promise<{
+    roots: Hash[];
+    repliesByParent: Map<Hash, Hash[]>;
+  }> {
     const hashes = (await this.db.getAllThreadKeys()).sort();
+    const signature = hashes.join(",");
+
+    if (this.relationshipCache?.signature === signature) {
+      return {
+        roots: this.relationshipCache.roots,
+        repliesByParent: this.relationshipCache.repliesByParent,
+      };
+    }
+
     const roots: Hash[] = [];
+    const repliesByParent = new Map<Hash, Hash[]>();
 
     for (const hash of hashes) {
       const thread = await this.db.getThread(hash);
@@ -134,20 +152,42 @@ export class ThreadResolver extends UserlessEventEmitter {
         continue;
       }
 
+      let parent: string | undefined;
+
       try {
         const message = await openpgp.readCleartextMessage({
           cleartextMessage: thread.content,
         });
-        const parent = extractReplyTarget(message.getText());
-        if (!parent) {
-          roots.push(hash);
-        }
+        parent = extractReplyTarget(message.getText());
       } catch {
-        // If parsing fails, keep the thread visible as a root.
-        roots.push(hash);
+        // Keep parse failures visible at top-level.
+        parent = undefined;
       }
+
+      if (!parent) {
+        roots.push(hash);
+        continue;
+      }
+
+      const existing = repliesByParent.get(parent) ?? [];
+      existing.push(hash);
+      repliesByParent.set(parent, existing);
     }
 
+    this.relationshipCache = {
+      signature,
+      roots,
+      repliesByParent,
+    };
+
+    return { roots, repliesByParent };
+  }
+
+  /**
+   * Get all top-level thread hashes (threads with no parent).
+   */
+  async getTopLevelThreadHashesAll(): Promise<Hash[]> {
+    const { roots } = await this.getThreadRelationshipIndex();
     return roots;
   }
 
@@ -173,29 +213,8 @@ export class ThreadResolver extends UserlessEventEmitter {
    */
   private async getReplyThreadHashesAll(parentHash: Hash): Promise<Hash[]> {
     const target = parentHash.toLowerCase();
-    const hashes = (await this.db.getAllThreadKeys()).sort();
-    const replies: Hash[] = [];
-
-    for (const hash of hashes) {
-      const thread = await this.db.getThread(hash);
-      if (!thread) {
-        continue;
-      }
-
-      try {
-        const message = await openpgp.readCleartextMessage({
-          cleartextMessage: thread.content,
-        });
-        const parent = extractReplyTarget(message.getText());
-        if (parent === target) {
-          replies.push(hash);
-        }
-      } catch {
-        continue;
-      }
-    }
-
-    return replies;
+    const { repliesByParent } = await this.getThreadRelationshipIndex();
+    return repliesByParent.get(target) ?? [];
   }
 
   /**
@@ -219,7 +238,10 @@ export class ThreadResolver extends UserlessEventEmitter {
   /**
    * Resolve a thread into detailed form with owner info and timestamp.
    */
-  async resolveThread(hash: Hash, thread: Thread): Promise<ResolvedThread> {
+  async buildResolvedThread(
+    hash: Hash,
+    thread: Thread,
+  ): Promise<ResolvedThread> {
     const message = await openpgp.readCleartextMessage({
       cleartextMessage: thread.content,
     });
@@ -260,7 +282,9 @@ export class ThreadResolver extends UserlessEventEmitter {
 
     return {
       items: await Promise.all(
-        pageHashes.map((hash, idx) => this.resolveThread(hash, threads[offset + idx])),
+        pageHashes.map((hash, idx) =>
+          this.buildResolvedThread(hash, threads[offset + idx])
+        ),
       ),
       next_cursor:
         threadHashes.length <= offset + pageLimit
@@ -279,7 +303,7 @@ export class ThreadResolver extends UserlessEventEmitter {
     for (const hash of hashes) {
       const thread = await this.db.getThread(hash);
       if (thread) {
-        results.push(await this.resolveThread(hash, thread));
+        results.push(await this.buildResolvedThread(hash, thread));
       }
     }
 

@@ -1,5 +1,4 @@
 import { DEFAULT_PAGE_SIZE, type Hash, type Peer, type TransferStats } from "./p2p";
-import { AppService, type ReplyDraftRecord } from "./app-service";
 import { UserlessDatabase, openUserlessDatabase } from "./database";
 import { type UserlessEventSink } from "./events";
 import { FileManager } from "./file-manager";
@@ -10,7 +9,6 @@ import { PeerScanner } from "./peer-scanner";
 import { ThreadResolver, type ResolvedThread } from "./thread-resolver";
 
 export type UserlessRuntime = {
-  appService: AppService;
   db: UserlessDatabase;
   fileManager: FileManager;
   inspector: UserlessInspector;
@@ -22,22 +20,14 @@ export type UserlessRuntime = {
 
 type CreateUserlessRuntimeArgs = {
   broadcastEmergency: (payload: EmergencyPayload) => void;
-  createThread: (body: string) => Promise<Hash>;
   emitEvent: UserlessEventSink["emit"];
   getConnectionCount: () => number;
   getPeers: () => Peer[];
   getTransferStats: () => TransferStats;
-  hideThread: (hash: Hash) => Promise<void>;
   listResolvedThreads: (
     cursor?: string,
     limit?: number,
   ) => Promise<{ items: ResolvedThread[]; next_cursor?: string }>;
-  saveReplyDraft: (
-    parentHash: Hash,
-    body: string,
-  ) => Promise<ReplyDraftRecord>;
-  scanAllPeers: () => Promise<void>;
-  storeSignedThread: (signedMessage: string) => Promise<Hash>;
 };
 
 export async function createUserlessRuntime(
@@ -76,27 +66,7 @@ export async function createUserlessRuntime(
     args.getTransferStats,
     args.listResolvedThreads,
   );
-  const appService = new AppService({
-    getAllFilesDetailed: () => fileManager.getAllFilesDetailed(),
-    getSnapshot: () => inspector.getSnapshot(),
-    getSigningKey: () => keyManager.getSigningKey(),
-    addPrivateKey: (armoredKey) => keyManager.addPrivateKey(armoredKey),
-    getPrivateKeys: () => keyManager.getPrivateKeys(),
-    deletePrivateKey: (fingerprint) => keyManager.deletePrivateKey(fingerprint),
-    saveSigningKey: (armoredKey) => keyManager.saveSigningKey(armoredKey),
-    deleteSigningKey: () => keyManager.deleteSigningKey(),
-    deletePublicKey: (fingerprint) => keyManager.deletePublicKey(fingerprint),
-    saveReplyDraft: args.saveReplyDraft,
-    broadcastEmergency: (payload) => peerGateway.broadcastEmergency(payload),
-    scanAllPeers: args.scanAllPeers,
-    hideThread: args.hideThread,
-    createThread: args.createThread,
-    storeSignedThread: args.storeSignedThread,
-    addFile: (name, data) => fileManager.addFile(name, data),
-  });
-
   return {
-    appService,
     db,
     fileManager,
     inspector,

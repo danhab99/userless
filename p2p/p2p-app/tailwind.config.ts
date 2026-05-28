@@ -2,7 +2,11 @@ import type { Config } from 'tailwindcss'
 import { base16Tailwind } from '@donovanglover/base16-tailwind'
 
 export default {
-  content: ['./index.html', './src/**/*.{ts,tsx}'],
+  content: [
+    './index.html',
+    './src/**/*.{ts,tsx}',
+    '../../ui-components/src/**/*.{js,jsx,ts,tsx}',
+  ],
   safelist: [
     { pattern: /bg-/ },
     { pattern: /text-/ },
@@ -16,5 +20,5 @@ export default {
       },
     },
   },
-  plugins: [base16Tailwind()],
+  plugins: [base16Tailwind({ extendOnly: true })],
 } satisfies Config

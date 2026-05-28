@@ -37,12 +37,12 @@ export function StatusBar(props: StatusBarProps) {
 
         <div className="flex flex-row gap-1">
           <FaUpload />
-          {prettyBytes(props.uploadSpeed)}
+          {prettyBytes(props.uploadSpeed || 0)}
         </div>
 
         <div className="flex flex-row gap-1">
           <FaDownload />
-          {prettyBytes(props.downloadSpeed)}
+          {prettyBytes(props.downloadSpeed || 0)}
         </div>
 
         {"|"}

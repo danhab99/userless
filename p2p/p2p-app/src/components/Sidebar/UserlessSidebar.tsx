@@ -9,8 +9,9 @@ export type UserlessSidebarProps = {
 const PAGE_SIZE = 100;
 
 export function UserlessSidebar(props: UserlessSidebarProps) {
-  const { appService, userless } = useUserless();
+  const { userless } = useUserless();
   const [isRescanning, setIsRescanning] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [visibleState, setVisibleState] = useState<{
     threadHashes: string[];
     cursor: string | undefined;
@@ -19,26 +20,33 @@ export function UserlessSidebar(props: UserlessSidebarProps) {
     threadHashes: [],
   });
 
-  const loadMore = useCallback(() => {
-    (async () => {
-      let allThreadHashes = await userless.getAllThreads(
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore) {
+      return;
+    }
+
+    setIsLoadingMore(true);
+    try {
+      const rootThreads = await userless.getAllThreads(
         visibleState.cursor,
         PAGE_SIZE,
       );
 
       setVisibleState((prev) => {
+        const nextHashes = new Set(prev.threadHashes);
+        for (const thread of rootThreads.items) {
+          nextHashes.add(thread.hash);
+        }
+
         return {
-          cursor: allThreadHashes.next_cursor,
-          threadHashes: [
-            ...prev.threadHashes,
-            ...allThreadHashes.items.filter(
-              (x) => !prev.threadHashes.includes(x),
-            ),
-          ],
+          cursor: rootThreads.next_cursor,
+          threadHashes: Array.from(nextHashes),
         };
       });
-    })();
-  }, [userless]);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, userless, visibleState.cursor]);
 
   useEffect(() => {
     const reset = () => {
@@ -46,7 +54,7 @@ export function UserlessSidebar(props: UserlessSidebarProps) {
         cursor: undefined,
         threadHashes: [],
       });
-      loadMore();
+      void loadMore();
     };
 
     const offCreated = userless.on("thread_created", () => {
@@ -68,16 +76,16 @@ export function UserlessSidebar(props: UserlessSidebarProps) {
   const handleRescanAllPeers = useCallback(async () => {
     setIsRescanning(true);
     try {
-      await appService.scanAllPeers();
+      await userless.scanAllPeers();
       setVisibleState({
         cursor: undefined,
         threadHashes: [],
       });
-      loadMore();
+      void loadMore();
     } finally {
       setIsRescanning(false);
     }
-  }, [appService, loadMore]);
+  }, [loadMore, userless]);
 
   return (
     <Sidebar

@@ -17,13 +17,13 @@ import * as openpgp from "openpgp";
 export function P2PKeyContextProvider(
   props: React.PropsWithChildren<Omit<UserlessUiConfig, "navigateToThread">>,
 ) {
-  const { appService } = useUserless();
+  const { userless } = useUserless();
 
   const keyStateHandlers = useMemo(() => {
     return {
       load: async (): Promise<UserlessUiKeyState> => {
-        const privateKeys: PrivateKeyDetail[] = await appService.getPrivateKeys();
-        const signingKey = await appService.getSigningKey();
+        const privateKeys: PrivateKeyDetail[] = await userless.getPrivateKeys();
+        const signingKey = await userless.getSigningKey();
 
         return {
           privateKeys: privateKeys.map((key) => key.armor),
@@ -41,7 +41,7 @@ export function P2PKeyContextProvider(
           }
         }
 
-        const existing: PrivateKeyDetail[] = await appService.getPrivateKeys();
+        const existing: PrivateKeyDetail[] = await userless.getPrivateKeys();
         const existingByFingerprint = new Map<string, string>(
           existing.map((key): [string, string] => [
             key.fingerprint.toLowerCase(),
@@ -51,13 +51,13 @@ export function P2PKeyContextProvider(
 
         for (const [fingerprint] of existingByFingerprint) {
           if (!desiredByFingerprint.has(fingerprint)) {
-            await appService.deletePrivateKey(fingerprint);
+            await userless.deletePrivateKey(fingerprint);
           }
         }
 
         for (const [fingerprint, armored] of desiredByFingerprint) {
           if (existingByFingerprint.get(fingerprint) !== armored) {
-            await appService.addPrivateKey(armored);
+            await userless.addPrivateKey(armored);
           }
         }
 
@@ -74,7 +74,7 @@ export function P2PKeyContextProvider(
           (x): x is openpgp.PrivateKey => Boolean(x),
         );
 
-        const currentSigningKey = await appService.getSigningKey();
+        const currentSigningKey = await userless.getSigningKey();
         let nextSigningKeyArmor: string | undefined;
 
         if (decryptedCandidates.length > 0) {
@@ -95,14 +95,14 @@ export function P2PKeyContextProvider(
         if (nextSigningKeyArmor) {
           const currentArmor = currentSigningKey?.armor();
           if (currentArmor !== nextSigningKeyArmor) {
-            await appService.saveSigningKey(nextSigningKeyArmor);
+            await userless.saveSigningKey(nextSigningKeyArmor);
           }
         } else if (currentSigningKey) {
-          await appService.deleteSigningKey();
+          await userless.deleteSigningKey();
         }
       },
     };
-  }, [appService]);
+  }, [userless]);
 
   return (
     <KeyContextStateProvider {...props} keyStateHandlers={keyStateHandlers}>

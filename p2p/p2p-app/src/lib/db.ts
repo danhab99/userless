@@ -8,7 +8,7 @@ type ResolvedThread = {
   comment: string;
 };
 
-export async function resolveThread(thread: Thread): Promise<ResolvedThread> {
+export async function parseThread(thread: Thread): Promise<ResolvedThread> {
   const msg = await openpgp.readCleartextMessage({
     cleartextMessage: thread.content
   });

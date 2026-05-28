@@ -1,35 +1,5 @@
-import type { Hash, PublicKey, Thread } from "./p2p";
+import type { Hash } from "./p2p";
 import type { Userless } from "./userless";
-
-function extractReplyTarget(body: string): string | undefined {
-  const patterns = [
-    /in-reply-to\s*:\s*([a-f0-9]{8,64})/i,
-    /replyto\s*=\s*"?([a-f0-9]{8,64})"?/i,
-  ];
-
-  for (const pattern of patterns) {
-    const match = body.match(pattern);
-    if (match?.[1]) {
-      return match[1].toLowerCase();
-    }
-  }
-
-  return undefined;
-}
-
-async function extractSigningFingerprint(
-  thread: Thread,
-): Promise<string | undefined> {
-  const openpgp = await import("openpgp");
-  try {
-    const message = await openpgp.readCleartextMessage({
-      cleartextMessage: thread.content,
-    });
-    return message.getSigningKeyIDs()[0]?.toHex()?.toLowerCase();
-  } catch {
-    return undefined;
-  }
-}
 
 export class UserlessPublicKey {
   private userless: Userless;
@@ -40,15 +10,10 @@ export class UserlessPublicKey {
     this.fingerprint = fingerprint.toLowerCase();
   }
 
-  async get(): Promise<PublicKey | undefined> {
-    return this.userless.getPublicKey(this.fingerprint);
-  }
-
   async getThreads(): Promise<UserlessThread[]> {
-    const threads = await this.userless.getThreadClassesByPublicKey(
-      this.fingerprint,
+    throw new Error(
+      "UserlessPublicKey.getThreads is not available in the minimal Userless API.",
     );
-    return threads;
   }
 
   async *iterateThreads(): AsyncGenerator<UserlessThread, void, undefined> {
@@ -67,36 +32,22 @@ export class UserlessThread implements AsyncIterable<UserlessThread> {
     this.hash = hash;
   }
 
-  async get(): Promise<Thread | undefined> {
-    return this.userless.getThread(this.hash);
-  }
-
-  async getParent(): Promise<UserlessThread | undefined> {
-    const resolved = await this.userless.resolveThread(this.hash);
-    const parentHash = extractReplyTarget(resolved.body);
-    if (!parentHash) {
-      return undefined;
-    }
-
-    return this.userless.getThreadClass(parentHash);
-  }
-
-  async getPublicKey(): Promise<UserlessPublicKey | undefined> {
-    const thread = await this.get();
-    if (!thread) {
-      return undefined;
-    }
-
-    const fingerprint = await extractSigningFingerprint(thread);
-    if (!fingerprint) {
-      return undefined;
-    }
-
-    return this.userless.getPublicKeyClass(fingerprint);
-  }
-
   async getReplies(): Promise<UserlessThread[]> {
-    return this.userless.getReplyThreadClasses(this.hash);
+    const items: UserlessThread[] = [];
+    let cursor: string | undefined;
+
+    while (true) {
+      const page = await this.userless.getReplies(this.hash, cursor);
+      items.push(...page.items);
+
+      if (!page.next_cursor) {
+        break;
+      }
+
+      cursor = page.next_cursor;
+    }
+
+    return items;
   }
 
   async *iterateReplies(): AsyncGenerator<UserlessThread, void, undefined> {

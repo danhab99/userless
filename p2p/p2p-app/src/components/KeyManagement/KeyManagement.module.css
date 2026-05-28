@@ -2,13 +2,15 @@
   display: flex;
   height: 100%;
   width: 100%;
-  background: var(--color-800);
+  background-color: var(--color-800);
   color: var(--color-300);
 }
 
 .sidebar {
   width: 280px;
-  background: var(--color-700);
+  background-color: var(--color-100) !important;
+  color: var(--color-800);
+  border-right: 1px solid var(--color-500);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -76,11 +78,11 @@
 }
 
 .keyItem:hover {
-  background: var(--color-600);
+  background-color: var(--color-200);
 }
 
 .keyItem.selected {
-  background: var(--color-600);
+  background-color: var(--color-300);
   border-left: 2px solid var(--color-blue);
 }
 
@@ -133,7 +135,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 16px;
-  background: var(--color-800);
+  background-color: var(--color-800);
 }
 
 .noSelection {
@@ -153,7 +155,7 @@
 .dialogBackdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background-color: rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -162,7 +164,7 @@
 
 .dialog {
   width: min(560px, 92vw);
-  background: var(--color-700);
+  background-color: var(--color-700);
   color: var(--color-300);
   padding: 12px;
   display: flex;
@@ -179,7 +181,7 @@
 
 .dialogInput {
   padding: 6px;
-  background: var(--color-600);
+  background-color: var(--color-600);
   color: var(--color-300);
   border: 1px solid var(--color-500);
   font-family: inherit;
@@ -201,7 +203,7 @@
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 20px;
-  background: var(--color-700);
+  background-color: var(--color-700);
   padding: 14px;
 }
 
@@ -250,7 +252,7 @@
 
 .fingerprintSection {
   margin-bottom: 24px;
-  background: var(--color-700);
+  background-color: var(--color-700);
   padding: 12px;
 }
 
@@ -295,7 +297,7 @@
 .armorDetails {
   margin-bottom: 24px;
   padding: 12px;
-  background: var(--color-700);
+  background-color: var(--color-700);
 }
 
 .armorDetails summary {
@@ -319,7 +321,7 @@
 
 .contentSection {
   margin-bottom: 32px;
-  background: var(--color-700);
+  background-color: var(--color-700);
   padding: 12px;
 }
 
@@ -341,7 +343,7 @@
 }
 
 .threadItem.expanded {
-  background: var(--color-600);
+  background-color: var(--color-600);
 }
 
 .threadToggle {
@@ -356,7 +358,7 @@
 }
 
 .threadToggle:hover {
-  background: var(--color-600);
+  background-color: var(--color-600);
 }
 
 .toggleIcon {
@@ -423,7 +425,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 10px;
-  background: rgba(0, 0, 0, 0.08);
+  background-color: rgba(0, 0, 0, 0.08);
 }
 
 .fileHash {

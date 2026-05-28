@@ -7,8 +7,10 @@ import { type UserlessSnapshot } from "../../lib/userless";
 import { usePrevious } from "react-use";
 import { StatusBar } from "./StatusBar";
 
+const SNAPSHOT_POLL_INTERVAL_MS = 500;
+
 export function UserlessStatusBar(props: {}) {
-  const { appService } = useUserless();
+  const { userless } = useUserless();
   const [curr, setSnapshot] = useState<{
     snapshot: UserlessSnapshot;
     timestamp: Date;
@@ -20,18 +22,18 @@ export function UserlessStatusBar(props: {}) {
 
   useEffect(() => {
     const id = setInterval(async () => {
-      const snapshot = await appService.getSnapshot();
+      const snapshot = await userless.getSnapshot();
 
       setSnapshot({
         timestamp: new Date(),
         snapshot,
       });
-    }, 100);
+    }, SNAPSHOT_POLL_INTERVAL_MS);
 
     return () => {
       clearInterval(id);
     };
-  }, [appService]);
+  }, [userless]);
 
   const dt = curr.timestamp.getTime() - (prev?.timestamp.getTime() ?? 0);
 

@@ -1,7 +1,6 @@
 import * as openpgp from "openpgp";
 import {
-  FILE_CHUNK_SIZE,
-  type FileChunk,
+  type FilePayload,
   type Hash,
   type Peer,
   type PublicKey,
@@ -17,7 +16,6 @@ export type FileDetail = {
 };
 
 const FILE_REGEX = /!\[[^\]]*\]\(userless:\/\/.*\/files\/[^\)]+\)/g;
-const CHUNK_SIZE = FILE_CHUNK_SIZE;
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
@@ -54,23 +52,25 @@ export class FileManager extends UserlessEventEmitter {
     super(eventSink);
   }
 
-  async getFileChunk(
-    hash: Hash,
-    offset: number,
-    length: number,
-  ): Promise<FileChunk> {
+  async getFilePayload(hash: Hash): Promise<FilePayload> {
     const file = await this.db.getFile(hash);
     if (!file) {
       throw new Error(`File not found: ${hash}`);
     }
 
     const content = new Uint8Array(file.content);
-    const chunk = content.slice(offset, offset + length);
-
     return {
-      data: bytesToBase64(chunk),
-      total: content.byteLength,
-    } satisfies FileChunk;
+      data: bytesToBase64(content),
+    } satisfies FilePayload;
+  }
+
+  async getFile(hash: Hash): Promise<ArrayBuffer> {
+    const file = await this.queryPeersForFile(hash);
+    if (!file) {
+      throw new Error(`File not found: ${hash}`);
+    }
+
+    return file.content;
   }
 
   async scanThreadForFilesAndKeys(thread: Thread, threadHash: Hash): Promise<void> {
@@ -129,7 +129,7 @@ export class FileManager extends UserlessEventEmitter {
     return this.queryPeers(
       () => this.db.getFile(hash),
       async (peer) => {
-        const bytes = await peer.fetchFile(hash, CHUNK_SIZE);
+        const bytes = await peer.getFileBytes(hash);
         const copy = new Uint8Array(bytes);
         return {
           content: copy.buffer,
@@ -151,7 +151,7 @@ export class FileManager extends UserlessEventEmitter {
     return this.queryPeers(
       () => this.db.getFile(hash),
       async (peer) => {
-        const bytes = await peer.fetchFile(hash, CHUNK_SIZE);
+        const bytes = await peer.getFileBytes(hash);
         const copy = new Uint8Array(bytes);
         return {
           content: copy.buffer,

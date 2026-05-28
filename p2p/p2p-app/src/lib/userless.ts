@@ -1,7 +1,6 @@
 import * as openpgp from "openpgp";
 import {
   DEFAULT_PAGE_SIZE,
-  type FileChunk,
   type Hash,
   normalizeLobbyUrl,
   type PageParams,
@@ -11,7 +10,6 @@ import {
   Server,
   type Thread,
 } from "./p2p";
-import { AppService, type ReplyDraftRecord } from "./app-service";
 import { UserlessDatabase } from "./database";
 import { UserlessEventEmitter, type UserlessEventSink } from "./events";
 import type { FileDetail } from "./file-manager";
@@ -30,12 +28,17 @@ export type {
   FileDetail,
   PrivateKeyDetail,
   PublicKeyDetail,
-  ReplyDraftRecord,
   ResolvedThread,
   UserlessSnapshot,
 };
 
-export { AppService, UserlessPublicKey, UserlessThread };
+export { UserlessPublicKey, UserlessThread };
+
+export type ReplyDraftRecord = {
+  parentHash: Hash;
+  body: string;
+  createdAt: string;
+};
 
 export type UserlessOptions = {
   eventSink?: UserlessEventSink;
@@ -86,36 +89,14 @@ export class Userless extends UserlessEventEmitter {
   private fileManager!: FileManager;
   private peerGateway!: PeerGateway;
   private inspector!: UserlessInspector;
-  private appSingleton: AppService;
 
   constructor(url: string, options: UserlessOptions = {}) {
     super(options.eventSink);
 
-    this.appSingleton = new AppService({
-      getAllFilesDetailed: () => this.getAllFilesDetailedInternal(),
-      getSnapshot: () => this.getSnapshotInternal(),
-      getSigningKey: () => this.getSigningKeyInternal(),
-      addPrivateKey: (armoredKey) => this.addPrivateKeyInternal(armoredKey),
-      getPrivateKeys: () => this.getPrivateKeysInternal(),
-      deletePrivateKey: (fingerprint) => this.deletePrivateKeyInternal(fingerprint),
-      saveSigningKey: (armoredKey) => this.saveSigningKeyInternal(armoredKey),
-      deleteSigningKey: () => this.deleteSigningKeyInternal(),
-      deletePublicKey: (fingerprint) => this.deletePublicKeyInternal(fingerprint),
-      saveReplyDraft: (parentHash, body) =>
-        this.saveReplyDraftInternal(parentHash, body),
-      broadcastEmergency: (payload) => this.broadcastEmergencyInternal(payload),
-      scanAllPeers: () => this.scanAllPeersInternal(),
-      hideThread: (hash) => this.hideThreadInternal(hash),
-      createThread: (body) => this.createThreadInternal(body),
-      storeSignedThread: (signedMessage) =>
-        this.storeSignedThreadInternal(signedMessage),
-      addFile: (name, data) => this.addFileInternal(name, data),
-    });
-
     this.server = new Server(url, ["threads", "files", "pks"], {
       getAllThreads: async (params) => {
         await this.ensureDB();
-        return this.getAllThreads(params.cursor, params.limit);
+        return this.getRootThreadHashesPage(params.cursor, params.limit);
       },
       getReplyThreads: async ({ parentHash, cursor, limit }) => {
         await this.ensureDB();
@@ -129,13 +110,18 @@ export class Userless extends UserlessEventEmitter {
         }
         return thread;
       },
-      getFile: async ({ hash, offset, length }) => {
+      getFile: async ({ hash }) => {
         await this.ensureDB();
-        return this.fileManager.getFileChunk(hash, offset, length);
+        return this.fileManager.getFilePayload(hash);
       },
       getAllPublicKeys: async (params) => {
         await this.ensureDB();
-        return this.getAllPublicKeysPage(params);
+        const keys = (await this.db.getAllPublicKeys()).sort((left, right) =>
+          left.fingerprint.localeCompare(right.fingerprint),
+        );
+        const { offset, limit } = getPageWindow(params);
+
+        return toPageResult(keys.slice(offset, offset + limit), offset, limit);
       },
       getPublicKeys: async ({ fingerprint }) => {
         await this.ensureDB();
@@ -167,19 +153,12 @@ export class Userless extends UserlessEventEmitter {
     const runtime = await createUserlessRuntime({
       broadcastEmergency: (payload) =>
         this.server.broadcastEmergency(toServerEmergencyPayload(payload)),
-      createThread: (body) => this.createThreadInternal(body),
       emitEvent: this.emit.bind(this),
       getConnectionCount: () => this.server.getPeers().length,
       getPeers: () => this.server.getPeers(),
       getTransferStats: () => this.server.getTransferStats(),
-      hideThread: (hash) => this.hideThreadInternal(hash),
       listResolvedThreads: (cursor, limit) =>
-        this.listResolvedThreads(cursor, limit),
-      saveReplyDraft: (parentHash, body) =>
-        this.saveReplyDraftInternal(parentHash, body),
-      scanAllPeers: () => this.scanAllPeersInternal(),
-      storeSignedThread: (signedMessage) =>
-        this.storeSignedThreadInternal(signedMessage),
+        this.listResolvedThreadsInternal(cursor, limit),
     });
 
     this.db = runtime.db;
@@ -200,47 +179,32 @@ export class Userless extends UserlessEventEmitter {
     await this.peerScanner.scanPeerForThreads(peer, DEFAULT_PAGE_SIZE);
   }
 
-  private async getVisibleHiddenSet(): Promise<Set<Hash>> {
-    await this.ensureDB();
-    return this.db.getHiddenThreads();
-  }
-
-  private async getVisibleTopLevelThreadHashes(): Promise<Hash[]> {
-    const [hidden, hashes] = await Promise.all([
-      this.getVisibleHiddenSet(),
-      this.threadResolver.getTopLevelThreadHashesAll(),
-    ]);
-
-    return hashes.filter((hash) => !hidden.has(hash));
-  }
-
-  private async getAllReplyThreadHashes(parentHash: Hash): Promise<Hash[]> {
-    const hidden = await this.getVisibleHiddenSet();
-    const hashes: Hash[] = [];
-    let cursor: string | undefined;
-
-    while (true) {
-      const page = await this.threadResolver.getReplyThreadHashesPage(
-        parentHash,
-        cursor,
-        DEFAULT_PAGE_SIZE,
-      );
-      hashes.push(...page.items.filter((hash) => !hidden.has(hash)));
-
-      if (!page.next_cursor) {
-        return hashes;
-      }
-
-      cursor = page.next_cursor;
-    }
-  }
-
   private async getReplyThreadHashesPage(
     parentHash: Hash,
     cursor?: string,
     limit = DEFAULT_PAGE_SIZE,
   ): Promise<PageResult<Hash>> {
-    const hashes = await this.getAllReplyThreadHashes(parentHash);
+    await this.ensureDB();
+
+    const hidden = await this.db.getHiddenThreads();
+    const hashes: Hash[] = [];
+    let nextCursor: string | undefined;
+
+    while (true) {
+      const page = await this.threadResolver.getReplyThreadHashesPage(
+        parentHash,
+        nextCursor,
+        DEFAULT_PAGE_SIZE,
+      );
+      hashes.push(...page.items.filter((hash) => !hidden.has(hash)));
+
+      if (!page.next_cursor) {
+        break;
+      }
+
+      nextCursor = page.next_cursor;
+    }
+
     const { offset, limit: pageLimit } = getPageWindow({ cursor, limit });
 
     return toPageResult(
@@ -250,15 +214,25 @@ export class Userless extends UserlessEventEmitter {
     );
   }
 
-  private async getAllPublicKeysPage(
-    params: PageParams,
-  ): Promise<PageResult<PublicKey>> {
-    const keys = (await this.db.getAllPublicKeys()).sort((left, right) =>
-      left.fingerprint.localeCompare(right.fingerprint),
-    );
-    const { offset, limit } = getPageWindow(params);
+  private async getRootThreadHashesPage(
+    cursor?: string,
+    limit = DEFAULT_PAGE_SIZE,
+  ): Promise<PageResult<Hash>> {
+    await this.ensureDB();
 
-    return toPageResult(keys.slice(offset, offset + limit), offset, limit);
+    const [hidden, hashes] = await Promise.all([
+      this.db.getHiddenThreads(),
+      this.threadResolver.getTopLevelThreadHashesAll(),
+    ]);
+
+    const visibleHashes = hashes.filter((hash) => !hidden.has(hash));
+    const { offset, limit: pageLimit } = getPageWindow({ cursor, limit });
+
+    return toPageResult(
+      visibleHashes.slice(offset, offset + pageLimit),
+      offset,
+      pageLimit,
+    );
   }
 
   private async getAllFilesDetailedInternal(): Promise<FileDetail[]> {
@@ -276,9 +250,7 @@ export class Userless extends UserlessEventEmitter {
     return this.keyManager.getSigningKey();
   }
 
-  private async addPrivateKeyInternal(
-    armoredKey: string,
-  ): Promise<openpgp.PrivateKey> {
+  public async addPrivateKey(armoredKey: string): Promise<openpgp.PrivateKey> {
     await this.ensureDB();
     return this.keyManager.addPrivateKey(armoredKey);
   }
@@ -325,7 +297,7 @@ export class Userless extends UserlessEventEmitter {
     this.emit("thread_hidden", { hash });
   }
 
-  private async createThreadInternal(body: string): Promise<Hash> {
+  public async addThread(body: string): Promise<Hash> {
     await this.ensureDB();
     const signingKey = await this.keyManager.getSigningKey();
     if (!signingKey) {
@@ -358,9 +330,13 @@ export class Userless extends UserlessEventEmitter {
     return hash;
   }
 
-  private async addFileInternal(name: string, data: ArrayBuffer): Promise<Hash> {
+  public async addFile(name: string, data: ArrayBuffer): Promise<Hash> {
     await this.ensureDB();
     return this.fileManager.addFile(name, data);
+  }
+
+  public async storeSignedThread(signedMessage: string): Promise<Hash> {
+    return this.storeSignedThreadInternal(signedMessage);
   }
 
   private async saveReplyDraftInternal(
@@ -377,50 +353,27 @@ export class Userless extends UserlessEventEmitter {
     return record;
   }
 
-  public getAppService(): AppService {
-    return this.appSingleton;
-  }
-
-  public async getRootThreads(
+  public async getAllThreads(
     cursor?: string,
     limit = DEFAULT_PAGE_SIZE,
   ): Promise<PageResult<UserlessThread>> {
-    const hashes = await this.getAllThreads(cursor, limit);
+    const hashes = await this.getRootThreadHashesPage(cursor, limit);
 
     return {
-      items: hashes.items.map((hash) => this.getThreadClass(hash)),
+      items: hashes.items.map((hash) => this.getThread(hash)),
       next_cursor: hashes.next_cursor,
     };
   }
 
-  public async *iterateRootThreads(
-    limit = DEFAULT_PAGE_SIZE,
-  ): AsyncGenerator<UserlessThread, void, undefined> {
-    let cursor: string | undefined;
-
-    while (true) {
-      const page = await this.getRootThreads(cursor, limit);
-      for (const thread of page.items) {
-        yield thread;
-      }
-
-      if (!page.next_cursor) {
-        return;
-      }
-
-      cursor = page.next_cursor;
-    }
-  }
-
-  public getThreadClass(hash: Hash): UserlessThread {
+  public getThread(hash: Hash): UserlessThread {
     return new UserlessThread(this, hash);
   }
 
-  public getPublicKeyClass(fingerprint: string): UserlessPublicKey {
-    return new UserlessPublicKey(this, fingerprint);
+  public getPublicKey(fingerprintOrId: string): UserlessPublicKey {
+    return new UserlessPublicKey(this, fingerprintOrId);
   }
 
-  public async getPublicKey(
+  private async getPublicKeyDataInternal(
     fingerprintOrId: string,
   ): Promise<PublicKey | undefined> {
     await this.ensureDB();
@@ -435,7 +388,7 @@ export class Userless extends UserlessEventEmitter {
     return this.peerGateway.queryPeersForPublicKeys(fingerprintOrId);
   }
 
-  public async getThread(hash: Hash): Promise<Thread | undefined> {
+  private async getThreadDataInternal(hash: Hash): Promise<Thread | undefined> {
     await this.ensureDB();
 
     const local = await this.db.getThread(hash);
@@ -451,28 +404,28 @@ export class Userless extends UserlessEventEmitter {
     return thread;
   }
 
-  public async getReplyThreadClasses(parentHash: Hash): Promise<UserlessThread[]> {
-    const hashes = await this.getAllReplyThreadHashes(parentHash);
-    return hashes.map((hash) => this.getThreadClass(hash));
+  public async getReplies(
+    parentHash: Hash,
+    cursor?: string,
+    limit = DEFAULT_PAGE_SIZE,
+  ): Promise<PageResult<UserlessThread>> {
+    const page = await this.getReplyThreadHashesPage(parentHash, cursor, limit);
+    return {
+      items: page.items.map((hash) => this.getThread(hash)),
+      next_cursor: page.next_cursor,
+    };
   }
 
-  public async getThreadClassesByPublicKey(
-    fingerprint: string,
-  ): Promise<UserlessThread[]> {
-    const threads = await this.getThreadsByPublicKey(fingerprint);
-    return threads.map((thread) => this.getThreadClass(thread.hash));
-  }
-
-  public async resolveThread(hash: Hash): Promise<ResolvedThread> {
-    const thread = await this.getThread(hash);
+  private async getResolvedThreadInternal(hash: Hash): Promise<ResolvedThread> {
+    const thread = await this.getThreadDataInternal(hash);
     if (!thread) {
       throw new Error(`Thread not found: ${hash}`);
     }
 
-    return this.threadResolver.resolveThread(hash, thread);
+    return this.threadResolver.buildResolvedThread(hash, thread);
   }
 
-  public async listResolvedThreads(
+  private async listResolvedThreadsInternal(
     cursor?: string,
     limit = DEFAULT_PAGE_SIZE,
   ): Promise<PageResult<ResolvedThread>> {
@@ -486,7 +439,7 @@ export class Userless extends UserlessEventEmitter {
     const pageHashes = hashes.slice(offset, offset + pageLimit);
     const threads = await Promise.all(
       pageHashes.map(async (hash) => {
-        const thread = await this.getThread(hash);
+        const thread = await this.getThreadDataInternal(hash);
         if (!thread) {
           throw new Error(`Thread not found: ${hash}`);
         }
@@ -502,33 +455,12 @@ export class Userless extends UserlessEventEmitter {
     );
   }
 
-  public async getAllThreads(
-    cursor?: string,
-    limit = DEFAULT_PAGE_SIZE,
-  ): Promise<PageResult<Hash>> {
-    const hashes = await this.getVisibleTopLevelThreadHashes();
-    const { offset, limit: pageLimit } = getPageWindow({ cursor, limit });
-
-    return toPageResult(
-      hashes.slice(offset, offset + pageLimit),
-      offset,
-      pageLimit,
-    );
-  }
-
-  public async getReplyThreads(parentHash: Hash): Promise<ResolvedThread[]> {
-    await this.ensureDB();
-    const hidden = await this.db.getHiddenThreads();
-    const replies = await this.threadResolver.getReplyThreads(parentHash);
-    return replies.filter((thread) => !hidden.has(thread.hash));
-  }
-
-  public async getAllPublicKeysDetailed(): Promise<PublicKeyDetail[]> {
+  private async getAllPublicKeysDetailedInternal(): Promise<PublicKeyDetail[]> {
     await this.ensureDB();
     return this.inspector.getAllPublicKeysDetailed();
   }
 
-  public async getThreadsByPublicKey(
+  private async getResolvedThreadsByPublicKeyInternal(
     fingerprint: string,
   ): Promise<ResolvedThread[]> {
     await this.ensureDB();
@@ -537,13 +469,91 @@ export class Userless extends UserlessEventEmitter {
     return threads.filter((thread) => !hidden.has(thread.hash));
   }
 
-  public async getFileChunk(
-    hash: Hash,
-    offset: number,
-    length: number,
-  ): Promise<FileChunk> {
+  public async getFile(hash: Hash): Promise<ArrayBuffer> {
     await this.ensureDB();
-    return this.fileManager.getFileChunk(hash, offset, length);
+    return this.fileManager.getFile(hash);
+  }
+
+  public async getSnapshot(): Promise<UserlessSnapshot> {
+    return this.getSnapshotInternal();
+  }
+
+  public async getSigningKey(): Promise<openpgp.PrivateKey | undefined> {
+    return this.getSigningKeyInternal();
+  }
+
+  public async getPrivateKeys(): Promise<PrivateKeyDetail[]> {
+    return this.getPrivateKeysInternal();
+  }
+
+  public async saveSigningKey(armoredKey: string): Promise<openpgp.PrivateKey> {
+    return this.saveSigningKeyInternal(armoredKey);
+  }
+
+  public async deleteSigningKey(): Promise<void> {
+    await this.deleteSigningKeyInternal();
+  }
+
+  public async deletePrivateKey(fingerprint: string): Promise<void> {
+    await this.deletePrivateKeyInternal(fingerprint);
+  }
+
+  public async deletePublicKey(fingerprint: string): Promise<void> {
+    await this.deletePublicKeyInternal(fingerprint);
+  }
+
+  public async getAllFilesDetailed(): Promise<FileDetail[]> {
+    return this.getAllFilesDetailedInternal();
+  }
+
+  public async getAllPublicKeysDetailed(): Promise<PublicKeyDetail[]> {
+    return this.getAllPublicKeysDetailedInternal();
+  }
+
+  public async getResolvedThread(hash: Hash): Promise<ResolvedThread> {
+    return this.getResolvedThreadInternal(hash);
+  }
+
+  public async getResolvedThreadsByPublicKey(
+    fingerprint: string,
+  ): Promise<ResolvedThread[]> {
+    return this.getResolvedThreadsByPublicKeyInternal(fingerprint);
+  }
+
+  public broadcastEmergency(payload: EmergencyPayload): void {
+    this.broadcastEmergencyInternal(payload);
+  }
+
+  public async scanAllPeers(): Promise<void> {
+    await this.scanAllPeersInternal();
+  }
+
+  public async hideThread(hash: Hash): Promise<void> {
+    await this.hideThreadInternal(hash);
+  }
+
+  public getKeyManager(): KeyManager {
+    return this.keyManager;
+  }
+
+  public getFileManager(): FileManager {
+    return this.fileManager;
+  }
+
+  public getInspector(): UserlessInspector {
+    return this.inspector;
+  }
+
+  public getPeerGateway(): PeerGateway {
+    return this.peerGateway;
+  }
+
+  public getPeerScanner(): PeerScanner {
+    return this.peerScanner;
+  }
+
+  public getThreadResolver(): ThreadResolver {
+    return this.threadResolver;
   }
 }
 
@@ -567,8 +577,4 @@ export function getUserless(options: UserlessOptions = {}): Userless {
   }
 
   return singleton;
-}
-
-export function getAppService(options: UserlessOptions = {}): AppService {
-  return getUserless(options).getAppService();
 }

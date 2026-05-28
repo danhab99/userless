@@ -13,11 +13,9 @@ export type Service = "threads" | "files" | "pks";
 export type Services = Array<Service>;
 
 export const DEFAULT_PAGE_SIZE = 100;
-export const FILE_CHUNK_SIZE = 192 * 1024;
 
-export type FileChunk = {
+export type FilePayload = {
   data: string;
-  total: number;
 };
 
 export type PageParams = {
@@ -34,11 +32,7 @@ export type Methods = {
   getAllThreads(params: PageParams): Promise<PageResult<Hash>>;
   getReplyThreads(params: { parentHash: Hash } & PageParams): Promise<PageResult<Hash>>;
   getThread(params: { hash: Hash }): Promise<Thread>;
-  getFile(params: {
-    hash: Hash;
-    offset: number;
-    length: number;
-  }): Promise<FileChunk>;
+  getFile(params: { hash: Hash }): Promise<FilePayload>;
   getAllPublicKeys(params: PageParams): Promise<PageResult<PublicKey>>;
   getPublicKeys(params: { fingerprint: string }): Promise<PublicKey>;
 };
@@ -137,19 +131,6 @@ function base64ToBytes(b64: string): Uint8Array {
   return bytes;
 }
 
-function concatBytes(chunks: Uint8Array[]): Uint8Array {
-  const total = chunks.reduce((size, chunk) => size + chunk.byteLength, 0);
-  const result = new Uint8Array(total);
-  let offset = 0;
-
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-
-  return result;
-}
-
 type PeerAccounting = {
   onSend?: (bytes: number) => void;
   onReceive?: (bytes: number) => void;
@@ -230,41 +211,13 @@ export class Peer {
     return this.request("getThread", params);
   }
 
-  getFile(params: {
-    hash: Hash;
-    offset: number;
-    length: number;
-  }): Promise<FileChunk> {
+  getFile(params: { hash: Hash }): Promise<FilePayload> {
     return this.request("getFile", params);
   }
 
-  async fetchFile(
-    hash: Hash,
-    chunkSize = FILE_CHUNK_SIZE,
-  ): Promise<Uint8Array> {
-    let offset = 0;
-    let total = Number.POSITIVE_INFINITY;
-    const chunks: Uint8Array[] = [];
-
-    while (offset < total) {
-      const { data, total: nextTotal } = await this.getFile({
-        hash,
-        offset,
-        length: chunkSize,
-      });
-
-      total = nextTotal;
-
-      const bytes = base64ToBytes(data);
-      if (bytes.byteLength === 0) {
-        break;
-      }
-
-      chunks.push(bytes);
-      offset += bytes.byteLength;
-    }
-
-    return concatBytes(chunks);
+  async getFileBytes(hash: Hash): Promise<Uint8Array> {
+    const { data } = await this.getFile({ hash });
+    return base64ToBytes(data);
   }
 
   getAllPublicKeys(params: PageParams = {}): Promise<PageResult<PublicKey>> {

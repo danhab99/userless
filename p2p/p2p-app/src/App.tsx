@@ -52,13 +52,11 @@ function AppContent() {
 
 function App() {
   return (
-    <UserlessProvider>
-      <P2PKeyContextProvider>
-        <ToastProvider>
-          <AppContent />
-        </ToastProvider>
-      </P2PKeyContextProvider>
-    </UserlessProvider>
+    <P2PKeyContextProvider>
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
+    </P2PKeyContextProvider>
   );
 }
 

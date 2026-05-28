@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Markdown from "react-markdown";
-import type { AppService } from "../../lib/userless";
+import type { Userless } from "../../lib/userless";
 
 type FileAttachment = {
   name: string;
@@ -9,7 +9,7 @@ type FileAttachment = {
 };
 
 export type CreateThreadDialogProps = {
-  appService: AppService;
+  userless: Userless;
   isOpen: boolean;
   onClose: () => void;
   onThreadCreated: () => void;
@@ -84,7 +84,7 @@ export function CreateThreadDialog(props: CreateThreadDialogProps) {
       const uploadedFiles: Array<{ name: string; hash: string }> = [];
 
       for (const file of files) {
-        const hash = await props.appService.addFile(file.name, file.data);
+        const hash = await props.userless.addFile(file.name, file.data);
         uploadedFiles.push({ name: file.name, hash });
       }
 
@@ -98,7 +98,7 @@ export function CreateThreadDialog(props: CreateThreadDialogProps) {
       }
 
       // Create the thread
-      await props.appService.createThread(body);
+      await props.userless.addThread(body);
 
       setContent("");
       setFiles([]);
