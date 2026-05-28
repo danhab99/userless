@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SiteNavLinks from "../components/SiteNavLinks";
 
 function OrbitIcon() {
   return (
@@ -47,11 +48,7 @@ export default function LandingPage() {
       <header className="site-header">
         <div className="shell nav-shell">
           <p className="brand-mark">Userless</p>
-          <nav className="nav-links">
-            <a href="#deploy">Deploy</a>
-            <a href="#products">Products</a>
-            <a href="#security">Security</a>
-          </nav>
+          <SiteNavLinks />
         </div>
       </header>
 
@@ -176,6 +173,9 @@ export default function LandingPage() {
               </Link>
               <Link href="https://github.com/userless/userless/blob/main/centralized/PROTOCOL.md" target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
                 Protocol spec
+              </Link>
+              <Link href="/documentation" className="btn btn-ghost">
+                Local docs page
               </Link>
             </div>
           </div>
