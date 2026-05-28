@@ -1,0 +1,66 @@
+const DEFAULT_BASE16 = {
+  base00: "#181818",
+  base01: "#282828",
+  base02: "#383838",
+  base03: "#585858",
+  base04: "#b8b8b8",
+  base05: "#d8d8d8",
+  base06: "#e8e8e8",
+  base07: "#f8f8f8",
+  base08: "#ab4642",
+  base09: "#dc9656",
+  base0a: "#f7ca88",
+  base0b: "#a1b56c",
+  base0c: "#86c1b9",
+  base0d: "#7cafc2",
+  base0e: "#ba8baf",
+  base0f: "#a16946",
+};
+
+const BASE16_THEMES = {
+  "atelier-dune": DEFAULT_BASE16,
+  "gruvbox-dark": {
+    base00: "#282828",
+    base01: "#3c3836",
+    base02: "#504945",
+    base03: "#665c54",
+    base04: "#bdae93",
+    base05: "#d5c4a1",
+    base06: "#ebdbb2",
+    base07: "#fbf1c7",
+    base08: "#fb4934",
+    base09: "#fe8019",
+    base0a: "#fabd2f",
+    base0b: "#b8bb26",
+    base0c: "#8ec07c",
+    base0d: "#83a598",
+    base0e: "#d3869b",
+    base0f: "#d65d0e",
+  },
+  "solarized-dark": {
+    base00: "#002b36",
+    base01: "#073642",
+    base02: "#586e75",
+    base03: "#657b83",
+    base04: "#839496",
+    base05: "#93a1a1",
+    base06: "#eee8d5",
+    base07: "#fdf6e3",
+    base08: "#dc322f",
+    base09: "#cb4b16",
+    base0a: "#b58900",
+    base0b: "#859900",
+    base0c: "#2aa198",
+    base0d: "#268bd2",
+    base0e: "#6c71c4",
+    base0f: "#d33682",
+  },
+};
+
+const BASE16_THEME_NAMES = Object.keys(BASE16_THEMES);
+
+module.exports = {
+  DEFAULT_BASE16,
+  BASE16_THEMES,
+  BASE16_THEME_NAMES,
+};

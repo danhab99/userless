@@ -1,0 +1,39 @@
+{
+  "name": "@userless/tailwind-base16-plugin",
+  "version": "0.1.0",
+  "description": "Reusable Tailwind Base16 color plugin",
+  "type": "module",
+  "main": "./index.cjs",
+  "module": "./index.js",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "require": "./index.cjs"
+    },
+    "./themes": {
+      "import": "./themes.js",
+      "require": "./themes.cjs"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.cjs",
+    "themes.js",
+    "themes.cjs",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "tailwindcss": "^4.0.0"
+  },
+  "dependencies": {
+    "tailwindcss": "^4.0.0"
+  },
+  "keywords": [
+    "tailwindcss",
+    "tailwind",
+    "plugin",
+    "base16",
+    "colors"
+  ],
+  "license": "MIT"
+}
