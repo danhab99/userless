@@ -1,10 +1,11 @@
 services:
-  minio:
-    image: minio/minio:RELEASE.2025-01-20T14-49-07Z
+
+  s3-dev:
+    image: chrislusf/seaweedfs:latest
     ports:
-      - 9000:9000
-      - 9001:9001
-    command: server --console-address ":9001" /data
+      - "8333:8333" # S3 API port
+      - "9333:9333" # Master UI port (to visually inspect your storage)
+    command: "server -s3"
     volumes:
       - ./notes/minio:/data
     environment:
